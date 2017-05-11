@@ -71,9 +71,6 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     label_crop.set_shape((crop_h,crop_w, 1))
     return img_crop, label_crop  
 
-def generate_list(data_dir):
-    """ generate volume list for LUNA16"""
-
 def read_labeled_image_list(data_dir, mask_dir):
     """Reads txt file containing paths to images and ground truth masks.
     
@@ -142,7 +139,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
     return img, label
 
-class ImageReader(object):
+class LUNA16ImageReader(object):
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
