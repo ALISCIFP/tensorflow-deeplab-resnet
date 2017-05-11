@@ -144,7 +144,7 @@ class LUNA16ImageReader(object):
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
 
-    def __init__(self, data_dir, data_list, input_size, 
+    def __init__(self, data_dir, mask_dir, input_size,
                  random_scale, random_mirror, ignore_label, img_mean, coord):
         '''Initialise an ImageReader.
         
@@ -159,11 +159,11 @@ class LUNA16ImageReader(object):
           coord: TensorFlow queue coordinator.
         '''
         self.data_dir = data_dir
-        self.data_list = data_list
+        self.mask_dir = mask_dir
         self.input_size = input_size
         self.coord = coord
         
-        self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
+        self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.mask_dir)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
         self.queue = tf.train.slice_input_producer([self.images, self.labels],

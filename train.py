@@ -16,13 +16,13 @@ import time
 import tensorflow as tf
 import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import DeepLabResNetModel, LUNA16ImageReader, decode_labels, inv_preprocess, prepare_label
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
 BATCH_SIZE = 10
-DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
-DATA_LIST_PATH = './dataset/train.txt'
+DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
+MASK_DIRECTORY = '/home/zack/Data/LUNA16/seg-lungs-LUNA16'
 IGNORE_LABEL = 255
 INPUT_SIZE = '321,321'
 LEARNING_RATE = 2.5e-4
@@ -49,7 +49,7 @@ def get_arguments():
                         help="Number of images sent to the network in one step.")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
+    parser.add_argument("--mask-dir", type=str, default=MASK_DIRECTORY,
                         help="Path to the file listing the images in the dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -129,9 +129,9 @@ def main():
     
     # Load reader.
     with tf.name_scope("create_inputs"):
-        reader = ImageReader(
+        reader = LUNA16ImageReader(
             args.data_dir,
-            args.data_list,
+            args.mask_dir,
             input_size,
             args.random_scale,
             args.random_mirror,
