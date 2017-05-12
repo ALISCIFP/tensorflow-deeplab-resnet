@@ -159,7 +159,7 @@ class ImageReader(object):
         self.data_list = data_list
         self.input_size = input_size
         self.coord = coord
-        
+
         self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)

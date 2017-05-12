@@ -16,18 +16,20 @@ import time
 import tensorflow as tf
 import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader_LUNA16, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import DeepLabResNetModel, decode_labels, inv_preprocess, prepare_label
 
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
+from deeplab_resnet.LUNA16image_reader import ImageReader_LUNA16
+
+IMG_MEAN = np.array((0,0,0), dtype=np.float32)
 
 BATCH_SIZE = 10
 DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
 MASK_DIRECTORY = '/home/zack/Data/LUNA16/seg-lungs-LUNA16'
 IGNORE_LABEL = 255
-INPUT_SIZE = '321,321'
+INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 21
+NUM_CLASSES = 4
 NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -118,6 +120,8 @@ def load(saver, sess, ckpt_path):
 def main():
     """Create the model and start the training."""
     args = get_arguments()
+    print (args)
+    print (args.mask_dir)
     
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
@@ -129,7 +133,7 @@ def main():
     
     # Load reader.
     with tf.name_scope("create_inputs"):
-        reader = LUNA16ImageReader(
+        reader = ImageReader_LUNA16(
             args.data_dir,
             args.mask_dir,
             input_size,
@@ -138,7 +142,10 @@ def main():
             args.ignore_label,
             IMG_MEAN,
             coord)
+
+        print ("reader pass")
         image_batch, label_batch = reader.dequeue(args.batch_size)
+        print ("dequen pass")
     
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)

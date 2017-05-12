@@ -108,20 +108,26 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
       ignore_label: index of label to ignore during the training.
       img_mean: vector of mean colour values.
       
-    Returns:
+    Reprint turns:
       Two tensors: the decoded image and its mask.
     """
+    itkimg = sitk.ReadImage(input_queue[0])
+    img=sitk.GetArrayFromImage(itkimg)
+    random_anchor = np.random.randint(1,img.shape[0]-1)
 
-    img_contents = sitk.ReadImage(input_queue[0])
-    label_contents = sitk.ReadImage(input_queue[1])
-    random_anchor = randint(1,img_contents.shape[2]-1)
 
-    img = img_contents[:,:,random_anchor-1:random_anchor+1]
-    img = tf.cast(tf.concat(img, dtype=tf.float32))
+    img = img[(random_anchor-1,random_anchor,random_anchor+1),:,:]
+    img =np.transpose(img,(1,2,0))
+    img = tf.cast(img, dtype=tf.float32)
     # Extract mean.
     img -= img_mean
 
-    label = label_contents[:,:,random_anchor]
+    itklabel = sitk.ReadImage(input_queue[1])
+    label = sitk.GetArrayFromImage(itklabel)
+    label=label[random_anchor,:,:]
+
+    label =np.expand_dims(label,axis=2)
+
 
     if input_size is not None:
         h, w = input_size
@@ -162,13 +168,16 @@ class ImageReader_LUNA16(object):
         self.mask_dir = mask_dir
         self.input_size = input_size
         self.coord = coord
+        self.random_scale = random_scale
+        self.random_mirror = random_mirror
+        self.ignore_label = ignore_label
+        self.img_mean = img_mean
         
         self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.mask_dir)
-        self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
-        self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
-        self.queue = tf.train.slice_input_producer([self.images, self.labels],
-                                                   shuffle=input_size is not None) # not shuffling if it is val
-        self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror, ignore_label, img_mean) 
+
+        assert (len(self.image_list) == len(self.label_list))
+        self.sample_size = len(self.image_list)
+
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
@@ -178,6 +187,15 @@ class ImageReader_LUNA16(object):
           
         Returns:
           Two tensors of size (batch_size, h, w, {3, 1}) for images and masks.'''
-        image_batch, label_batch = tf.train.batch([self.image, self.label],
-                                                  num_elements)
+        image_batch=[]
+        label_batch=[]
+        for i in xrange(num_elements):
+            self.current_sample=np.random.randint(0,self.sample_size)
+            self.image, self.label = read_images_from_disk([self.image_list[self.current_sample],self.label_list[self.current_sample]], self.input_size, self.random_scale, self.random_mirror, self.ignore_label, self.img_mean)
+            image_batch.append(self.image)
+            label_batch.append(self.label)
+
+        
+        image_batch = tf.convert_to_tensor(image_batch)
+        label_batch = tf.convert_to_tensor(label_batch)
         return image_batch, label_batch
