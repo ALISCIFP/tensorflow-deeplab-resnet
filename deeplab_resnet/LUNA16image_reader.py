@@ -4,7 +4,6 @@ import numpy as np
 import tensorflow as tf
 import SimpleITK as sitk
 
-
 def image_scaling(img, label):
     """
     Randomly scales the images between 0.5 to 1.5 times the original size.
@@ -88,7 +87,7 @@ def read_labeled_image_list(data_dir, mask_dir):
     # mask_dir = "/home/zack/Data/LUNA16/seg-lungs-LUNA16"
 
     for i in xrange(8):
-        os.chdir(data_dir + "subset" + str(i))
+        os.chdir(data_dir + "subset" + str(i) + "raw")
         for file in glob.glob("*.mhd"):
             images.append(os.path.join(data_dir + "subset" + str(i), file))
             masks.append(os.path.join(mask_dir, file))
@@ -111,22 +110,36 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     Reprint turns:
       Two tensors: the decoded image and its mask.
     """
-    itkimg = sitk.ReadImage(input_queue[0])
-    img=sitk.GetArrayFromImage(itkimg)
-    random_anchor = np.random.randint(1,img.shape[0]-1)
+    img_contents = tf.read_file(input_queue[0])
+    label_contents = tf.read_file(input_queue[1])
+
+    img1D = tf.decode_raw(img_contents, tf.int16)
+    img3D = tf.reshape(img1D,[512,512,-1])
+
+    # random_anchor = tf.random_uniform([1],0,tf.shape(img3D)[-1]-3,dtype=tf.int32)
+    #
+    # img = tf.slice(img3D,[0,0,4],[512,512,3])
+    # img = tf.random_crop (img3D,[512,512,3])
 
 
-    img = img[(random_anchor-1,random_anchor,random_anchor+1),:,:]
-    img =np.transpose(img,(1,2,0))
-    img = tf.cast(img, dtype=tf.float32)
     # Extract mean.
+
+
+    label1D = tf.decode_raw(label_contents,tf.int16)
+    label3D = tf.reshape(label1D,[512,512,-1])
+    # label = tf.slice(label3D,[0,0,3+1],[512,512,1])
+
+    img_label_concat = tf.concat([img3D,label3D],0)
+
+    img_label_concat_crop = tf.random_crop(img_label_concat,[1024,512,3])
+
+    img = tf.slice(img_label_concat_crop,[0,0,0],[512,512,3])
+    img = tf.cast(img, dtype=tf.float32)
     img -= img_mean
+    label = tf.slice(img_label_concat_crop,[512,0,1],[512,512,1])
 
-    itklabel = sitk.ReadImage(input_queue[1])
-    label = sitk.GetArrayFromImage(itklabel)
-    label=label[random_anchor,:,:]
 
-    label =np.expand_dims(label,axis=2)
+    # img = tf.random_crop (label3D,[512,512,1])
 
 
     if input_size is not None:
@@ -153,7 +166,7 @@ class ImageReader_LUNA16(object):
     def __init__(self, data_dir, mask_dir, input_size,
                  random_scale, random_mirror, ignore_label, img_mean, coord):
         '''Initialise an ImageReader.
-        
+
         Args:
           data_dir: path to the directory with images and masks.
           data_list: path to the file with lines of the form '/path/to/image /path/to/mask'.
@@ -168,34 +181,23 @@ class ImageReader_LUNA16(object):
         self.mask_dir = mask_dir
         self.input_size = input_size
         self.coord = coord
-        self.random_scale = random_scale
-        self.random_mirror = random_mirror
-        self.ignore_label = ignore_label
-        self.img_mean = img_mean
-        
+
         self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.mask_dir)
-
-        assert (len(self.image_list) == len(self.label_list))
-        self.sample_size = len(self.image_list)
-
+        self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
+        self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
+        self.queue = tf.train.slice_input_producer([self.images, self.labels],
+                                                   shuffle=input_size is not None)  # not shuffling if it is val
+        self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror,
+                                                       ignore_label, img_mean)
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
-        
+
         Args:
           num_elements: the batch size.
-          
+
         Returns:
           Two tensors of size (batch_size, h, w, {3, 1}) for images and masks.'''
-        image_batch=[]
-        label_batch=[]
-        for i in xrange(num_elements):
-            self.current_sample=np.random.randint(0,self.sample_size)
-            self.image, self.label = read_images_from_disk([self.image_list[self.current_sample],self.label_list[self.current_sample]], self.input_size, self.random_scale, self.random_mirror, self.ignore_label, self.img_mean)
-            image_batch.append(self.image)
-            label_batch.append(self.label)
-
-        
-        image_batch = tf.convert_to_tensor(image_batch)
-        label_batch = tf.convert_to_tensor(label_batch)
+        image_batch, label_batch = tf.train.batch([self.image, self.label],
+                                                  num_elements)
         return image_batch, label_batch
