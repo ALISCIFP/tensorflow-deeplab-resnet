@@ -143,10 +143,8 @@ def main():
             IMG_MEAN,
             coord)
 
-        print ("reader pass")
         image_batch, label_batch = reader.dequeue(args.batch_size)
-        print ("dequen pass")
-    
+
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep 
