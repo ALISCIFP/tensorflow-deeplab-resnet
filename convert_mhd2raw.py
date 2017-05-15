@@ -19,20 +19,22 @@ def mhd2raw(data_file):
 def mhd2raw_disk(data_dir):
 
     for i in xrange(10):
+        print "converting subset "+str(i)
         os.chdir(data_dir + "subset" + str(i))
-        if not os.path.exists(data_dir + "subset" + str(i) + "raw"):
-            os.mkdir(data_dir + "subset" + str(i) + "raw")
+        if not os.path.exists(data_dir + "subset" + str(i) + "braw"):
+            os.mkdir(data_dir + "subset" + str(i) + "braw")
         for file in glob.glob("*.mhd"):
             img = mhd2raw(file)
-            np.save(os.path.join(data_dir + "subset" + str(i) + "raw",file),img)
+            img.tofile(os.path.join(data_dir + "subset" + str(i) + "braw",file))
 
     os.chdir(data_dir + "seg-lungs-LUNA16")
+    print "seg-lungs-LUNA16"
 
-    if not os.path.exists(data_dir + "seg-lungs-LUNA16" + "raw"):
-        os.mkdir(data_dir + "seg-lungs-LUNA16" + "raw")
+    if not os.path.exists(data_dir + "seg-lungs-LUNA16" + "braw"):
+        os.mkdir(data_dir + "seg-lungs-LUNA16" + "braw")
     for file in glob.glob("*.mhd"):
         img = mhd2raw(file)
-        np.save(os.path.join(data_dir + "seg-lungs-LUNA16" + "raw", file), img)
+        img.tofile(os.path.join(data_dir + "seg-lungs-LUNA16" + "braw", file))
 
 
 def main():
