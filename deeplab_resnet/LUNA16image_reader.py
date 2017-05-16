@@ -86,8 +86,8 @@ def read_labeled_image_list(data_dir, mask_dir):
     # data_dir = "/home/zack/Data/LUNA16/"
     # mask_dir = "/home/zack/Data/LUNA16/seg-lungs-LUNA16"
 
-    for i in xrange(8):
-        os.chdir(data_dir + "subset" + str(i) + "raw")
+    for i in xrange(1):
+        os.chdir(data_dir + "subset" + str(i) + "braw")
         for file in glob.glob("*.mhd"):
             images.append(os.path.join(data_dir + "subset" + str(i), file))
             masks.append(os.path.join(mask_dir, file))
@@ -185,10 +185,13 @@ class ImageReader_LUNA16(object):
         self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.mask_dir)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
+        print ("list pass")
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
                                                    shuffle=input_size is not None)  # not shuffling if it is val
+        print ("self.deque pass")
         self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror,
                                                        ignore_label, img_mean)
+        print ("read_images_from_disk")
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
