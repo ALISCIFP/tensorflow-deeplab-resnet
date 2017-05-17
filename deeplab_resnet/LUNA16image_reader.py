@@ -1,8 +1,6 @@
 import os,glob
 
-import numpy as np
 import tensorflow as tf
-import SimpleITK as sitk
 
 def image_scaling(img, label):
     """
@@ -86,10 +84,10 @@ def read_labeled_image_list(data_dir, mask_dir):
     # data_dir = "/home/zack/Data/LUNA16/"
     # mask_dir = "/home/zack/Data/LUNA16/seg-lungs-LUNA16"
 
-    for i in xrange(1):
+    for i in xrange(8):
         os.chdir(data_dir + "subset" + str(i) + "braw")
         for file in glob.glob("*.mhd"):
-            images.append(os.path.join(data_dir + "subset" + str(i), file))
+            images.append(os.path.join(data_dir + "subset" + str(i) + "braw", file))
             masks.append(os.path.join(mask_dir, file))
     return images, masks
 
@@ -112,6 +110,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     """
     img_contents = tf.read_file(input_queue[0])
     label_contents = tf.read_file(input_queue[1])
+
 
     img1D = tf.decode_raw(img_contents, tf.int16)
     img3D = tf.reshape(img1D,[512,512,-1])
@@ -159,6 +158,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     return img, label
 
 class ImageReader_LUNA16(object):
+
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
@@ -185,13 +185,10 @@ class ImageReader_LUNA16(object):
         self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.mask_dir)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
-        print ("list pass")
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
                                                    shuffle=input_size is not None)  # not shuffling if it is val
-        print ("self.deque pass")
         self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror,
                                                        ignore_label, img_mean)
-        print ("read_images_from_disk")
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
