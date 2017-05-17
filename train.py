@@ -98,7 +98,7 @@ def save(saver, sess, logdir, step):
    '''
    model_name = 'model.ckpt'
    checkpoint_path = os.path.join(logdir, model_name)
-
+    
    if not os.path.exists(logdir):
       os.makedirs(logdir)
    saver.save(sess, checkpoint_path, global_step=step)
@@ -111,22 +111,22 @@ def load(saver, sess, ckpt_path):
       saver: TensorFlow Saver object.
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
-    '''
+    ''' 
     saver.restore(sess, ckpt_path)
     print("Restored model parameters from {}".format(ckpt_path))
 
 def main():
     """Create the model and start the training."""
     args = get_arguments()
-
+    
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
-
+    
     tf.set_random_seed(args.random_seed)
-
+    
     # Create queue coordinator.
     coord = tf.train.Coordinator()
-
+    
     # Load reader.
     with tf.name_scope("create_inputs"):
         reader = ImageReader(
@@ -139,7 +139,7 @@ def main():
             IMG_MEAN,
             coord)
         image_batch, label_batch = reader.dequeue(args.batch_size)
-
+    
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep 
