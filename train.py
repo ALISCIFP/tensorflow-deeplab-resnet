@@ -16,20 +16,18 @@ import time
 import tensorflow as tf
 import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-from deeplab_resnet.LUNA16image_reader import ImageReader_LUNA16
-
-IMG_MEAN = np.array((0,0,0), dtype=np.float32)
+IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
 BATCH_SIZE = 10
-DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
-MASK_DIRECTORY = '/home/zack/Data/LUNA16/seg-lungs-LUNA16'
+DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
+DATA_LIST_PATH = './dataset/train.txt'
 IGNORE_LABEL = 255
-INPUT_SIZE = '512,512'
+INPUT_SIZE = '321,321'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 4
+NUM_CLASSES = 21
 NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -51,7 +49,7 @@ def get_arguments():
                         help="Number of images sent to the network in one step.")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--mask-dir", type=str, default=MASK_DIRECTORY,
+    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
                         help="Path to the file listing the images in the dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -100,7 +98,7 @@ def save(saver, sess, logdir, step):
    '''
    model_name = 'model.ckpt'
    checkpoint_path = os.path.join(logdir, model_name)
-    
+
    if not os.path.exists(logdir):
       os.makedirs(logdir)
    saver.save(sess, checkpoint_path, global_step=step)
@@ -113,36 +111,33 @@ def load(saver, sess, ckpt_path):
       saver: TensorFlow Saver object.
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
-    ''' 
+    '''
     saver.restore(sess, ckpt_path)
     print("Restored model parameters from {}".format(ckpt_path))
 
 def main():
     """Create the model and start the training."""
     args = get_arguments()
-    print (args)
-    print (args.mask_dir)
-    
+
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
-    
+
     tf.set_random_seed(args.random_seed)
-    
+
     # Create queue coordinator.
     coord = tf.train.Coordinator()
-    
+
     # Load reader.
     with tf.name_scope("create_inputs"):
-        reader = ImageReader_LUNA16(
+        reader = ImageReader(
             args.data_dir,
-            args.mask_dir,
+            args.data_list,
             input_size,
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
             IMG_MEAN,
             coord)
-
         image_batch, label_batch = reader.dequeue(args.batch_size)
 
     # Create network.
