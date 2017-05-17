@@ -17,15 +17,15 @@ import tensorflow as tf
 import numpy as np
 
 from deeplab_resnet import DeepLabResNetModel, decode_labels, inv_preprocess, prepare_label
-
 from deeplab_resnet.LUNA16image_reader import ImageReader_LUNA16
+
 
 IMG_MEAN = np.array((0,0,0), dtype=np.float32)
 
 BATCH_SIZE = 10
 DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
-MASK_DIRECTORY = '/home/zack/Data/LUNA16/seg-lungs-LUNA16raw'
-IGNORE_LABEL = 255
+MASK_DIRECTORY = '/home/zack/Data/LUNA16/seg-lungs-LUNA16braw'
+IGNORE_LABEL = 0
 INPUT_SIZE = '312,312'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
@@ -33,8 +33,7 @@ NUM_CLASSES = 4
 NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
-# RESTORE_FROM = './deeplab_resnet.ckpt'
-RESTORE_FROM = None
+RESTORE_FROM = './deeplab_resnet.ckpt'
 
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
