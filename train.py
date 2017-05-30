@@ -19,10 +19,10 @@ import numpy as np
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-
+GPU_MASK ='0,1'
 BATCH_SIZE = 10
 DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/train.txt'
@@ -58,6 +58,8 @@ def get_arguments():
                         help="The index of the label to ignore during the training.")
     parser.add_argument("--input-size", type=str, default=INPUT_SIZE,
                         help="Comma-separated string with height and width of images.")
+    parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
+                        help="Comma-separated string for GPU mask.")
     parser.add_argument("--is-training", action="store_true",
                         help="Whether to updates the running means and variances during the training.")
     parser.add_argument("--learning-rate", type=float, default=LEARNING_RATE,
@@ -122,7 +124,7 @@ def main():
     """Create the model and start the training."""
     args = get_arguments()
     print (args)
-
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
     
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
