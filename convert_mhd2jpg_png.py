@@ -7,12 +7,13 @@ import argparse
 
 import numpy as np
 import SimpleITK as sitk
-from PIL import Image
 import cv2
+import scipy.misc
+import random
 
 
 DATA_DIRECTORY = '/home/zack/Data/ILDDataset/output/yes_lesions_no_rescale_merge_yes/'
-OUT_DIRECTORY = "/home/zack/Data/ILDDataset/output/yes_lesions_no_rescale_merge_yes/"
+OUT_DIRECTORY = "/home/zack/Data/ILD_jpg_png/"
 
 def mhd2ndarray(data_file):
     itkimg = sitk.ReadImage(data_file)
@@ -21,34 +22,51 @@ def mhd2ndarray(data_file):
 
     return img
 
-def ndarry2jpg_png(data_file,out_dir):
+def ndarry2jpg_png(data_file,out_dir,flist):
 
     data_path,fn = os.path.split(data_file)
     img_gt_file= data_file.replace("img","seg")
 
     img = mhd2ndarray(data_file)
-    print img.shape
     img_gt = mhd2ndarray(img_gt_file)
-    print img_gt.shape
 
     img_pad=np.lib.pad(img, ((0, 0),(0,0),(1,1)), 'constant', constant_values=(0, 0))
 
-    for i in xrange(0,img_pad.shape[2]):
-        img3c = img_pad[:,:,i:i+2]
-        im = Image.fromarray(img3c)
-        im.save(os.path.join(out_dir+"JPEGImages",fn+"_"+str(i)+"_"+".jpg"))
-        cv2.imwrite(os.path.join(out_dir+"PNGImages",fn+"_"+str(i)+"_"+".png"),img_gt[:,:,i])
+    for i in xrange(0,img.shape[2]):
+        img3c = img_pad[:,:,i:i+3]
+        scipy.misc.imsave(os.path.join(out_dir+"JPEGImages",fn+"_"+str(i)+".jpg"),img3c)
+        cv2.imwrite(os.path.join(out_dir+"PNGImages",fn+"_"+str(i)+".png"),img_gt[:,:,i])
 
-def convert(data_dir,out_dir):
+        flist.write("/JPEGImages/subset/"+fn+"_"+str(i)+".jpg "+"/PNGImages/subset/"+fn+"_"+str(i)+".png\n")
+def convert(data_dir, out_dir):
     os.chdir(data_dir + "img")
     print "converting"
 
-    if not os.path.exists(data_dir + "JPEGImages"):
-        os.mkdir(data_dir + "JPEGImages")
-    if not os.path.exists(data_dir + "PNGImages"):
-        os.mkdir(data_dir + "PNGImages")
-    for file in glob.glob("*.mhd"):
-        ndarry2jpg_png(os.path.join(data_dir + "img",file), out_dir)
+    if not os.path.exists(out_dir + "JPEGImages"):
+        os.mkdir(out_dir + "JPEGImages")
+    if not os.path.exists(out_dir + "PNGImages"):
+        os.mkdir(out_dir + "PNGImages")
+
+    mhdFileList = glob.glob("*.mhd")
+    random.shuffle(mhdFileList)
+
+    ftrain = open(out_dir + "dataset/train.txt", 'w')
+
+    fval = open(out_dir + "dataset/val.txt", 'w')
+    i = 0
+    for file in mhdFileList:
+        if i < 96 :
+            ndarry2jpg_png(os.path.join(data_dir + "img", file), out_dir,ftrain)
+        else:
+            ndarry2jpg_png(os.path.join(data_dir + "img", file), out_dir,fval)
+        i += 1
+    ftrain.close()
+    fval.close()
+
+
+
+
+    print "done."
 
 
 
