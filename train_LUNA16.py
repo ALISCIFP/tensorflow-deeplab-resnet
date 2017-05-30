@@ -16,16 +16,14 @@ import time
 import tensorflow as tf
 import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel, decode_labels, inv_preprocess, prepare_label
-from deeplab_resnet.LUNA16image_reader import ImageReader_LUNA16
+from deeplab_resnet import DeepLabResNetModel,ImageReader_LUNA16, decode_labels, inv_preprocess, prepare_label
 
-
-IMG_MEAN = np.array((0,0,0), dtype=np.float32)
+IMG_MEAN = np.array((121.0,121.0,121.0), dtype=np.float32)
 
 BATCH_SIZE = 10
 DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
 MASK_DIRECTORY = '/home/zack/Data/LUNA16/seg-lungs-LUNA16braw'
-IGNORE_LABEL = 0
+IGNORE_LABEL = 255
 INPUT_SIZE = '312,312'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
@@ -34,10 +32,10 @@ NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
-
+RESTORE_FROM = None
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
-SNAPSHOT_DIR = './snapshots/'
+SNAPSHOT_DIR = './snapshots_LUNA16/'
 WEIGHT_DECAY = 0.0005
 
 
@@ -123,7 +121,6 @@ def main():
     args = get_arguments()
     print (args)
     print (args.mask_dir)
-    
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
     
@@ -233,7 +230,7 @@ def main():
     
     # Load variables if the checkpoint is provided.
     if args.restore_from is not None:
-        loader = tf.train.Saver(var_list=restore_var)
+        loader = tf.train.Saver(var_list=fc_trainable)
         load(loader, sess, args.restore_from)
     
     # Start queue threads.

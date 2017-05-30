@@ -1,6 +1,7 @@
-import os,glob
+import os, glob
 
 import tensorflow as tf
+
 
 def image_scaling(img, label):
     """
@@ -10,7 +11,7 @@ def image_scaling(img, label):
       img: Training image to scale.
       label: Segmentation mask to scale.
     """
-    
+
     scale = tf.random_uniform([1], minval=0.5, maxval=1.5, dtype=tf.float32, seed=None)
     h_new = tf.to_int32(tf.multiply(tf.to_float(tf.shape(img)[0]), scale))
     w_new = tf.to_int32(tf.multiply(tf.to_float(tf.shape(img)[1]), scale))
@@ -18,8 +19,9 @@ def image_scaling(img, label):
     img = tf.image.resize_images(img, new_shape)
     label = tf.image.resize_nearest_neighbor(tf.expand_dims(label, 0), new_shape)
     label = tf.squeeze(label, squeeze_dims=[0])
-   
+
     return img, label
+
 
 def image_mirroring(img, label):
     """
@@ -29,13 +31,14 @@ def image_mirroring(img, label):
       img: Training image to mirror.
       label: Segmentation mask to mirror.
     """
-    
+
     distort_left_right_random = tf.random_uniform([1], 0, 1.0, dtype=tf.float32)[0]
     mirror = tf.less(tf.stack([1.0, distort_left_right_random, 1.0]), 0.5)
     mirror = tf.boolean_mask([0, 1, 2], mirror)
     img = tf.reverse(img, mirror)
     label = tf.reverse(label, mirror)
     return img, label
+
 
 def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_label=255):
     """
@@ -50,23 +53,25 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     """
 
     label = tf.cast(label, dtype=tf.float32)
-    label = label - ignore_label # Needs to be subtracted and later added due to 0 padding.
-    combined = tf.concat(axis=2, values=[image, label]) 
+    label = label - ignore_label  # Needs to be subtracted and later added due to 0 padding.
+    combined = tf.concat(axis=2, values=[image, label])
     image_shape = tf.shape(image)
-    combined_pad = tf.image.pad_to_bounding_box(combined, 0, 0, tf.maximum(crop_h, image_shape[0]), tf.maximum(crop_w, image_shape[1]))
-    
+    combined_pad = tf.image.pad_to_bounding_box(combined, 0, 0, tf.maximum(crop_h, image_shape[0]),
+                                                tf.maximum(crop_w, image_shape[1]))
+
     last_image_dim = tf.shape(image)[-1]
     last_label_dim = tf.shape(label)[-1]
-    combined_crop = tf.random_crop(combined_pad, [crop_h,crop_w,4])
+    combined_crop = tf.random_crop(combined_pad, [crop_h, crop_w, 4])
     img_crop = combined_crop[:, :, :last_image_dim]
     label_crop = combined_crop[:, :, last_image_dim:]
     label_crop = label_crop + ignore_label
     label_crop = tf.cast(label_crop, dtype=tf.uint8)
-    
+
     # Set static shape so that tensorflow knows shape at compile time. 
     img_crop.set_shape((crop_h, crop_w, 3))
-    label_crop.set_shape((crop_h,crop_w, 1))
-    return img_crop, label_crop  
+    label_crop.set_shape((crop_h, crop_w, 1))
+    return img_crop, label_crop
+
 
 def read_labeled_image_list(data_dir, mask_dir):
     """Reads txt file containing paths to images and ground truth masks.
@@ -91,7 +96,28 @@ def read_labeled_image_list(data_dir, mask_dir):
             masks.append(os.path.join(mask_dir, file))
     return images, masks
 
-def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, ignore_label, img_mean): # optional pre-processing arguments
+
+def get_image_global_mean(data_dir, subset_array):
+    imgMean = []
+
+    for i in subset_array:
+        print "processing mean of subset" + str(i)
+        os.chdir(data_dir + "subset" + str(i) + "braw")
+        for file in glob.glob("*.mhd"):
+            # print (os.path.join(data_dir + "subset" + str(i) + "braw", file))
+
+            img = tf.decode_raw(
+                tf.read_file(tf.convert_to_tensor(os.path.join(data_dir + "subset" + str(i) + "braw", file))), tf.int16)
+            imgMean.append(tf.reduce_mean(img,2))
+    global_mean = tf.reduce_mean(imgMean)
+
+    print "done."
+
+    return global_mean
+
+
+def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, ignore_label,
+                          img_mean):  # optional pre-processing arguments
     """Read one image and its corresponding mask with optional pre-processing.
     
     Args:
@@ -111,9 +137,8 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     img_contents = tf.read_file(input_queue[0])
     label_contents = tf.read_file(input_queue[1])
 
-
     img1D = tf.decode_raw(img_contents, tf.int16)
-    img3D = tf.reshape(img1D,[512,512,-1])
+    img3D = tf.reshape(img1D, [512, 512, -1])
 
     # random_anchor = tf.random_uniform([1],0,tf.shape(img3D)[-1]-3,dtype=tf.int32)
     #
@@ -124,19 +149,18 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     # Extract mean.
 
 
-    label1D = tf.decode_raw(label_contents,tf.int16)
-    label3D = tf.reshape(label1D,[512,512,-1])
+    label1D = tf.decode_raw(label_contents, tf.int16)
+    label3D = tf.reshape(label1D, [512, 512, -1])
     # label = tf.slice(label3D,[0,0,3+1],[512,512,1])
 
-    img_label_concat = tf.concat([img3D,label3D],0)
+    img_label_concat = tf.concat([img3D, label3D], 0)
 
-    img_label_concat_crop = tf.random_crop(img_label_concat,[1024,512,3])
+    img_label_concat_crop = tf.random_crop(img_label_concat, [1024, 512, 3])
 
-    img = tf.slice(img_label_concat_crop,[0,0,0],[512,512,3])
+    img = tf.slice(img_label_concat_crop, [0, 0, 0], [512, 512, 3])
     img = tf.cast(img, dtype=tf.float32)
     img -= img_mean
-    label = tf.slice(img_label_concat_crop,[512,0,1],[512,512,1])
-
+    label = tf.slice(img_label_concat_crop, [512, 0, 1], [512, 512, 1])
 
     # img = tf.random_crop (label3D,[512,512,1])
 
@@ -157,8 +181,8 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
     return img, label
 
-class ImageReader_LUNA16(object):
 
+class ImageReader_LUNA16(object):
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
