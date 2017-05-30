@@ -18,6 +18,9 @@ import numpy as np
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
 BATCH_SIZE = 10
@@ -118,6 +121,8 @@ def load(saver, sess, ckpt_path):
 def main():
     """Create the model and start the training."""
     args = get_arguments()
+    print (args)
+
     
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
