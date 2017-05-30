@@ -37,11 +37,11 @@ def ndarry2jpg_png(data_file,out_dir,flist):
         scipy.misc.imsave(os.path.join(out_dir+"JPEGImages",fn+"_"+str(i)+".jpg"),img3c)
         cv2.imwrite(os.path.join(out_dir+"PNGImages",fn+"_"+str(i)+".png"),img_gt[:,:,i])
 
-        flist.write("/JPEGImages/subset/"+fn+"_"+str(i)+".jpg "+"/PNGImages/subset/"+fn+"_"+str(i)+".png\n")
+        flist.write("/JPEGImages/"+fn+"_"+str(i)+".jpg "+"/PNGImages/"+fn+"_"+str(i)+".png\n")
 def convert(data_dir, out_dir):
     os.chdir(data_dir + "img")
     print "converting"
-
+locals()
     if not os.path.exists(out_dir + "JPEGImages"):
         os.mkdir(out_dir + "JPEGImages")
     if not os.path.exists(out_dir + "PNGImages"):
