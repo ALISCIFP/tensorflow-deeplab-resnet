@@ -38,8 +38,11 @@ def ndarry2jpg_png(data_file,out_dir,subsetIndex,flist):
 
     for i in xrange(0,img.shape[2]):
         img3c = img_pad[:,:,i:i+3]
-        scipy.misc.imsave(os.path.join(out_dir+"JPEGImages/subset"+str(subsetIndex),fn+"_"+str(i)+".jpg"), img3c)
-
+        try:
+            scipy.misc.imsave(os.path.join(out_dir+"JPEGImages/subset"+str(subsetIndex),fn+"_"+str(i)+".jpg"), img3c)
+        except ValueError:
+            print fn
+            pass
         # im = Image.fromarray(img3c)
         # im.save(os.path.join(out_dir+"JPEGImages/subset"+str(subsetIndex),fn+"_"+str(i)+"_"+".jpg"))
         cv2.imwrite(os.path.join(out_dir+"PNGImages/subset"+str(subsetIndex),fn+"_"+str(i)+".png"),img_gt[:,:,i])
@@ -47,11 +50,11 @@ def ndarry2jpg_png(data_file,out_dir,subsetIndex,flist):
 
 def convert(data_dir,out_dir):
 
-    ftrain = open(data_dir + "dataset/train.txt", 'w')
+    ftrain = open(data_dir + "dataset/train.txt", 'a')
 
     fval = open(data_dir + "dataset/val.txt", 'w')
 
-    for i in xrange(10):
+    for i in xrange(3,10):
         print "converting subset "+str(i)
 
 
@@ -70,7 +73,6 @@ def convert(data_dir,out_dir):
     ftrain.close()
     fval.close()
 
-    print "converting"
 
 
     print "done."
