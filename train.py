@@ -21,13 +21,7 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 
 
-# IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
-# IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
-# IMG_MEAN = np.array(( 88.89328702,  89.36887475,  88.8973059 ), dtype=np.float32) #LUNA16
-IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32) #ImageNet2016-Scene-parsing
-
-
-
+IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 GPU_MASK ='0,1'
 BATCH_SIZE = 10
 DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
@@ -185,7 +179,8 @@ def main():
     prediction = tf.gather(raw_prediction, indices)
 
     output_op = tf.cast(tf.argmax(prediction, axis=-1), tf.int32)
-    iou_op, iou_inc_op = tf.metrics.mean_iou(gt, output_op, args.num_classes)
+    iou_op, iou_inc_op = tf.metrics.mean_iou(gt, output_op, 3)
+
     correct_pred = tf.equal(output_op, gt)
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
                                                   
@@ -207,11 +202,9 @@ def main():
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
     
-    tf.summary.image('images',
+    total_summary = tf.summary.image('images', 
                                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
-
-    total_summary = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,
                                            graph=tf.get_default_graph())
    
@@ -240,7 +233,7 @@ def main():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+    init = tf.global_variables_initializer()
     
     sess.run(init)
     
@@ -261,7 +254,7 @@ def main():
         feed_dict = { step_ph : step }
         
         if step % args.save_pred_every == 0:
-            loss_value, images, labels, preds, summary, _, _ = sess.run([reduced_loss, image_batch, label_batch, pred, total_summary, train_op, iou_inc_op], feed_dict=feed_dict)
+            loss_value, images, labels, preds, summary, _ = sess.run([reduced_loss, image_batch, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
             summary_writer.add_summary(summary, step)
             save(saver, sess, args.snapshot_dir, step)
         else:
