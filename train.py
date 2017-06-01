@@ -39,7 +39,7 @@ POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
 SAVE_NUM_IMAGES = 2
-SAVE_PRED_EVERY = 1000
+SAVE_PRED_EVERY = 10
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 
@@ -180,7 +180,12 @@ def main():
     indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.num_classes - 1)), 1)
     gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
     prediction = tf.gather(raw_prediction, indices)
-                                                  
+
+    output_op = tf.cast(tf.argmax(prediction, axis=-1), tf.int32)
+    iou_op, iou_inc_op = tf.metrics.mean_iou(gt, output_op, 3)
+
+    correct_pred = tf.equal(output_op, gt)
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
                                                   
     # Pixel-wise softmax loss.
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
@@ -193,13 +198,18 @@ def main():
     pred = tf.expand_dims(raw_output_up, dim=3)
     
     # Image summary.
+    tf.summary.scalar("iou", iou_op)
+    tf.summary.scalar("loss", reduced_loss)
+    tf.summary.scalar("acc", accuracy)
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
     
-    total_summary = tf.summary.image('images', 
+    tf.summary.image('images',
                                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
+
+    total_summary = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,
                                            graph=tf.get_default_graph())
    
@@ -228,7 +238,7 @@ def main():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    init = tf.global_variables_initializer()
+    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     
     sess.run(init)
     
@@ -249,7 +259,7 @@ def main():
         feed_dict = { step_ph : step }
         
         if step % args.save_pred_every == 0:
-            loss_value, images, labels, preds, summary, _ = sess.run([reduced_loss, image_batch, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
+            loss_value, images, labels, preds, summary, _, _ = sess.run([reduced_loss, image_batch, label_batch, pred, total_summary, train_op, iou_inc_op], feed_dict=feed_dict)
             summary_writer.add_summary(summary, step)
             save(saver, sess, args.snapshot_dir, step)
         else:
