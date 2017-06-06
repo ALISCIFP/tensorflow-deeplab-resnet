@@ -1,0 +1,12 @@
+python train.py  \
+--data-dir ''   \
+--data-list /home/zack/Data/ImageNet2016/ADEChallengeData2016/dataset/train.txt \
+--batch-size 5 \
+--num-classes 151 \
+--not-restore-last \
+--input-size '384,384'  \
+--snapshot-dir './snapshots_ImageNet_Scene_400k/' \
+--gpu-mask '1'  \
+--num-steps 400000 \
+--random-mirror \
+--random-scale \
