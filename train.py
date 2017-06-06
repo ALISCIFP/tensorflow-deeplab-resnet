@@ -21,9 +21,12 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 
 
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
-IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
+# IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
+# IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 # IMG_MEAN = np.array(( 88.89328702,  89.36887475,  88.8973059 ), dtype=np.float32) #LUNA16
+IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32) #ImageNet2016-Scene-parsing
+
+
 
 GPU_MASK ='0,1'
 BATCH_SIZE = 10
@@ -39,7 +42,7 @@ POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
 SAVE_NUM_IMAGES = 2
-SAVE_PRED_EVERY = 10
+SAVE_PRED_EVERY = 1000
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 
@@ -182,8 +185,7 @@ def main():
     prediction = tf.gather(raw_prediction, indices)
 
     output_op = tf.cast(tf.argmax(prediction, axis=-1), tf.int32)
-    iou_op, iou_inc_op = tf.metrics.mean_iou(gt, output_op, 3)
-
+    iou_op, iou_inc_op = tf.metrics.mean_iou(gt, output_op, args.num_classes)
     correct_pred = tf.equal(output_op, gt)
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
                                                   
