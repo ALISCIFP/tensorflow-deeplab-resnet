@@ -8,9 +8,9 @@ from __future__ import print_function
 
 import argparse
 from datetime import datetime
-import os
+import os, tempfile
 import sys
-import time
+import time, re, SimpleITK as sitk
 
 import tensorflow as tf
 import numpy as np
@@ -19,12 +19,12 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
-DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
-DATA_LIST_PATH = './dataset/val.txt'
+DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
+DATA_LIST_PATH = '/home/zack/Data/LUNA16/dataset/val.txt'
 IGNORE_LABEL = 255
-NUM_CLASSES = 21
-NUM_STEPS = 1449 # Number of images in the validation set.
-RESTORE_FROM = './deeplab_resnet.ckpt'
+NUM_CLASSES = 5
+NUM_STEPS = 43067 # Number of images in the validation set.
+RESTORE_FROM = './snapshots_LUNA16_all8_400k/model.ckpt-167000'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -60,68 +60,117 @@ def load(saver, sess, ckpt_path):
 
 def main():
     """Create the model and start the evaluation process."""
+
     args = get_arguments()
-    
-    # Create queue coordinator.
-    coord = tf.train.Coordinator()
-    
-    # Load reader.
-    with tf.name_scope("create_inputs"):
-        reader = ImageReader(
-            args.data_dir,
-            args.data_list,
-            None, # No defined input size.
-            False, # No random scale.
-            False, # No random mirror.
-            args.ignore_label,
-            IMG_MEAN,
-            coord)
-        image, label = reader.image, reader.label
-    image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label, dim=0) # Add one batch dimension.
+    step = 0
+    try:
+        os.mkdir('imageout')
+    except:
+        pass
 
-    # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+    dict = {}
+    with open(DATA_LIST_PATH, 'r') as f, open('imageout/output.txt', 'w') as logfile:
+        for line in f:
+            if re.match(".*\\/(.*)\\.mhd.*", line).group(1) not in dict:
+                dict[re.match(".*\\/(.*)\\.mhd.*", line).group(1)] = []
 
-    # Which variables to load.
-    restore_var = tf.global_variables()
-    
-    # Predictions.
-    raw_output = net.layers['fc1_voc12']
-    raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3,])
-    raw_output = tf.argmax(raw_output, dimension=3)
-    pred = tf.expand_dims(raw_output, dim=3) # Create 4-d tensor.
-    
-    # mIoU
-    pred = tf.reshape(pred, [-1,])
-    gt = tf.reshape(label_batch, [-1,])
-    weights = tf.cast(tf.less_equal(gt, args.num_classes - 1), tf.int32) # Ignoring all labels greater than or equal to n_classes.
-    mIoU, update_op = tf.contrib.metrics.streaming_mean_iou(pred, gt, num_classes=args.num_classes, weights=weights)
-    
-    # Set up tf session and initialize variables. 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
-    init = tf.global_variables_initializer()
-    
-    sess.run(init)
-    sess.run(tf.local_variables_initializer())
-    
-    # Load weights.
-    loader = tf.train.Saver(var_list=restore_var)
-    if args.restore_from is not None:
-        load(loader, sess, args.restore_from)
-    
-    # Start queue threads.
-    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-    
-    # Iterate over training steps.
-    for step in range(args.num_steps):
-        preds, _ = sess.run([pred, update_op])
-        if step % 100 == 0:
-            print('step {:d}'.format(step))
-    print('Mean IoU: {:.3f}'.format(mIoU.eval(session=sess)))
-    coord.request_stop()
-    coord.join(threads)
-    
+            dict[re.match(".*\\/(.*)\\.mhd.*", line).group(1)].append(line)
+
+        for key in dict:
+            with tempfile.NamedTemporaryFile(mode='w') as tempf:
+                tempf.writelines(dict[key])
+            mIoU_actual = 0
+            prediction_out = np.zeros((len(dict[key]), 512, 512))
+            for idx, line in enumerate(dict[key]):
+                with tf.Graph().as_default():
+                    # Create queue coordinator.
+                    coord = tf.train.Coordinator()
+
+                    # Load reader.
+                    with tf.name_scope("create_inputs"):
+                        reader = ImageReader(
+                            args.data_dir,
+                            tempf.name,
+                            None,  # No defined input size.
+                            False,  # No random scale.
+                            False,  # No random mirror.
+                            args.ignore_label,
+                            IMG_MEAN,
+                            coord)
+                        image, label = reader.image, reader.label
+                    image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
+                                                                                            dim=0)  # Add one batch dimension.
+
+                    # Create network.
+                    net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+
+                    # Which variables to load.
+                    restore_var = tf.global_variables()
+
+                    # Predictions.
+                    raw_output = net.layers['fc1_voc12']
+                    raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
+                    raw_output = tf.argmax(raw_output, dimension=3)
+                    image_output = tf.image.encode_png(tf.cast(tf.transpose(raw_output, (1, 2, 0)), tf.uint8))
+                    pred_op = tf.reshape(raw_output, [-1, ])
+                    pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
+
+                    # mIoU
+                    gt = tf.reshape(label_batch, [-1, ])
+                    num_classes, _ = tf.unique(gt)
+                    num_classes = tf.size(num_classes)
+                    correct_pred = tf.equal(tf.cast(pred_op, tf.uint8), gt)
+                    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+
+                    config = tf.ConfigProto()
+                    config.gpu_options.allow_growth = True
+                    sess = tf.Session(config=config)
+                    init = tf.global_variables_initializer()
+
+                    sess.run(init)
+                    sess.run(tf.local_variables_initializer())
+
+                    # Load weights.
+                    loader = tf.train.Saver(var_list=restore_var)
+                    if args.restore_from is not None:
+                        load(loader, sess, args.restore_from)
+
+                    # Start queue threads.
+                    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+
+                    # Iterate over training steps.
+
+
+                    # Set up tf session and initialize variables.
+
+
+                    preds, raw, _, acc, nc_actual = sess.run([image_output, raw_output, update_op, accuracy, num_classes])
+                    iou = sess.run([mIoU])
+                    print("Step: " + str(step) + " IoU: " + str(iou[0]*5/nc_actual) + " NC Actual: " + str(nc_actual) + " Acc: " + str(acc) + " File: " + line)
+                    logfile.write(
+                        "Step: " + str(step) + " IoU: " + str(iou[0]*5/nc_actual) + " NC Actual: " + str(nc_actual) + " Acc: " + str(acc) + " File: " + line)
+                    with open('imageout/' + str(step) + '.png', 'wb') as f:
+                        f.write(preds)
+                        # if step % 100 == 0:
+                        #     print('step {:d}'.format(step))
+                    # print('Mean IoU: {:.3f}'.format(mIoU.eval(session=sess)))
+                    coord.request_stop()
+                    coord.join(threads)
+                    step += 1
+                    mIoU_actual += iou[0]*5/nc_actual
+                    prediction_out[idx] = raw
+
+            try:
+                os.mkdir('mhdout')
+            except:
+                pass
+
+            print("Writing: " + 'mhdout/' + key + '_out.mhd')
+            mIoU_actual /= len(dict[key])
+            sitk.WriteImage(sitk.GetImageFromArray(prediction_out), 'mhdout/' + key + '_out_' + str(mIoU_actual) + '_.mhd')
+
+
+
 if __name__ == '__main__':
     main()
