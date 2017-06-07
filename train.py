@@ -21,9 +21,9 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 
 
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
-IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
-# IMG_MEAN = np.array(( 88.89328702,  89.36887475,  88.8973059 ), dtype=np.float32) #LUNA16
+#IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
+#IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
+IMG_MEAN = np.array(( 88.89328702,  89.36887475,  88.8973059 ), dtype=np.float32) #LUNA16
 
 GPU_MASK ='0,1'
 BATCH_SIZE = 10
