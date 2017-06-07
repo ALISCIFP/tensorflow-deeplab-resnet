@@ -21,24 +21,56 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 
 
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-GPU_MASK ='0,1'
-BATCH_SIZE = 10
+#IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
+#IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
+IMG_MEAN = np.array(( 88.89328702,  89.36887475,  88.8973059 ), dtype=np.float32) #LUNA16
+
+GPU_MASK ='1'
+BATCH_SIZE = 5
 DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/train.txt'
 IGNORE_LABEL = 255
 INPUT_SIZE = '321,321'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 21
+NUM_CLASSES = 5
 NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
 SAVE_NUM_IMAGES = 2
-SAVE_PRED_EVERY = 1000
+SAVE_PRED_EVERY = 10
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
+
+
+
+def intersectionAndUnion(imPred, imLab, numClass):
+    imPred = np.asarray(imPred)
+    imLab = np.asarray(imLab)
+
+    imPred += 1
+    imLab += 1
+
+    # Remove classes from unlabeled pixels in gt image.
+    # We should not penalize detections in unlabeled portions of the image.
+    #imPred = imPred * (imLab > 0)
+
+    # Compute area intersection:
+    print(np.unique(imPred))
+    print(np.unique(imLab))
+    intersection = imPred * (imPred == imLab)
+    (area_intersection, _) = np.histogram(intersection, bins=numClass, range=(1, numClass), density=False)
+
+    # Compute area union:
+    (area_pred, _) = np.histogram(imPred, range=(1, numClass), bins=numClass, density=False)
+    (area_lab, _) = np.histogram(imLab, range=(1, numClass), bins=numClass, density=False)
+    area_union = area_pred + area_lab - area_intersection
+
+    print(area_pred)
+    print(area_lab)
+
+    return (area_intersection, area_union)
 
 
 def get_arguments():
@@ -178,8 +210,8 @@ def main():
     gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
     prediction = tf.gather(raw_prediction, indices)
 
+
     output_op = tf.cast(tf.argmax(prediction, axis=-1), tf.int32)
-    iou_op, iou_inc_op = tf.metrics.mean_iou(gt, output_op, 3)
 
     correct_pred = tf.equal(output_op, gt)
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
@@ -191,20 +223,21 @@ def main():
     
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3,])
-    raw_output_up = tf.argmax(raw_output_up, dimension=3)
-    pred = tf.expand_dims(raw_output_up, dim=3)
+    pred = tf.argmax(raw_output_up, dimension=3)
     
     # Image summary.
-    tf.summary.scalar("iou", iou_op)
+
     tf.summary.scalar("loss", reduced_loss)
     tf.summary.scalar("acc", accuracy)
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
     
-    total_summary = tf.summary.image('images', 
+    tf.summary.image('images',
                                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
+
+    total_summary = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,
                                            graph=tf.get_default_graph())
    
@@ -233,7 +266,7 @@ def main():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
-    init = tf.global_variables_initializer()
+    init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     
     sess.run(init)
     
@@ -249,18 +282,31 @@ def main():
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
     # Iterate over training steps.
-    for step in range(args.num_steps):
+    for step in xrange(args.num_steps):
         start_time = time.time()
         feed_dict = { step_ph : step }
         
         if step % args.save_pred_every == 0:
-            loss_value, images, labels, preds, summary, _ = sess.run([reduced_loss, image_batch, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
-            summary_writer.add_summary(summary, step)
+            acc, loss_value, images, labels, preds, summary, _ = sess.run([accuracy, reduced_loss, image_batch, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
         else:
-            loss_value, _ = sess.run([reduced_loss, train_op], feed_dict=feed_dict)
+            acc, loss_value, labels, preds, summary, _ = sess.run([accuracy, reduced_loss, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
+
+        labels = np.squeeze(labels, axis=-1)
+        array = np.zeros((args.batch_size, 2))
+        for i in xrange(args.batch_size):
+            area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], args.num_classes)
+
+            array[i, 0] = 1.0 * np.sum(area_intersection) / np.sum(np.spacing(1) + area_union)
+            array[i, 1] = 1.0 * np.sum(np.divide(area_intersection, np.spacing(1) + area_union)) / np.count_nonzero(area_union)
+            print(area_union)
+            print(area_intersection)
+            print(array[i, 0])
+            print(array[i, 1])
+            print(np.count_nonzero(area_union))
+        summary_writer.add_summary(summary, step)
         duration = time.time() - start_time
-        print('step {:d} \t loss = {:.3f}, ({:.3f} sec/step)'.format(step, loss_value, duration))
+        print('step {:d} \t loss = {:.3f}, acc = {:.3f}, IoU = {:.3f}, mIoU = {:.3f}, ({:.3f} sec/step)'.format(step, loss_value, acc, np.average(array[:,0]), np.average(array[:,1]), duration))
     coord.request_stop()
     coord.join(threads)
     
