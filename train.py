@@ -28,6 +28,7 @@ GPU_MASK = '1'
 BATCH_SIZE = 5
 DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/train.txt'
+VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 INPUT_SIZE = '321,321'
 LEARNING_RATE = 2.5e-4
@@ -47,27 +48,28 @@ def intersectionAndUnion(imPred, imLab, numClass):
     imPred = np.asarray(imPred)
     imLab = np.asarray(imLab)
 
-    imPred += 1
-    imLab += 1
-
     # Remove classes from unlabeled pixels in gt image.
     # We should not penalize detections in unlabeled portions of the image.
     # imPred = imPred * (imLab > 0)
 
     # Compute area intersection:
-    # print(np.unique(imPred))
-    # print(np.unique(imLab))
-    intersection = imPred * (imPred == imLab)
-    (area_intersection, _) = np.histogram(intersection, bins=numClass, range=(1, numClass), density=False)
+    print(np.unique(imPred))
+    print(np.unique(imLab))
+    intersection = np.copy(imPred)
+    intersection[imPred != imLab] = -1
+    print(np.unique(intersection))
+    # print("--------------------------")
+    (area_intersection, _) = np.histogram(intersection, range=(0, numClass), bins=numClass)
 
     # Compute area union:
-    (area_pred, _) = np.histogram(imPred, range=(1, numClass), bins=numClass, density=False)
-    (area_lab, _) = np.histogram(imLab, range=(1, numClass), bins=numClass, density=False)
+    (area_pred, _) = np.histogram(imPred, range=(0, numClass),  bins=numClass)
+    (area_lab, _) = np.histogram(imLab, range=(0, numClass),  bins=numClass)
     area_union = area_pred + area_lab - area_intersection
 
-    # print(area_pred)
-    # print(area_lab)
-
+    #print(area_pred)
+    print(area_union)
+    print(area_intersection)
+    print("--------------------------")
     return (area_intersection, area_union)
 
 
@@ -83,6 +85,8 @@ def get_arguments():
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
+                        help="Path to the file listing the images in the dataset.")
+    parser.add_argument("--val-data-list", type=str, default=VAL_DATA_LIST_PATH,
                         help="Path to the file listing the images in the dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -169,6 +173,7 @@ def main():
     coord = tf.train.Coordinator()
 
     # Load reader.
+    mode = tf.placeholder(tf.bool, shape=[])
     with tf.name_scope("create_inputs"):
         reader = ImageReader(
             args.data_dir,
@@ -179,7 +184,22 @@ def main():
             args.ignore_label,
             IMG_MEAN,
             coord)
-        image_batch, label_batch = reader.dequeue(args.batch_size)
+        image_batch_train, label_batch_train = reader.dequeue(args.batch_size)
+
+    with tf.name_scope("val_inputs"):
+        reader = ImageReader(
+            args.data_dir,
+            args.val_data_list,
+            input_size,
+            args.random_scale,
+            args.random_mirror,
+            args.ignore_label,
+            IMG_MEAN,
+            coord)
+        image_batch_val, label_batch_val = reader.dequeue(args.batch_size)
+
+    image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
+    label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
@@ -283,43 +303,74 @@ def main():
     counter_no_reset = np.zeros((2, args.num_classes))
     counter = np.zeros((2, args.num_classes))
 
+    counter_no_reset_val = np.zeros((2, args.num_classes))
+    counter_val = np.zeros((2, args.num_classes))
+
     # Iterate over training steps.
     for step in xrange(args.num_steps):
         start_time = time.time()
-        feed_dict = {step_ph: step}
+
 
         if step % args.save_pred_every == 0:
-            acc, loss_value, images, labels, preds, summary, _ = sess.run(
-                [accuracy, reduced_loss, image_batch, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
+            feed_dict = {step_ph: step, mode: True}
+            acc, loss_value, images, labels, preds, summary = sess.run(
+                [accuracy, reduced_loss, image_batch, label_batch, pred, total_summary], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
+
+            labels = np.squeeze(labels, axis=-1)
+
+            for i in xrange(args.batch_size):
+                area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], args.num_classes)
+
+                counter_val[0] += area_intersection
+                counter_val[1] += area_union
+                counter_no_reset_val[0] += area_intersection
+                counter_no_reset_val[1] += area_union
+                # IoU_per_class = np.divide(area_intersection, np.spacing(1) + area_union)
+
+                # print(IoU_per_class)
+
+            summary_writer.add_summary(summary, step)
+            duration = time.time() - start_time
+            print(
+                'step {:d} \t loss = {:.3f}, acc = {:.3f}, VIoU = {:.6f}, VmIoU = {:.6f}, ({:.3f} sec/step) \n  VIoU = {:} \n VmIoU = {}'.format(
+                    step,
+                    loss_value, acc, np.nansum(np.divide(counter_val[0], counter_val[1])) / args.num_classes,
+                                     np.nansum(np.divide(counter_no_reset_val[0],
+                                                       counter_no_reset_val[1])) / args.num_classes,
+                    duration, np.divide(counter_val[0],  counter_val[1]),
+                    np.divide(counter_no_reset_val[0],  counter_no_reset_val[1])))
+
             counter = np.zeros((2, args.num_classes))
+            counter_val = np.zeros((2, args.num_classes))
         else:
+            feed_dict = {step_ph: step, mode: False}
             acc, loss_value, labels, preds, summary, _ = sess.run(
                 [accuracy, reduced_loss, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
 
-        labels = np.squeeze(labels, axis=-1)
+            labels = np.squeeze(labels, axis=-1)
 
-        for i in xrange(args.batch_size):
-            area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], args.num_classes)
+            for i in xrange(args.batch_size):
+                area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], args.num_classes)
 
-            counter[0] += area_intersection
-            counter[1] += area_union
-            counter_no_reset[0] += area_intersection
-            counter_no_reset[1] += area_union
-            # IoU_per_class = np.divide(area_intersection, np.spacing(1) + area_union)
+                counter[0] += area_intersection
+                counter[1] += area_union
+                counter_no_reset[0] += area_intersection
+                counter_no_reset[1] += area_union
+                # IoU_per_class = np.divide(area_intersection, np.spacing(1) + area_union)
 
-            # print(IoU_per_class)
+                # print(IoU_per_class)
 
-        summary_writer.add_summary(summary, step)
-        duration = time.time() - start_time
-        print(
-            'step {:d} \t loss = {:.3f}, acc = {:.3f}, IoU = {:.6f}, mIoU = {:.6f}, ({:.3f} sec/step) \n  IoU = {:} \n mIoU = {}'.format(
-                step,
-                loss_value, acc, np.sum(np.divide(counter[0], np.spacing(1) + counter[1])) / args.num_classes,
-                                 np.sum(np.divide(counter_no_reset[0],
-                                                  np.spacing(1) + counter_no_reset[1])) / args.num_classes,
-                duration, np.divide(counter[0], np.spacing(1) + counter[1]),
-                np.divide(counter_no_reset[0], np.spacing(1) + counter_no_reset[1])))
+            summary_writer.add_summary(summary, step)
+            duration = time.time() - start_time
+            print(
+                'step {:d} \t loss = {:.3f}, acc = {:.3f}, IoU = {:.6f}, mIoU = {:.6f}, ({:.3f} sec/step) \n  IoU = {:} \n mIoU = {}'.format(
+                    step,
+                    loss_value, acc, np.sum(np.divide(counter[0], np.spacing(1) + counter[1])) / args.num_classes,
+                                     np.sum(np.divide(counter_no_reset[0],
+                                                      np.spacing(1) + counter_no_reset[1])) / args.num_classes,
+                    duration, np.divide(counter[0], np.spacing(1) + counter[1]),
+                    np.divide(counter_no_reset[0], np.spacing(1) + counter_no_reset[1])))
     coord.request_stop()
     coord.join(threads)
 
