@@ -395,5 +395,5 @@ def main():
 
 if __name__ == '__main__':
     subprocess.call(shlex.split('pkill tensorboard'))
-    tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --port=6006 --logdir=' + SNAPSHOT_DIR))
+    tboard_proc = subprocess.Popen(shlex.split('tensorboard --logdir=./snapshots/'))
     main()
