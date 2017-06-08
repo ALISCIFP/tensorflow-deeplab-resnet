@@ -52,18 +52,18 @@ def intersectionAndUnion(imPred, imLab, numClass):
     # imPred = imPred * (imLab > 0)
 
     # Compute area intersection:
-    #print(np.unique(imPred))
-    #print(np.unique(imLab))
+    # print(np.unique(imPred))
+    # print(np.unique(imLab))
 
     intersection = np.copy(imPred)
     intersection[imPred != imLab] = -1
-   # print(np.unique(intersection))
+    # print(np.unique(intersection))
     # print("--------------------------")
     (area_intersection, _) = np.histogram(intersection, range=(0, numClass), bins=numClass)
 
     # Compute area union:
-    (area_pred, _) = np.histogram(imPred, range=(0, numClass),  bins=numClass)
-    (area_lab, _) = np.histogram(imLab, range=(0, numClass),  bins=numClass)
+    (area_pred, _) = np.histogram(imPred, range=(0, numClass), bins=numClass)
+    (area_lab, _) = np.histogram(imLab, range=(0, numClass), bins=numClass)
     area_union = area_pred + area_lab - area_intersection
 
     # #print(area_pred)
@@ -264,27 +264,49 @@ def main():
     pred = tf.expand_dims(raw_output_up, dim=3)
 
     # Image summary.
-    reduced_loss_val = reduced_loss
-    accuracy_val = accuracy
-    tf.summary.scalar("loss", reduced_loss, collections=['train'])
-    tf.summary.scalar("acc", accuracy, collections=['train'])
-    tf.summary.scalar("Val_loss", reduced_loss_val, collections=['val'])
-    tf.summary.scalar("Val_acc", accuracy_val, collections=['val'])
+    reduced_loss_train = tf.Variable(0, trainable=False, dtype=tf.float32)
+    accuracy_train = tf.Variable(0, trainable=False, dtype=tf.float32)
+    reduced_loss_val = tf.Variable(0, trainable=False, dtype=tf.float32)
+    accuracy_val = tf.Variable(0, trainable=False, dtype=tf.float32)
+
+    reduced_loss_train = tf.cond(mode, lambda: tf.assign(reduced_loss_train, reduced_loss), lambda: reduced_loss_train)
+    accuracy_train = tf.cond(mode, lambda: tf.assign(accuracy_train, accuracy), lambda: accuracy_train)
+    reduced_loss_val = tf.cond(mode, lambda: reduced_loss_val, lambda: tf.assign(reduced_loss_val, reduced_loss))
+    accuracy_val = tf.cond(mode, lambda: accuracy_val, lambda: tf.assign(accuracy_val, accuracy))
+
+    tf.summary.scalar("TrainLoss", reduced_loss_train, collections=['train'])
+    tf.summary.scalar("TrainAcc", accuracy_train, collections=['train'])
+    tf.summary.scalar("ValLoss", reduced_loss_val, collections=['val'])
+    tf.summary.scalar("ValAcc", accuracy_val, collections=['val'])
+    tf.summary.scalar("TrainLoss -- ValLoss", reduced_loss_train - reduced_loss_val, collections=['val'])
+    tf.summary.scalar("TrainAcc -- ValAcc", accuracy_train - accuracy_val, collections=['val'])
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
 
-    counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]))
-    counter = tf.Variable(tf.zeros([2, args.num_classes]))
+    counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
+    counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
-    counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]))
-    counter_val = tf.Variable(tf.zeros([2, args.num_classes]))
+    counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
+    counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
     step_ph = tf.placeholder(dtype=tf.float32, shape=())
 
-    counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1), tf.squeeze(label_batch, axis=-1), counter, counter_no_reset, args.num_classes, args.batch_size, step_ph, args.save_pred_every], [tf.float32, tf.float32]), lambda: [counter, counter_no_reset])
+    counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
+                                                                              tf.squeeze(label_batch, axis=-1), counter,
+                                                                              counter_no_reset, args.num_classes,
+                                                                              args.batch_size, step_ph,
+                                                                              args.save_pred_every],
+                                                                 [tf.float32, tf.float32]),
+                                        lambda: [counter, counter_no_reset])
     counter_val, counter_no_reset_val = tf.cond(mode,
-            lambda: [counter_val, counter_no_reset_val], lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1), tf.squeeze(label_batch, axis=-1), counter_val, counter_no_reset_val, args.num_classes, args.batch_size, step_ph, args.save_pred_every], [tf.float32, tf.float32]))
+                                                lambda: [counter_val, counter_no_reset_val],
+                                                lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
+                                                                                tf.squeeze(label_batch, axis=-1),
+                                                                                counter_val, counter_no_reset_val,
+                                                                                args.num_classes, args.batch_size,
+                                                                                step_ph, args.save_pred_every],
+                                                                   [tf.float32, tf.float32]))
 
     eps = tf.constant(1e-10, dtype=tf.float32)
     IoU_summary = counter[0] / tf.add(eps, counter[1])
@@ -302,8 +324,8 @@ def main():
         tf.summary.scalar("IoU (no reset), class " + str(i), IoU_summary_no_reset[i], collections=['train'])
         tf.summary.scalar("Val IoU, class " + str(i), Val_IoU_summary[i], collections=['val'])
         tf.summary.scalar("Val IoU (no reset), class " + str(i), Val_IoU_summary_no_reset[i], collections=['val'])
-        tf.summary.scalar("mIoU-Val mIoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i], collections=['val'])
-        tf.summary.scalar("mIoU-Val mIoU (no reset), class " + str(i),
+        tf.summary.scalar("mIoU -- Val mIoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i], collections=['val'])
+        tf.summary.scalar("mIoU -- Val mIoU (no reset), class " + str(i),
                           IoU_summary_no_reset[i] - Val_IoU_summary_no_reset[i], collections=['val'])
 
     tf.summary.scalar("mIoU", mIoU, collections=['train'])
@@ -311,8 +333,8 @@ def main():
     tf.summary.scalar("Val mIoU", Val_mIoU, collections=['val'])
     tf.summary.scalar("Val mIoU  (no reset)", Val_mIoU_no_reset, collections=['val'])
 
-    tf.summary.scalar("mIoU-Val mIoU", mIoU - Val_mIoU, collections=['val'])
-    tf.summary.scalar("mIoU-Val mIoU (no reset)", mIoU_no_reset - Val_mIoU_no_reset, collections=['val'])
+    tf.summary.scalar("mIoU -- Val mIoU", mIoU - Val_mIoU, collections=['val'])
+    tf.summary.scalar("mIoU -- Val mIoU (no reset)", mIoU_no_reset - Val_mIoU_no_reset, collections=['val'])
 
     tf.summary.image('images',
                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]),
@@ -344,9 +366,9 @@ def main():
     train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b)
 
     # Set up tf session and initialize variables. 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
+    # config = tf.ConfigProto()
+    # config.gpu_options.allow_growth = True
+    sess = tf.Session()
     init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
     sess.run(init)
@@ -366,7 +388,7 @@ def main():
     for step in xrange(1, args.num_steps + 1):
         start_time = time.time()
 
-        #mode False -> val, mode True -> train
+        # mode False -> val, mode True -> train
         if step % args.save_pred_every == 0:
             feed_dict = {step_ph: step, mode: False}
             acc, loss_value, mI, mINR, summary_v = sess.run(
