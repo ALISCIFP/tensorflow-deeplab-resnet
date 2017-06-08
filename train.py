@@ -264,9 +264,12 @@ def main():
     pred = tf.expand_dims(raw_output_up, dim=3)
 
     # Image summary.
-
-    tf.summary.scalar("loss", reduced_loss, collections=['val', 'train'])
-    tf.summary.scalar("acc", accuracy, collections=['val', 'train'])
+    reduced_loss_val = reduced_loss
+    accuracy_val = accuracy
+    tf.summary.scalar("loss", reduced_loss, collections=['train'])
+    tf.summary.scalar("acc", accuracy, collections=['train'])
+    tf.summary.scalar("Val_loss", reduced_loss_val, collections=['val'])
+    tf.summary.scalar("Val_acc", accuracy_val, collections=['val'])
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
@@ -367,13 +370,13 @@ def main():
         if step % args.save_pred_every == 0:
             feed_dict = {step_ph: step, mode: False}
             acc, loss_value, mI, mINR, summary_v = sess.run(
-                [accuracy, reduced_loss, Val_mIoU, Val_mIoU_no_reset, val_summary], feed_dict=feed_dict)
+                [accuracy_val, reduced_loss_val, Val_mIoU, Val_mIoU_no_reset, val_summary], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
 
             summary_writer.add_summary(summary_v, step)
             duration = time.time() - start_time
             print(
-                'step {:d} \t loss = {:.3f}, acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
+                'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
         else:
             feed_dict = {step_ph: step, mode: True}
@@ -391,5 +394,6 @@ def main():
 
 
 if __name__ == '__main__':
+    subprocess.call(shlex.split('pkill tensorboard'))
     tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --port=6006 --logdir=' + SNAPSHOT_DIR))
     main()
