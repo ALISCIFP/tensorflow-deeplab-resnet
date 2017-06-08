@@ -6,12 +6,12 @@ This script evaluates the model on 1449 validation images.
 
 from __future__ import print_function
 
-import SimpleITK as sitk
 import argparse
 import os
 import re
 import tempfile
 
+import SimpleITK as sitk
 import numpy as np
 import tensorflow as tf
 
@@ -100,10 +100,9 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     try:
-        os.mkdir('eval')
-        os.mkdir('eval/imageout')
-        os.mkdir('eval/imageout_raw')
-        os.mkdir('eval/mhdout')
+        os.makedirs('eval/imageout')
+        os.makedirs('eval/imageout_raw')
+        os.makedirs('eval/mhdout')
     except:
         pass
 
@@ -184,9 +183,9 @@ def main():
                         colored_label_png, raw_preds_png, preds, labels, acc = sess.run(
                             [image_output, image_output_raw, raw_output, label_batch, accuracy])
 
-                        with open('eval/imageout_raw' + key + "_" + str(idx) + '_.png', 'wb') as f:
+                        with open('eval/imageout_raw/' + key + "_" + str(idx) + '.png', 'wb') as f:
                             f.write(raw_preds_png)
-                        with open('eval/imageout' + key + "_" + str(idx) + '_.png', 'wb') as f:
+                        with open('eval/imageout/' + key + "_" + str(idx) + '.png', 'wb') as f:
                             f.write(colored_label_png)
 
                         area_intersection, area_union = intersectionAndUnion(preds[0], labels[0, :, :, 0],
