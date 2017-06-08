@@ -38,7 +38,7 @@ NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
-SAVE_NUM_IMAGES = 2
+SAVE_NUM_IMAGES = 5
 SAVE_PRED_EVERY = 10
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
@@ -55,6 +55,7 @@ def intersectionAndUnion(imPred, imLab, numClass):
     # Compute area intersection:
     #print(np.unique(imPred))
     #print(np.unique(imLab))
+
     intersection = np.copy(imPred)
     intersection[imPred != imLab] = -1
    # print(np.unique(intersection))
@@ -70,7 +71,24 @@ def intersectionAndUnion(imPred, imLab, numClass):
     # print(area_union)
     # print(area_intersection)
     # print("--------------------------")
-    return (area_intersection, area_union)
+    return [area_intersection, area_union]
+
+
+def update_IoU(preds, labels, counter, counter_no_reset, numClass, batch_size, step, save_every):
+    for i in xrange(batch_size):
+        area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], numClass)
+
+        if step % save_every == 0:
+            counter[0] += area_intersection
+            counter[1] += area_union
+        else:
+            counter[0] = area_intersection
+            counter[1] = area_union
+
+        counter_no_reset[0] += area_intersection
+        counter_no_reset[1] += area_union
+
+    return (counter, counter_no_reset)
 
 
 def get_arguments():
@@ -255,6 +273,44 @@ def main():
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
 
+    counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]))
+    counter = tf.Variable(tf.zeros([2, args.num_classes]))
+
+    counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]))
+    counter_val = tf.Variable(tf.zeros([2, args.num_classes]))
+
+    step_ph = tf.placeholder(dtype=tf.float32, shape=())
+
+    counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1), tf.squeeze(label_batch, axis=-1), counter, counter_no_reset, args.num_classes, args.batch_size, step_ph, args.save_pred_every], [tf.float32, tf.float32]), lambda: [counter, counter_no_reset])
+    counter_val, counter_no_reset_val = tf.cond(mode,
+            lambda: [counter_val, counter_no_reset_val], lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1), tf.squeeze(label_batch, axis=-1), counter_val, counter_no_reset_val, args.num_classes, args.batch_size, step_ph, args.save_pred_every], [tf.float32, tf.float32]))
+
+    IoU_summary = counter[0] / counter[1]
+    IoU_summary_no_reset = counter_no_reset[0] / counter_no_reset[1]
+    Val_IoU_summary = counter_val[0] / counter_val[1]
+    Val_IoU_summary_no_reset = counter_no_reset_val[0] / counter_no_reset_val[1]
+
+    mIoU = tf.reduce_mean(IoU_summary)
+    mIoU_no_reset = tf.reduce_mean(IoU_summary_no_reset)
+    Val_mIoU = tf.reduce_mean(Val_IoU_summary)
+    Val_mIoU_no_reset = tf.reduce_mean(Val_IoU_summary_no_reset)
+
+    for i in xrange(args.num_classes):
+        tf.summary.scalar("IoU, class " + str(i), IoU_summary[i])
+        tf.summary.scalar("IoU (no reset), class " + str(i), IoU_summary_no_reset[i])
+        tf.summary.scalar("Val IoU, class " + str(i), Val_IoU_summary[i])
+        tf.summary.scalar("Val IoU (no reset), class " + str(i), Val_IoU_summary_no_reset[i])
+        tf.summary.scalar("mIoU - Val mIoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i])
+        tf.summary.scalar("mIoU  (no reset) - Val mIoU  (no reset), class " + str(i), IoU_summary_no_reset[i] - Val_IoU_summary_no_reset[i])
+
+    tf.summary.scalar("mIoU", mIoU)
+    tf.summary.scalar("mIoU  (no reset)", mIoU_no_reset)
+    tf.summary.scalar("Val mIoU", Val_mIoU)
+    tf.summary.scalar("Val mIoU  (no reset)", Val_mIoU_no_reset)
+
+    tf.summary.scalar("mIoU - Val mIoU", mIoU - Val_mIoU)
+    tf.summary.scalar("mIoU  (no reset) - Val mIoU  (no reset)", mIoU_no_reset - Val_mIoU_no_reset)
+
     tf.summary.image('images',
                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]),
                      max_outputs=args.save_num_images)  # Concatenate row-wise.
@@ -265,7 +321,7 @@ def main():
 
     # Define loss and optimisation parameters.
     base_lr = tf.constant(args.learning_rate)
-    step_ph = tf.placeholder(dtype=tf.float32, shape=())
+
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - step_ph / args.num_steps), args.power))
 
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
@@ -301,79 +357,32 @@ def main():
 
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-    counter_no_reset = np.zeros((2, args.num_classes))
-    counter = np.zeros((2, args.num_classes))
-
-    counter_no_reset_val = np.zeros((2, args.num_classes))
-    counter_val = np.zeros((2, args.num_classes))
 
     # Iterate over training steps.
     for step in xrange(args.num_steps):
         start_time = time.time()
 
-
         if step % args.save_pred_every == 0:
-            feed_dict = {step_ph: step, mode: True}
-            acc, loss_value, images, labels, preds, summary = sess.run(
-                [accuracy, reduced_loss, image_batch, label_batch, raw_output_up, total_summary], feed_dict=feed_dict)
+            feed_dict = {step_ph: step, mode: False}
+            acc, loss_value, mI, mINR, summary = sess.run(
+                [accuracy, reduced_loss, Val_mIoU, Val_mIoU_no_reset, total_summary], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
 
-            labels = np.squeeze(labels, axis=-1)
-
-            for i in xrange(args.batch_size):
-                area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], args.num_classes)
-
-                counter_val[0] += area_intersection
-                counter_val[1] += area_union
-                counter_no_reset_val[0] += area_intersection
-                counter_no_reset_val[1] += area_union
-                # IoU_per_class = np.divide(area_intersection, np.spacing(1) + area_union)
-
-                # print(IoU_per_class)
-
             summary_writer.add_summary(summary, step)
             duration = time.time() - start_time
             print(
-                'step {:d} \t loss = {:.3f}, acc = {:.3f}, VIoU = {:.6f}, VmIoU = {:.6f}, ({:.3f} sec/step) \n  VIoU = {:} \n VmIoU = {}'.format(
-                    step,
-                    loss_value, acc, np.nansum(np.divide(counter_val[0], counter_val[1])) / args.num_classes,
-                                     np.nansum(np.divide(counter_no_reset_val[0],
-                                                       counter_no_reset_val[1])) / args.num_classes,
-                    duration, np.divide(counter_val[0],  counter_val[1]),
-                    np.divide(counter_no_reset_val[0],  counter_no_reset_val[1])))
-            print(counter_no_reset_val)
-            print(counter_no_reset)
-
-            counter = np.zeros((2, args.num_classes))
-            counter_val = np.zeros((2, args.num_classes))
+                'step {:d} \t loss = {:.3f}, acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
+                    step, loss_value, acc, mI, mINR, duration))
         else:
-            feed_dict = {step_ph: step, mode: False}
-            acc, loss_value, labels, preds, summary, _ = sess.run(
-                [accuracy, reduced_loss, label_batch, raw_output_up, total_summary, train_op], feed_dict=feed_dict)
-
-            labels = np.squeeze(labels, axis=-1)
-
-            for i in xrange(args.batch_size):
-                area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], args.num_classes)
-
-                counter[0] += area_intersection
-                counter[1] += area_union
-                counter_no_reset[0] += area_intersection
-                counter_no_reset[1] += area_union
-                # IoU_per_class = np.divide(area_intersection, np.spacing(1) + area_union)
-
-                # print(IoU_per_class)
+            feed_dict = {step_ph: step, mode: True}
+            acc, loss_value, mI, mINR, summary, _ = sess.run(
+                [accuracy, reduced_loss, mIoU, mIoU_no_reset, total_summary, train_op], feed_dict=feed_dict)
 
             summary_writer.add_summary(summary, step)
             duration = time.time() - start_time
             print(
-                'step {:d} \t loss = {:.3f}, acc = {:.3f}, IoU = {:.6f}, mIoU = {:.6f}, ({:.3f} sec/step) \n  IoU = {:} \n mIoU = {}'.format(
-                    step,
-                    loss_value, acc, np.sum(np.divide(counter[0], np.spacing(1) + counter[1])) / args.num_classes,
-                                     np.sum(np.divide(counter_no_reset[0],
-                                                      np.spacing(1) + counter_no_reset[1])) / args.num_classes,
-                    duration, np.divide(counter[0], np.spacing(1) + counter[1]),
-                    np.divide(counter_no_reset[0], np.spacing(1) + counter_no_reset[1])))
+                'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
+                    step, loss_value, acc, mI, mINR, duration))
     coord.request_stop()
     coord.join(threads)
 
