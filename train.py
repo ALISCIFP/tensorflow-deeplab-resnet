@@ -75,15 +75,14 @@ def intersectionAndUnion(imPred, imLab, numClass):
 
 
 def update_IoU(preds, labels, counter, counter_no_reset, numClass, batch_size, step, save_every):
+    if step % save_every == 0:
+        counter[:] = 0
+
     for i in xrange(batch_size):
         area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], numClass)
 
-        if step % save_every == 0:
-            counter[0] += area_intersection
-            counter[1] += area_union
-        else:
-            counter[0] = area_intersection
-            counter[1] = area_union
+        counter[0] = area_intersection
+        counter[1] = area_union
 
         counter_no_reset[0] += area_intersection
         counter_no_reset[1] += area_union
@@ -285,10 +284,10 @@ def main():
     counter_val, counter_no_reset_val = tf.cond(mode,
             lambda: [counter_val, counter_no_reset_val], lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1), tf.squeeze(label_batch, axis=-1), counter_val, counter_no_reset_val, args.num_classes, args.batch_size, step_ph, args.save_pred_every], [tf.float32, tf.float32]))
 
-    IoU_summary = counter[0] / counter[1]
-    IoU_summary_no_reset = counter_no_reset[0] / counter_no_reset[1]
-    Val_IoU_summary = counter_val[0] / counter_val[1]
-    Val_IoU_summary_no_reset = counter_no_reset_val[0] / counter_no_reset_val[1]
+    IoU_summary = counter[0] / (1e-10 + counter[1])
+    IoU_summary_no_reset = counter_no_reset[0] / (1e-10 + counter_no_reset[1])
+    Val_IoU_summary = counter_val[0] / (1e-10 + counter_val[1])
+    Val_IoU_summary_no_reset = counter_no_reset_val[0] / (1e-10 + counter_no_reset_val[1])
 
     mIoU = tf.reduce_mean(IoU_summary)
     mIoU_no_reset = tf.reduce_mean(IoU_summary_no_reset)
@@ -359,9 +358,10 @@ def main():
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
     # Iterate over training steps.
-    for step in xrange(args.num_steps):
+    for step in xrange(1, args.num_steps + 1):
         start_time = time.time()
 
+        #mode False -> val, mode True -> train
         if step % args.save_pred_every == 0:
             feed_dict = {step_ph: step, mode: False}
             acc, loss_value, mI, mINR, summary = sess.run(
@@ -378,7 +378,7 @@ def main():
             acc, loss_value, mI, mINR, summary, _ = sess.run(
                 [accuracy, reduced_loss, mIoU, mIoU_no_reset, total_summary, train_op], feed_dict=feed_dict)
 
-            summary_writer.add_summary(summary, step)
+            #summary_writer.add_summary(summary, step)
             duration = time.time() - start_time
             print(
                 'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
