@@ -303,7 +303,7 @@ def main():
         tf.summary.scalar("Val IoU, class " + str(i), Val_IoU_summary[i], collections=['val'])
         tf.summary.scalar("Val IoU (no reset), class " + str(i), Val_IoU_summary_no_reset[i], collections=['val'])
         tf.summary.scalar("mIoU-Val mIoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i], collections=['val'])
-        tf.summary.scalar("mIoU-Val mIoU, class " + str(i),
+        tf.summary.scalar("mIoU-Val mIoU (no reset), class " + str(i),
                           IoU_summary_no_reset[i] - Val_IoU_summary_no_reset[i], collections=['val'])
 
     tf.summary.scalar("mIoU", mIoU, collections=['train'])
@@ -395,5 +395,5 @@ def main():
 
 if __name__ == '__main__':
     subprocess.call(shlex.split('pkill tensorboard'))
-    tboard_proc = subprocess.Popen(shlex.split('tensorboard --logdir=./snapshots/'))
+    tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=./snapshots/'))
     main()
