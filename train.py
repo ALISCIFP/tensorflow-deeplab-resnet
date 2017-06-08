@@ -8,12 +8,14 @@ which contains approximately 10000 images for training and 1500 images for valid
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
-import os, subprocess, shlex
+import os
+import shlex
+import subprocess
 import time
+from datetime import datetime
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
@@ -22,6 +24,8 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 # IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
+
+LUNA16_softmax_weights = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)
 
 GPU_MASK = '1'
 BATCH_SIZE = 5
@@ -254,7 +258,7 @@ def main():
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
     # Pixel-wise softmax loss.
-    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
+    loss = tf.contrib.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt, weight=LUNA16_softmax_weights)
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
     reduced_loss = tf.reduce_mean(loss) + tf.add_n(l2_losses)
 
