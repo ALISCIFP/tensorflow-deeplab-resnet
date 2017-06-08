@@ -53,11 +53,11 @@ def intersectionAndUnion(imPred, imLab, numClass):
     # imPred = imPred * (imLab > 0)
 
     # Compute area intersection:
-    print(np.unique(imPred))
-    print(np.unique(imLab))
+    #print(np.unique(imPred))
+    #print(np.unique(imLab))
     intersection = np.copy(imPred)
     intersection[imPred != imLab] = -1
-    print(np.unique(intersection))
+   # print(np.unique(intersection))
     # print("--------------------------")
     (area_intersection, _) = np.histogram(intersection, range=(0, numClass), bins=numClass)
 
@@ -66,10 +66,10 @@ def intersectionAndUnion(imPred, imLab, numClass):
     (area_lab, _) = np.histogram(imLab, range=(0, numClass),  bins=numClass)
     area_union = area_pred + area_lab - area_intersection
 
-    #print(area_pred)
-    print(area_union)
-    print(area_intersection)
-    print("--------------------------")
+    # #print(area_pred)
+    # print(area_union)
+    # print(area_intersection)
+    # print("--------------------------")
     return (area_intersection, area_union)
 
 
@@ -244,7 +244,8 @@ def main():
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
-    pred = tf.argmax(raw_output_up, dimension=3)
+    raw_output_up = tf.argmax(raw_output_up, dimension=3)
+    pred = tf.expand_dims(raw_output_up, dim=3)
 
     # Image summary.
 
@@ -314,7 +315,7 @@ def main():
         if step % args.save_pred_every == 0:
             feed_dict = {step_ph: step, mode: True}
             acc, loss_value, images, labels, preds, summary = sess.run(
-                [accuracy, reduced_loss, image_batch, label_batch, pred, total_summary], feed_dict=feed_dict)
+                [accuracy, reduced_loss, image_batch, label_batch, raw_output_up, total_summary], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
 
             labels = np.squeeze(labels, axis=-1)
@@ -340,13 +341,15 @@ def main():
                                                        counter_no_reset_val[1])) / args.num_classes,
                     duration, np.divide(counter_val[0],  counter_val[1]),
                     np.divide(counter_no_reset_val[0],  counter_no_reset_val[1])))
+            print(counter_no_reset_val)
+            print(counter_no_reset)
 
             counter = np.zeros((2, args.num_classes))
             counter_val = np.zeros((2, args.num_classes))
         else:
             feed_dict = {step_ph: step, mode: False}
             acc, loss_value, labels, preds, summary, _ = sess.run(
-                [accuracy, reduced_loss, label_batch, pred, total_summary, train_op], feed_dict=feed_dict)
+                [accuracy, reduced_loss, label_batch, raw_output_up, total_summary, train_op], feed_dict=feed_dict)
 
             labels = np.squeeze(labels, axis=-1)
 

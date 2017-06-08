@@ -37,11 +37,11 @@ def decode_labels(mask, num_images=1, num_classes=21):
     Returns:
       A batch with num_images RGB images of the same size as the input. 
     """
-    mask = np.expand_dims(mask, axis=-1)
-    try:
-        mask = np.squeeze(mask, axis=4)
-    except:
-        pass
+    # mask = np.expand_dims(mask, axis=-1)
+    # try:
+    #     mask = np.squeeze(mask, axis=4)
+    # except:
+    #     pass
     n, h, w, c = mask.shape
     assert(n >= num_images), 'Batch size %d should be greater or equal than number of images to save %d.' % (n, num_images)
     outputs = np.zeros((num_images, h, w, 3), dtype=np.uint8)
