@@ -177,7 +177,7 @@ def main():
     """Create the model and start the training."""
     args = get_arguments()
     print(args)
-    np.set_printoptions(suppress=True, precision=6)
+
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
