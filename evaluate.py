@@ -20,12 +20,11 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels
 IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)
 
 GPU_MASK = '0'
-DATA_DIRECTORY = '/mnt/data/LUNA16'
-DATA_LIST_PATH = '/mnt/data/LUNA16/dataset/val.txt'
+DATA_DIRECTORY = '/home/victor/LUNA16'
+DATA_LIST_PATH = '/mnt/data/LUNA16/dataset/train.txt'
 IGNORE_LABEL = 255
 NUM_CLASSES = 5
-NUM_STEPS = 43067 # Number of images in the validation set.
-RESTORE_FROM = './snapshots/2017_06_08_00_52_21'
+RESTORE_FROM = './snapshots/2017_06_09_00_10_28'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -44,8 +43,6 @@ def get_arguments():
                         help="The index of the label to ignore during the training.")
     parser.add_argument("--num-classes", type=int, default=NUM_CLASSES,
                         help="Number of classes to predict (including background).")
-    parser.add_argument("--num-steps", type=int, default=NUM_STEPS,
-                        help="Number of images in the validation set.")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
     return parser.parse_args()

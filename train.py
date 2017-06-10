@@ -25,7 +25,8 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 
-LUNA16_softmax_weights = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)
+LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
+                                  dtype=np.float32)
 
 GPU_MASK = '1'
 BATCH_SIZE = 5
@@ -258,9 +259,17 @@ def main():
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
     # Pixel-wise softmax loss.
-    loss = tf.contrib.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt, weight=LUNA16_softmax_weights)
+    loss = []
+    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+    for i in xrange(0, args.num_classes):
+        curr_class = tf.constant(i, tf.int32)
+        loss.append(softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
+                                                                                          weights=tf.where(
+                                                                                              tf.equal(gt, curr_class),
+                                                                                              tf.zeros_like(gt),
+                                                                                              tf.ones_like(gt))))
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = tf.reduce_mean(loss) + tf.add_n(l2_losses)
+    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
