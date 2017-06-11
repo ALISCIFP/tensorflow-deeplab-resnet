@@ -12,7 +12,6 @@ import os
 import shlex
 import subprocess
 import time
-from datetime import datetime
 
 import numpy as np
 import tensorflow as tf
@@ -45,7 +44,7 @@ RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 10
-SNAPSHOT_DIR = './snapshots/' + datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 
 
@@ -261,6 +260,7 @@ def main():
 
     # Pixel-wise softmax loss.
     loss = []
+    accuracy_per_class = []
     softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
     for i in xrange(0, args.num_classes):
         curr_class = tf.constant(i, tf.int32)
@@ -269,6 +269,8 @@ def main():
                                                                                               tf.equal(gt, curr_class),
                                                                                               tf.zeros_like(gt),
                                                                                               tf.ones_like(gt))))
+        accuracy_per_class.append(
+            tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
     reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
 
@@ -287,6 +289,15 @@ def main():
     accuracy_train = tf.cond(mode, lambda: tf.assign(accuracy_train, accuracy), lambda: accuracy_train)
     reduced_loss_val = tf.cond(mode, lambda: reduced_loss_val, lambda: tf.assign(reduced_loss_val, reduced_loss))
     accuracy_val = tf.cond(mode, lambda: accuracy_val, lambda: tf.assign(accuracy_val, accuracy))
+
+    accuracy_per_class_train = []
+    accuracy_per_class_val = []
+    for i in xrange(0, args.num_classes):
+        temp_train_var = tf.Variable(0, trainable=False, dtype=tf.float32)
+        temp_val_var = tf.Variable(0, trainable=False, dtype=tf.float32)
+        accuracy_per_class_train.append(
+            tf.cond(mode, lambda: tf.assign(temp_train_var, accuracy), lambda: temp_train_var))
+        accuracy_per_class_val.append(tf.cond(mode, lambda: temp_val_var, lambda: tf.assign(temp_val_var, accuracy)))
 
     tf.summary.scalar("TrainLoss", reduced_loss_train, collections=['train'])
     tf.summary.scalar("TrainAcc", accuracy_train, collections=['train'])
@@ -338,9 +349,14 @@ def main():
         tf.summary.scalar("IoU (no reset), class " + str(i), IoU_summary_no_reset[i], collections=['train'])
         tf.summary.scalar("Val IoU, class " + str(i), Val_IoU_summary[i], collections=['val'])
         tf.summary.scalar("Val IoU (no reset), class " + str(i), Val_IoU_summary_no_reset[i], collections=['val'])
-        tf.summary.scalar("mIoU -- Val mIoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i], collections=['val'])
-        tf.summary.scalar("mIoU -- Val mIoU (no reset), class " + str(i),
+        tf.summary.scalar("IoU -- Val IoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i], collections=['val'])
+        tf.summary.scalar("IoU -- Val IoU (no reset), class " + str(i),
                           IoU_summary_no_reset[i] - Val_IoU_summary_no_reset[i], collections=['val'])
+
+        tf.summary.scalar("Acc, class " + str(i), accuracy_per_class_train[i], collections=['train'])
+        tf.summary.scalar("Val Acc, class " + str(i), accuracy_per_class_val[i], collections=['val'])
+        tf.summary.scalar("Acc -- Val Acc, class " + str(i), accuracy_per_class_train[i] - accuracy_per_class_val[i],
+                          collections=['val'])
 
     tf.summary.scalar("mIoU", mIoU, collections=['train'])
     tf.summary.scalar("mIoU  (no reset)", mIoU_no_reset, collections=['train'])

@@ -7,6 +7,7 @@ This script evaluates the model on 1449 validation images.
 from __future__ import print_function
 
 import argparse
+import csv
 import os
 import re
 import tempfile
@@ -21,10 +22,10 @@ IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)
 
 GPU_MASK = '0'
 DATA_DIRECTORY = '/home/victor/LUNA16'
-DATA_LIST_PATH = '/mnt/data/LUNA16/dataset/train.txt'
+DATA_LIST_PATH = '/mnt/data/LUNA16/dataset/val.txt'
 IGNORE_LABEL = 255
 NUM_CLASSES = 5
-RESTORE_FROM = './snapshots/2017_06_09_00_10_28'
+RESTORE_FROM = './snapshots/'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -104,7 +105,12 @@ def main():
         pass
 
     dict = {}
-    with open(DATA_LIST_PATH, 'r') as f, open('eval/output.txt', 'w') as logfile:
+    with open(DATA_LIST_PATH, 'r') as f, open('eval/output.csv', 'wb') as logfile:
+        csvwriter = csv.DictWriter(logfile, fieldnames=['File', 'IoU Class 0',
+                                                        'IoU Class 1', 'IoU Class 2',
+                                                        'IoU Class 3', 'IoU Class 4', 'mIoU'
+                                                        ])
+        csvwriter.writeheader()
         for line in f:
             if re.match(".*\\/(.*)\\.mhd.*", line).group(1) not in dict:
                 dict[re.match(".*\\/(.*)\\.mhd.*", line).group(1)] = []
@@ -115,7 +121,17 @@ def main():
         step = 0
 
         for key in dict:
-            with tempfile.NamedTemporaryFile(mode='w') as tempf:
+            with tempfile.NamedTemporaryFile(mode='w') as tempf, open('eval/output_' + key + '.csv',
+                                                                      'wb') as logfile_per_file:
+                csvwriter_per_file = csv.DictWriter(logfile_per_file, fieldnames=['Z Coord', 'IoU Class 0',
+                                                                                  'IoU Class 1', 'IoU Class 2',
+                                                                                  'IoU Class 3', 'IoU Class 4', 'mIoU',
+                                                                                  'Acc Class 0', 'Acc Class 1',
+                                                                                  'Acc Class 2',
+                                                                                  'Acc Class 3', 'Acc Class 4',
+                                                                                  'Total Acc'])
+                csvwriter_per_file.writeheader()
+
                 tempf.writelines(dict[key])
                 tempf.flush()
 
@@ -163,6 +179,12 @@ def main():
                     correct_pred = tf.equal(tf.cast(pred, tf.uint8), gt)
                     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
+                    accuracy_per_class = []
+                    for i in xrange(0, args.num_classes):
+                        curr_class = tf.constant(i, tf.int32)
+                        accuracy_per_class.append(tf.reduce_mean(
+                            tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
+
                     sess = tf.Session()
                     sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
@@ -175,10 +197,14 @@ def main():
                     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
                     counter = np.zeros((2, args.num_classes))
+                    acc_per_class = np.zeros(args.num_classes)
 
                     for idx, line in enumerate(dict[key]):
-                        colored_label_png, raw_preds_png, preds, labels, acc = sess.run(
-                            [image_output, image_output_raw, raw_output, label_batch, accuracy])
+                        colored_label_png, raw_preds_png, preds, labels, acc, acc_per_class[0], acc_per_class[1], \
+                        acc_per_class[2], acc_per_class[3], acc_per_class[4] = sess.run(
+                            [image_output, image_output_raw, raw_output, label_batch, accuracy, accuracy_per_class[0],
+                             accuracy_per_class[1], accuracy_per_class[2], accuracy_per_class[3],
+                             accuracy_per_class[4]])
 
                         with open('eval/imageout_raw/' + key + "_" + str(idx) + '.png', 'wb') as f:
                             f.write(raw_preds_png)
@@ -195,19 +221,24 @@ def main():
 
                         IoU_per_class = area_intersection / (np.spacing(1) + area_union)
 
-                        logstring = "Step: " + str(step) + ", Per Class IoU: " + str(IoU_per_class) + ", mIoU: " + str(
-                            np.mean(IoU_per_class)) + " Acc: " + str(acc) + " File: " + key + "_" + str(idx)
-                        print(logstring)
-                        logfile.write(logstring)
+                        csvwriter_per_file.writerow({'Z Coord': idx, 'IoU Class 0': IoU_per_class[0],
+                                                     'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
+                                                     'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
+                                                     'mIoU': np.mean(IoU_per_class),
+                                                     'Acc Class 0': acc_per_class[0], 'Acc Class 1': acc_per_class[1],
+                                                     'Acc Class 2': acc_per_class[2],
+                                                     'Acc Class 3': acc_per_class[3], 'Acc Class 4': acc_per_class[4],
+                                                     'Total Acc': acc})
 
                         step += 1
                         prediction_out[idx] = preds
 
                     IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
-                    logstring = "File: " + key + ", Per Class IoU: " + str(IoU_per_class) + ", mIoU: " + str(
-                        np.mean(IoU_per_class))
-                    print(logstring)
-                    logfile.write(logstring)
+                    csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
+                                        'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
+                                        'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
+                                        'mIoU': np.mean(IoU_per_class)
+                                        })
 
                     print("Writing: " + 'eval/mhdout/' + key + '_out.mhd')
                     sitk.WriteImage(sitk.GetImageFromArray(prediction_out),
@@ -217,10 +248,11 @@ def main():
                     coord.join(threads)
 
         global_IoU_per_class = counter_global[0] / (np.spacing(1) + counter_global[1])
-        logstring = "Global Per Class IoU: " + str(global_IoU_per_class) + ", mIoU Global: " + str(
-            np.mean(global_IoU_per_class))
-        print(logstring)
-        logfile.write(logstring)
+        csvwriter.writerow({'File': 'Global', 'IoU Class 0': global_IoU_per_class[0],
+                            'IoU Class 1': global_IoU_per_class[1], 'IoU Class 2': global_IoU_per_class[2],
+                            'IoU Class 3': global_IoU_per_class[3], 'IoU Class 4': global_IoU_per_class[4],
+                            'mIoU': np.mean(global_IoU_per_class)
+                            })
 
 
 if __name__ == '__main__':
