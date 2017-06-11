@@ -181,7 +181,7 @@ def main():
 
                     accuracy_per_class = []
                     for i in xrange(0, args.num_classes):
-                        curr_class = tf.constant(i, tf.int32)
+                        curr_class = tf.constant(i, tf.uint8)
                         accuracy_per_class.append(tf.reduce_mean(
                             tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
 

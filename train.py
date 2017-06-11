@@ -296,8 +296,9 @@ def main():
         temp_train_var = tf.Variable(0, trainable=False, dtype=tf.float32)
         temp_val_var = tf.Variable(0, trainable=False, dtype=tf.float32)
         accuracy_per_class_train.append(
-            tf.cond(mode, lambda: tf.assign(temp_train_var, accuracy), lambda: temp_train_var))
-        accuracy_per_class_val.append(tf.cond(mode, lambda: temp_val_var, lambda: tf.assign(temp_val_var, accuracy)))
+            tf.cond(mode, lambda: tf.assign(temp_train_var, accuracy_per_class[i]), lambda: temp_train_var))
+        accuracy_per_class_val.append(
+            tf.cond(mode, lambda: temp_val_var, lambda: tf.assign(temp_val_var, accuracy_per_class[i])))
 
     tf.summary.scalar("TrainLoss", reduced_loss_train, collections=['train'])
     tf.summary.scalar("TrainAcc", accuracy_train, collections=['train'])
