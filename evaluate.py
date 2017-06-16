@@ -18,11 +18,11 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels
 
-IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)
+IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 
 GPU_MASK = '0'
-DATA_DIRECTORY = '/home/victor/LUNA16'
-DATA_LIST_PATH = '/mnt/data/LUNA16/dataset/val.txt'
+DATA_DIRECTORY = None
+DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 5
 RESTORE_FROM = './snapshots/'
