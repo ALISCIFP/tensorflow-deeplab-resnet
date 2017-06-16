@@ -28,6 +28,17 @@ NUM_CLASSES = 5
 BATCH_SIZE = 10
 RESTORE_FROM = './snapshots/'
 INPUT_SIZE = '512,512'
+=======
+# IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32) #LUNA 16 mean
+IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
+
+
+GPU_MASK = '0'
+DATA_DIRECTORY = '/home/zack/Data/LUNA16'
+DATA_LIST_PATH = '/home/zack/Data/LUNA16/dataset/val.txt'
+IGNORE_LABEL = 255
+NUM_CLASSES = 5
+RESTORE_FROM = './snapshots_LUNA16_all8_400k/'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
