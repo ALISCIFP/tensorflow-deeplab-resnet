@@ -1,6 +1,3 @@
-import os
-
-import numpy as np
 import tensorflow as tf
 
 def image_scaling(img, label):
@@ -141,8 +138,8 @@ class ImageReader(object):
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
 
-    def __init__(self, data_dir, data_list, input_size, 
-                 random_scale, random_mirror, ignore_label, img_mean, coord):
+    def __init__(self, data_dir, data_list, input_size,
+                 random_scale, random_mirror, ignore_label, img_mean, coord, shuffle=True):
         '''Initialise an ImageReader.
         
         Args:
@@ -164,7 +161,7 @@ class ImageReader(object):
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
-                                                   shuffle=input_size is not None) # not shuffling if it is val
+                                                   shuffle=shuffle)  # not shuffling if it is val
         self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror, ignore_label, img_mean) 
 
     def dequeue(self, num_elements):
