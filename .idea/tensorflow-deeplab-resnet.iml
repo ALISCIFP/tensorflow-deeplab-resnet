@@ -5,7 +5,7 @@
       <excludeFolder url="file://$MODULE_DIR$/eval" />
       <excludeFolder url="file://$MODULE_DIR$/imageout" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 2.7.13 (~/miniconda2/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 2.7.6 (/usr/bin/python2.7)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
