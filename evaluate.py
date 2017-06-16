@@ -105,7 +105,7 @@ def main():
         pass
 
     dict = {}
-    with open(DATA_LIST_PATH, 'r') as f, open('eval/output.csv', 'wb') as logfile:
+    with open(args.data_dir, 'r') as f, open('eval/output.csv', 'wb') as logfile:
         csvwriter = csv.DictWriter(logfile, fieldnames=['File', 'IoU Class 0',
                                                         'IoU Class 1', 'IoU Class 2',
                                                         'IoU Class 3', 'IoU Class 4', 'mIoU'
