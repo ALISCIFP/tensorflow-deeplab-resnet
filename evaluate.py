@@ -25,9 +25,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 5
-BATCH_SIZE = 10
 RESTORE_FROM = './snapshots/'
-INPUT_SIZE = '512,512'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -38,8 +36,6 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--input-size", type=str, default=INPUT_SIZE,
-                        help="Comma-separated string with height and width of images.")
     parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
                         help="Comma-separated string for GPU mask.")
     parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
@@ -50,8 +46,6 @@ def get_arguments():
                         help="Number of classes to predict (including background).")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
-    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE,
-                        help="Number of images sent to the network in one step.")
     return parser.parse_args()
 
 
@@ -103,9 +97,6 @@ def main():
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
-    h, w = map(int, args.input_size.split(','))
-    input_size = (h, w)
-
     try:
         os.makedirs('eval/imageout')
         os.makedirs('eval/imageout_raw')
@@ -155,14 +146,15 @@ def main():
                         reader = ImageReader(
                             args.data_dir,
                             tempf.name,
-                            input_size,
+                            None,  # No defined input size.
                             False,  # No random scale.
                             False,  # No random mirror.
                             args.ignore_label,
                             IMG_MEAN,
-                            coord,
-                            False)  # don't shuffle
-                        image_batch, label_batch = reader.dequeue(args.batch_size)
+                            coord)
+                        image, label = reader.image, reader.label
+                    image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
+                                                                                            dim=0)  # Add one batch dimension.
 
                     # Create network.
                     net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -174,12 +166,10 @@ def main():
                     raw_output = net.layers['fc1_voc12']
                     raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
                     raw_output = tf.argmax(raw_output, dimension=3)
-                    pred = tf.expand_dims(raw_output, dim=3)
-                    image_output_raw = tf.map_fn(lambda img: tf.image.encode_png(img), tf.cast(pred, tf.uint8),
-                                                 dtype=tf.string)  # Create 4-d tensor.
-                    image_output_decoded = tf.py_func(decode_labels, [pred, args.batch_size, args.num_classes],
-                                                      tf.uint8)
-                    image_output = tf.map_fn(lambda img: tf.image.encode_png(img), image_output_decoded, dtype=tf.string)
+                    image_output_raw = tf.image.encode_png(tf.cast(tf.transpose(raw_output, (1, 2, 0)), tf.uint8))
+                    pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
+                    image_output = tf.image.encode_png(
+                        tf.squeeze(tf.py_func(decode_labels, [pred, 1, args.num_classes], tf.uint8), axis=0))
 
                     # mIoU
                     pred = tf.reshape(pred, [-1, ])
