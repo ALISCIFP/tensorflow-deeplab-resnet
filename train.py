@@ -10,6 +10,7 @@ from __future__ import print_function
 import argparse
 import os
 import shlex
+import shutil
 import subprocess
 import time
 
@@ -183,6 +184,12 @@ def main():
     args = get_arguments()
     print(args)
 
+    if args.not_restore_last:
+        try:
+            shutil.rmtree(args.snapshot_dir)
+        except Exception as e:
+            print(e)
+
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
@@ -194,7 +201,7 @@ def main():
     coord = tf.train.Coordinator()
 
     # Load reader.
-    mode = tf.placeholder(tf.bool, shape=[])
+    mode = tf.placeholder(tf.bool, shape=())
     with tf.name_scope("create_inputs"):
         reader = ImageReader(
             args.data_dir,
@@ -300,12 +307,10 @@ def main():
         accuracy_per_class_val.append(
             tf.cond(mode, lambda: temp_val_var, lambda: tf.assign(temp_val_var, accuracy_per_class[i])))
 
-    tf.summary.scalar("TrainLoss", reduced_loss_train, collections=['train'])
-    tf.summary.scalar("TrainAcc", accuracy_train, collections=['train'])
-    tf.summary.scalar("ValLoss", reduced_loss_val, collections=['val'])
-    tf.summary.scalar("ValAcc", accuracy_val, collections=['val'])
-    tf.summary.scalar("TrainLoss -- ValLoss", reduced_loss_train - reduced_loss_val, collections=['val'])
-    tf.summary.scalar("TrainAcc -- ValAcc", accuracy_train - accuracy_val, collections=['val'])
+    accuracy_output = tf.cond(mode, lambda: accuracy_train, lambda: accuracy_val)
+    loss_output = tf.cond(mode, lambda: reduced_loss_train, lambda: reduced_loss_val)
+    tf.summary.scalar("Loss", loss_output, collections=['all'])
+    tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
@@ -345,36 +350,45 @@ def main():
     Val_mIoU = tf.reduce_mean(Val_IoU_summary)
     Val_mIoU_no_reset = tf.reduce_mean(Val_IoU_summary_no_reset)
 
-    for i in xrange(args.num_classes):
-        tf.summary.scalar("IoU, class " + str(i), IoU_summary[i], collections=['train'])
-        tf.summary.scalar("IoU (no reset), class " + str(i), IoU_summary_no_reset[i], collections=['train'])
-        tf.summary.scalar("Val IoU, class " + str(i), Val_IoU_summary[i], collections=['val'])
-        tf.summary.scalar("Val IoU (no reset), class " + str(i), Val_IoU_summary_no_reset[i], collections=['val'])
-        tf.summary.scalar("IoU -- Val IoU, class " + str(i), IoU_summary[i] - Val_IoU_summary[i], collections=['val'])
-        tf.summary.scalar("IoU -- Val IoU (no reset), class " + str(i),
-                          IoU_summary_no_reset[i] - Val_IoU_summary_no_reset[i], collections=['val'])
+    IoU_summary_output_intermed = tf.cond(mode, lambda: IoU_summary, lambda: Val_IoU_summary)
+    IoU_summary_no_reset_output_intermed = tf.cond(mode, lambda: IoU_summary_no_reset, lambda: Val_IoU_summary_no_reset)
+    accuracy_per_class_output_intermed = tf.cond(mode, lambda: accuracy_per_class_train, lambda: accuracy_per_class_val)
 
-        tf.summary.scalar("Acc, class " + str(i), accuracy_per_class_train[i], collections=['train'])
-        tf.summary.scalar("Val Acc, class " + str(i), accuracy_per_class_val[i], collections=['val'])
-        tf.summary.scalar("Acc -- Val Acc, class " + str(i), accuracy_per_class_train[i] - accuracy_per_class_val[i],
-                          collections=['val'])
+    class_number = tf.placeholder(tf.int32, shape=())
 
-    tf.summary.scalar("mIoU", mIoU, collections=['train'])
-    tf.summary.scalar("mIoU  (no reset)", mIoU_no_reset, collections=['train'])
-    tf.summary.scalar("Val mIoU", Val_mIoU, collections=['val'])
-    tf.summary.scalar("Val mIoU  (no reset)", Val_mIoU_no_reset, collections=['val'])
+    IoU_summary_output = tf.gather(IoU_summary_output_intermed, class_number)
+    IoU_summary_no_reset_output = tf.gather(IoU_summary_no_reset_output_intermed, class_number)
+    accuracy_per_class_output = tf.gather(accuracy_per_class_output_intermed, class_number)
 
-    tf.summary.scalar("mIoU -- Val mIoU", mIoU - Val_mIoU, collections=['val'])
-    tf.summary.scalar("mIoU -- Val mIoU (no reset)", mIoU_no_reset - Val_mIoU_no_reset, collections=['val'])
+    tf.summary.scalar("IoU per class", IoU_summary_output, collections=['per_class'])
+    tf.summary.scalar("IoU (no reset) per class", IoU_summary_no_reset_output, collections=['per_class'])
+    tf.summary.scalar("Accuracy per class", accuracy_per_class_output, collections=['per_class'])
+
+    mIoU_output = tf.cond(mode, lambda: mIoU, lambda: Val_mIoU)
+    mIoU_no_reset_output = tf.cond(mode, lambda: mIoU_no_reset, lambda: Val_mIoU_no_reset)
+    tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
+    tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
     tf.summary.image('images',
                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]),
-                     max_outputs=args.save_num_images, collections=['val', 'train'])  # Concatenate row-wise.
+                     max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
-    val_summary = tf.summary.merge_all('val')
-    train_summary = tf.summary.merge_all('train')
-    summary_writer = tf.summary.FileWriter(args.snapshot_dir,
-                                           graph=tf.get_default_graph())
+    all_summary = tf.summary.merge_all('all')
+    per_class_summary = tf.summary.merge_all('per_class')
+    summary_writer_train = tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'train_all'),
+                                                 graph=tf.get_default_graph())
+    summary_writer_val = tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'val_all'),
+                                               graph=tf.get_default_graph())
+
+    summary_writer_per_class_val = []
+    summary_writer_per_class_train = []
+    for i in xrange(args.num_classes):
+        summary_writer_per_class_train.append(
+            tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'train_class_' + str(i)),
+                                  graph=tf.get_default_graph()))
+        summary_writer_per_class_val.append(
+            tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'val_class_' + str(i)),
+                                  graph=tf.get_default_graph()))
 
     # Define loss and optimisation parameters.
     base_lr = tf.constant(args.learning_rate)
@@ -396,9 +410,7 @@ def main():
 
     train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b)
 
-    # Set up tf session and initialize variables. 
-    # config = tf.ConfigProto()
-    # config.gpu_options.allow_growth = True
+    # Set up tf session and initialize variables.
     sess = tf.Session()
     init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
@@ -421,22 +433,29 @@ def main():
 
         # mode False -> val, mode True -> train
         if step % args.save_pred_every == 0:
-            feed_dict = {step_ph: step, mode: False}
-            acc, loss_value, mI, mINR, summary_v = sess.run(
-                [accuracy_val, reduced_loss_val, Val_mIoU, Val_mIoU_no_reset, val_summary], feed_dict=feed_dict)
+            feed_dict = {step_ph: step, mode: False, class_number: step % args.num_classes}
+            acc, loss_value, mI, mINR, _, _, _, summary_v_this_class, summary_v = sess.run(
+                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
+                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
 
-            summary_writer.add_summary(summary_v, step)
+            summary_writer_val.add_summary(summary_v, step)
+            summary_writer_per_class_val[step % args.num_classes].add_summary(summary_v_this_class, step)
+
             duration = time.time() - start_time
             print(
                 'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
         else:
-            feed_dict = {step_ph: step, mode: True}
-            acc, loss_value, mI, mINR, summary_t, _ = sess.run(
-                [accuracy, reduced_loss, mIoU, mIoU_no_reset, train_summary, train_op], feed_dict=feed_dict)
+            feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
+            acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
+                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
+                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
+                feed_dict=feed_dict)
 
-            summary_writer.add_summary(summary_t, step)
+            summary_writer_train.add_summary(summary_t, step)
+            summary_writer_per_class_train[step % args.num_classes].add_summary(summary_t_this_class, step)
+
             duration = time.time() - start_time
             print(
                 'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
