@@ -139,7 +139,7 @@ class ImageReader(object):
     '''
 
     def __init__(self, data_dir, data_list, input_size,
-                 random_scale, random_mirror, ignore_label, img_mean, coord, shuffle=True):
+                 random_scale, random_mirror, ignore_label, img_mean, coord, shuffle=True, num_threads=4):
         '''Initialise an ImageReader.
         
         Args:
@@ -156,6 +156,8 @@ class ImageReader(object):
         self.data_list = data_list
         self.input_size = input_size
         self.coord = coord
+        self.shuffle = shuffle
+        self.num_threads = num_threads
 
         self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
@@ -172,6 +174,12 @@ class ImageReader(object):
           
         Returns:
           Two tensors of size (batch_size, h, w, {3, 1}) for images and masks.'''
-        image_batch, label_batch = tf.train.batch([self.image, self.label],
-                                                  num_elements)
+
+        if self.shuffle:
+            example_list = [(self.image, self.label) for _ in range(self.num_threads)]
+            image_batch, label_batch = tf.train.batch_join(example_list, num_elements,
+                                                           capacity=num_elements * self.num_threads)
+        else:
+            image_batch, label_batch = tf.train.batch([self.image, self.label],
+                                                      num_elements)
         return image_batch, label_batch
