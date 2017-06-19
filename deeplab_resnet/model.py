@@ -3,8 +3,10 @@
 # The batch normalisation layer is provided by
 # the slim library (https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim).
 
-from kaffe.tensorflow import Network
 import tensorflow as tf
+
+from kaffe.tensorflow import Network
+
 
 class DeepLabResNetModel(Network):
     def setup(self, is_training, num_classes):
@@ -415,3 +417,39 @@ class DeepLabResNetModel(Network):
                    'fc1_voc12_c2', 
                    'fc1_voc12_c3')
              .add(name='fc1_voc12'))
+
+        (self.feed('data')
+         .resize(size_h=64, size_w=64, name='data_resized'))
+
+        (self.feed('fc1_voc12',
+                   'data_resized')
+         .concat(axis=-1, name='concat_input'))
+
+        (self.feed('concat_input')
+         .relu(name='concat_conv1_relu')
+         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv1')
+         .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv1_bn'))
+
+        (self.feed('concat_conv1_bn')
+         .relu(name='concat_conv2_relu')
+         .conv(3, 3, 64, 1, 1, biased=True, relu=False, name='concat_conv2')
+         .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv2_bn'))
+
+        (self.feed('concat_conv2_bn')
+         .relu(name='concat_conv3_relu')
+         .conv(3, 3, 128, 1, 1, biased=True, relu=False, name='concat_conv3')
+         .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv3_bn'))
+
+        (self.feed('concat_conv3_bn')
+         .relu(name='concat_conv4_relu')
+         .conv(3, 3, 64, 1, 1, biased=True, relu=False, name='concat_conv4')
+         .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv4_bn'))
+
+        (self.feed('concat_conv4_bn')
+         .relu(name='concat_conv5_relu')
+         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv5')
+         .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv5_bn'))
+
+        (self.feed('concat_conv5_bn')
+         .relu(name='concat_conv6_relu')
+         .conv(3, 3, num_classes, 1, 1, biased=True, relu=False, name='concat_conv6'))

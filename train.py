@@ -242,7 +242,8 @@ def main():
     raw_output = net.layers['fc1_voc12']
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
-    restore_var = [v for v in tf.global_variables() if 'fc' not in v.name or not args.not_restore_last]
+    restore_var = [v for v in tf.global_variables() if
+                   'fc' not in v.name and 'concat' not in v.name or not args.not_restore_last]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
     conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0

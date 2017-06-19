@@ -163,7 +163,7 @@ def main():
                     restore_var = tf.global_variables()
 
                     # Predictions.
-                    raw_output = net.layers['fc1_voc12']
+                    raw_output = net.layers['concat_conv6']
                     raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
                     raw_output = tf.argmax(raw_output, dimension=3)
                     image_output_raw = tf.image.encode_png(tf.cast(tf.transpose(raw_output, (1, 2, 0)), tf.uint8))

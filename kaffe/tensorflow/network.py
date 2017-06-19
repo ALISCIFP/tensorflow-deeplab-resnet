@@ -220,7 +220,11 @@ class Network(object):
 
     @layer
     def concat(self, inputs, axis, name):
-        return tf.concat(concat_dim=axis, values=inputs, name=name)
+        return tf.concat(axis=axis, values=inputs, name=name)
+
+    @layer
+    def resize(self, inputs, size_w, size_h, name):
+        return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor([size_w, size_h]), name=name)
 
     @layer
     def add(self, inputs, name):
