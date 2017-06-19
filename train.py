@@ -239,7 +239,8 @@ def main():
     # if they are presented in var_list of the optimiser definition.
 
     # Predictions.
-    raw_output = net.layers['fc1_voc12']
+    raw_output = net.layers['concat_conv6']
+    raw_output_old = net.layers['fc1_voc12']
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
     restore_var = [v for v in tf.global_variables() if
@@ -272,13 +273,38 @@ def main():
     softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
     for i in xrange(0, args.num_classes):
         curr_class = tf.constant(i, tf.int32)
-        loss.append(softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
-                                                                                          weights=tf.where(
-                                                                                              tf.equal(gt, curr_class),
-                                                                                              tf.zeros_like(gt),
-                                                                                              tf.ones_like(gt))))
+        loss.append(
+            softmax_weights_per_class[i] * 0.8 * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
+                                                                                        weights=tf.where(
+                                                                                            tf.equal(gt, curr_class),
+                                                                                            tf.zeros_like(gt),
+                                                                                            tf.ones_like(gt))))
         accuracy_per_class.append(
             tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
+
+    # Predictions: ignoring all predictions with labels greater or equal than n_classes
+    raw_prediction_old = tf.reshape(raw_output_old, [-1, args.num_classes])
+    label_proc_old = prepare_label(label_batch, tf.stack(raw_output_old.get_shape()[1:3]), num_classes=args.num_classes,
+                               one_hot=False)  # [batch_size, h, w]
+    raw_gt_old = tf.reshape(label_proc_old, [-1, ])
+    indices_old = tf.squeeze(tf.where(tf.less_equal(raw_gt_old, args.num_classes - 1)), 1)
+    gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
+    prediction_old = tf.gather(raw_prediction_old, indices_old)
+
+    # Pixel-wise softmax loss.
+    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+    for i in xrange(0, args.num_classes):
+        curr_class = tf.constant(i, tf.int32)
+        loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
+                                                                                                labels=gt_old,
+                                                                                                weights=tf.where(
+                                                                                                    tf.equal(gt_old,
+                                                                                                             curr_class),
+                                                                                                    tf.zeros_like(
+                                                                                                        gt_old),
+                                                                                                    tf.ones_like(
+                                                                                                        gt_old))))
+
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
     reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
 
