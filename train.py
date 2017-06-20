@@ -21,9 +21,9 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
-# IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
+IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
-IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
+#IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 # IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
 
 LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
@@ -38,11 +38,12 @@ IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 5
+NUM_CLASSES = 21
 NUM_STEPS = 400000
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
+#RESTORE_FROM = './snapshots/'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 11
 SNAPSHOT_DIR = './snapshots/'
@@ -270,15 +271,16 @@ def main():
     # Pixel-wise softmax loss.
     loss = []
     accuracy_per_class = []
-    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+    loss.append(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt))
+    #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
     for i in xrange(0, args.num_classes):
         curr_class = tf.constant(i, tf.int32)
-        loss.append(
-            softmax_weights_per_class[i] * 0.8 * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
-                                                                                        weights=tf.where(
-                                                                                            tf.equal(gt, curr_class),
-                                                                                            tf.zeros_like(gt),
-                                                                                            tf.ones_like(gt))))
+        # loss.append(
+        #     softmax_weights_per_class[i] * 0.8 * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
+        #                                                                                 weights=tf.where(
+        #                                                                                     tf.equal(gt, curr_class),
+        #                                                                                     tf.zeros_like(gt),
+        #                                                                                     tf.ones_like(gt))))
         accuracy_per_class.append(
             tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
 
@@ -290,20 +292,21 @@ def main():
     indices_old = tf.squeeze(tf.where(tf.less_equal(raw_gt_old, args.num_classes - 1)), 1)
     gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
     prediction_old = tf.gather(raw_prediction_old, indices_old)
+    loss.append(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old))
 
     # Pixel-wise softmax loss.
-    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+    #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
     for i in xrange(0, args.num_classes):
         curr_class = tf.constant(i, tf.int32)
-        loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
-                                                                                                labels=gt_old,
-                                                                                                weights=tf.where(
-                                                                                                    tf.equal(gt_old,
-                                                                                                             curr_class),
-                                                                                                    tf.zeros_like(
-                                                                                                        gt_old),
-                                                                                                    tf.ones_like(
-                                                                                                        gt_old))))
+        # loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
+        #                                                                                         labels=gt_old,
+        #                                                                                         weights=tf.where(
+        #                                                                                             tf.equal(gt_old,
+        #                                                                                                      curr_class),
+        #                                                                                             tf.zeros_like(
+        #                                                                                                 gt_old),
+        #                                                                                             tf.ones_like(
+        #                                                                                                 gt_old))))
 
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
     reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
@@ -449,7 +452,10 @@ def main():
     # Load variables if the checkpoint is provided.
     if args.restore_from is not None:
         loader = tf.train.Saver(var_list=restore_var)
-        load(loader, sess, args.restore_from)
+        if '.ckpt' in args.restore_from:
+            load(loader, sess, args.restore_from)
+        else:
+            load(loader, sess, tf.train.latest_checkpoint(args.restore_from))
 
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
