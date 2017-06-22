@@ -442,14 +442,14 @@ class DeepLabResNetModel(Network):
 
         (self.feed('concat_conv3_bn')
          .relu(name='concat_conv4_relu')
-         .deconv(3, 3, 64, 1, 1, 512, 512, biased=True, relu=False, name='concat_conv4')
+         .conv(3, 3, 64, 1, 1, biased=True, relu=False, name='concat_conv4')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv4_bn'))
 
         (self.feed('concat_conv4_bn')
          .relu(name='concat_conv5_relu')
-         .deconv(3, 3, 32, 1, 1, 512, 512, biased=True, relu=False, name='concat_conv5')
+         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv5')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='concat_conv5_bn'))
 
         (self.feed('concat_conv5_bn')
          .relu(name='concat_conv6_relu')
-         .deconv(3, 3, num_classes, 1, 1, 512, 512, biased=True, relu=False, name='concat_conv6'))
+         .conv(3, 3, num_classes, 1, 1, biased=True, relu=False, name='concat_conv6'))
