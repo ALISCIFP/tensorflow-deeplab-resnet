@@ -30,7 +30,7 @@ LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506
                                   dtype=np.float32)
 
 GPU_MASK = '1'
-BATCH_SIZE = 5
+BATCH_SIZE = 4
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
@@ -256,7 +256,7 @@ def main():
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
-    label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]), num_classes=args.num_classes,
+    label_proc = prepare_label(label_batch, tf.stack([h, w]), num_classes=args.num_classes,
                                one_hot=False)  # [batch_size, h, w]
     raw_gt = tf.reshape(label_proc, [-1, ])
     indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.num_classes - 1)), 1)
@@ -269,9 +269,8 @@ def main():
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
     # Pixel-wise softmax loss.
-    loss = []
+    # loss = []
     accuracy_per_class = []
-    loss.append(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt))
     #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
     for i in xrange(0, args.num_classes):
         curr_class = tf.constant(i, tf.int32)
@@ -292,7 +291,6 @@ def main():
     indices_old = tf.squeeze(tf.where(tf.less_equal(raw_gt_old, args.num_classes - 1)), 1)
     gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
     prediction_old = tf.gather(raw_prediction_old, indices_old)
-    loss.append(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old))
 
     # Pixel-wise softmax loss.
     #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
@@ -309,7 +307,10 @@ def main():
         #                                                                                                 gt_old))))
 
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
+    reduced_loss = 0.8 * tf.reduce_mean(
+        tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
+                   + 0.2 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
+                   + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
