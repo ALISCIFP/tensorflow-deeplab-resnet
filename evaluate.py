@@ -191,8 +191,7 @@ def main():
 
                     # Load weights.
                     loader = tf.train.Saver(var_list=restore_var)
-                    if args.restore_from is not None:
-                        load(loader, sess, args.restore_from)
+                    load(loader, sess, args.restore_from)
 
                     # Start queue threads.
                     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
