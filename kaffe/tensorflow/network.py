@@ -310,13 +310,14 @@ class Network(object):
     @layer
     def batch_normalization(self, input, name, is_training, activation_fn=None, scale=True):
         with tf.variable_scope(name) as scope:
-            output = slim.batch_norm(
+            output = tf.contrib.layers.batch_norm(
                 input,
                 activation_fn=activation_fn,
                 is_training=is_training,
                 updates_collections=None,
                 scale=scale,
-                scope=scope)
+                scope=scope,
+                fused=True)
             return output
 
     @layer
