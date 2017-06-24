@@ -25,9 +25,9 @@ IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 # IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
-
-LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
-                                  dtype=np.float32)
+#
+# LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
+#                                   dtype=np.float32)
 
 GPU_MASK = '1'
 BATCH_SIZE = 4
@@ -45,7 +45,8 @@ RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
 #RESTORE_FROM = './snapshots/'
 SAVE_NUM_IMAGES = 1
-SAVE_PRED_EVERY = 11
+SAVE_PRED_EVERY = 100
+VAL_INTERVAL = 11
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 
@@ -142,6 +143,8 @@ def get_arguments():
     parser.add_argument("--save-num-images", type=int, default=SAVE_NUM_IMAGES,
                         help="How many images to save.")
     parser.add_argument("--save-pred-every", type=int, default=SAVE_PRED_EVERY,
+                        help="Save summaries and checkpoint every often.")
+    parser.add_argument("--val-interval", type=int, default=VAL_INTERVAL,
                         help="Save summaries and checkpoint every often.")
     parser.add_argument("--snapshot-dir", type=str, default=SNAPSHOT_DIR,
                         help="Where to save snapshots of the model.")
@@ -294,8 +297,8 @@ def main():
 
     # Pixel-wise softmax loss.
     #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
-    for i in xrange(0, args.num_classes):
-        curr_class = tf.constant(i, tf.int32)
+    # for i in xrange(0, args.num_classes):
+    #     curr_class = tf.constant(i, tf.int32)
         # loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
         #                                                                                         labels=gt_old,
         #                                                                                         weights=tf.where(
@@ -307,9 +310,9 @@ def main():
         #                                                                                                 gt_old))))
 
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = 0.8 * tf.reduce_mean(
+    reduced_loss = 0.2 * tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
-                   + 0.2 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
+                   + 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                    + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
@@ -358,7 +361,7 @@ def main():
                                                                               tf.squeeze(label_batch, axis=-1), counter,
                                                                               counter_no_reset, args.num_classes,
                                                                               args.batch_size, step_ph,
-                                                                              args.save_pred_every],
+                                                                              args.val_interval],
                                                                  [tf.float32, tf.float32]),
                                         lambda: [counter, counter_no_reset])
     counter_val, counter_no_reset_val = tf.cond(mode,
@@ -367,7 +370,7 @@ def main():
                                                                                 tf.squeeze(label_batch, axis=-1),
                                                                                 counter_val, counter_no_reset_val,
                                                                                 args.num_classes, args.batch_size,
-                                                                                step_ph, args.save_pred_every],
+                                                                                step_ph, args.val_interval],
                                                                    [tf.float32, tf.float32]))
 
     eps = tf.constant(1e-10, dtype=tf.float32)
@@ -467,11 +470,13 @@ def main():
 
         # mode False -> val, mode True -> train
         if step % args.save_pred_every == 0:
+            save(saver, sess, args.snapshot_dir, step)
+
+        if step % args.val_interval == 0:
             feed_dict = {step_ph: step, mode: False, class_number: step % args.num_classes}
             acc, loss_value, mI, mINR, _, _, _, summary_v_this_class, summary_v = sess.run(
                 [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
                  IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary], feed_dict=feed_dict)
-            save(saver, sess, args.snapshot_dir, step)
 
             summary_writer_val.add_summary(summary_v, step)
             summary_writer_per_class_val[step % args.num_classes].add_summary(summary_v_this_class, step)
