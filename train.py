@@ -235,9 +235,9 @@ def main():
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
-    # For a small batch size, it is better to keep 
+    # For a small batch size, it is better to keep
     # the statistics of the BN layers (running means and variances)
-    # frozen, and to not update the values provided by the pre-trained model. 
+    # frozen, and to not update the values provided by the pre-trained model.
     # If is_training=True, the statistics will be updated during the training.
     # Note that is_training=False still updates BN parameters gamma (scale) and beta (offset)
     # if they are presented in var_list of the optimiser definition.

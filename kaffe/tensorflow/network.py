@@ -316,8 +316,7 @@ class Network(object):
                 is_training=is_training,
                 updates_collections=None,
                 scale=scale,
-                scope=scope,
-                fused=True)
+                scope=scope)
             return output
 
     @layer
