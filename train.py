@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -42,8 +43,8 @@ NUM_CLASSES = 21
 NUM_STEPS = 400000
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
-#RESTORE_FROM = './snapshots/'
+# RESTORE_FROM = './deeplab_resnet.ckpt'
+RESTORE_FROM = './snapshots/'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
@@ -206,6 +207,8 @@ def main():
 
     # Load reader.
     mode = tf.placeholder(tf.bool, shape=())
+    step_ph = tf.placeholder(dtype=tf.float32, shape=())
+
     with tf.name_scope("create_inputs"):
         reader = ImageReader(
             args.data_dir,
@@ -355,8 +358,6 @@ def main():
     counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
     counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
-    step_ph = tf.placeholder(dtype=tf.float32, shape=())
-
     counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
                                                                               tf.squeeze(label_batch, axis=-1), counter,
                                                                               counter_no_reset, args.num_classes,
@@ -454,18 +455,21 @@ def main():
     saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=10)
 
     # Load variables if the checkpoint is provided.
+    inital_step_value = 1
     if args.restore_from is not None:
         loader = tf.train.Saver(var_list=restore_var)
         if '.ckpt' in args.restore_from:
             load(loader, sess, args.restore_from)
         else:
             load(loader, sess, tf.train.latest_checkpoint(args.restore_from))
+            m = re.search(r'\d+$', tf.train.latest_checkpoint(args.restore_from))
+            inital_step_value = int(m.group())
 
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
     # Iterate over training steps.
-    for step in xrange(1, args.num_steps + 1):
+    for step in xrange(inital_step_value, args.num_steps + 1):
         start_time = time.time()
 
         # mode False -> val, mode True -> train
