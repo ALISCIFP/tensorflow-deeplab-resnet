@@ -81,7 +81,7 @@ def read_labeled_image_list(data_dir, data_list):
     masks = []
     for line in f:
         try:
-            image, mask = line.strip("\n").split(' ')
+            image, mask = line.strip("\n").split('\t')
         except ValueError:  # Adhoc for test.
             image = mask = line.strip("\n")
         images.append(data_dir + image)
@@ -110,7 +110,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     label_contents = tf.read_file(input_queue[1])
     
     img = tf.image.decode_jpeg(img_contents, channels=3)
-    img_r, img_g, img_b = tf.split(axis=2, num_or_size_splits=3, value=img)
+    img_r, img_g, img_b = tf.split(value=img, num_or_size_splits=3, axis=2)
     img = tf.cast(tf.concat(axis=2, values=[img_b, img_g, img_r]), dtype=tf.float32)
     # Extract mean.
     img -= img_mean
@@ -119,12 +119,13 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
     if input_size is not None:
         h, w = input_size
-
+        random_scale = False
         # Randomly scale the images and labels.
         if random_scale:
             img, label = image_scaling(img, label)
 
         # Randomly mirror the images and labels.
+        random_mirror = False
         if random_mirror:
             img, label = image_mirroring(img, label)
 

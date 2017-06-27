@@ -19,33 +19,35 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 # IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
-IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
+# IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
+IMG_MEAN = np.array((46.02499091,  46.00602707,  45.95747361), dtype=np.float32)  # Liver_Siemens
 # IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
 
-LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
-                                  dtype=np.float32)
+# LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),dtype=np.float32)
+LUNA16_softmax_weights = 0.5*np.ones(2,dtype=np.float32)
 
-GPU_MASK = '1'
+
+GPU_MASK = '0'
 BATCH_SIZE = 5
-DATA_DIRECTORY = None
-DATA_LIST_PATH = None
-VAL_DATA_LIST_PATH = None
+DATA_DIRECTORY = "/home/z003hvsa/Data/LiverData_2D_final"
+DATA_LIST_PATH = "/home/z003hvsa/Data/LiverData_2D_final/dataset/train.txt"
+VAL_DATA_LIST_PATH = "/home/z003hvsa/Data/LiverData_2D_final/dataset/test.txt"
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 5
-NUM_STEPS = 400000
+NUM_CLASSES = 2
+NUM_STEPS = 31588000
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
-SAVE_NUM_IMAGES = 1
-SAVE_PRED_EVERY = 11
-SNAPSHOT_DIR = './snapshots/'
+RESTORE_FROM = './snapshots_Liver1gpuR56knrm/'
+SAVE_NUM_IMAGES = 2
+SAVE_PRED_EVERY = 2000
+SNAPSHOT_DIR = './snapshots_Liver_nn/'
 WEIGHT_DECAY = 0.0005
 
 
@@ -122,7 +124,7 @@ def get_arguments():
                         help="Base learning rate for training with polynomial decay.")
     parser.add_argument("--momentum", type=float, default=MOMENTUM,
                         help="Momentum component of the optimiser.")
-    parser.add_argument("--not-restore-last", action="store_true",
+    parser.add_argument("--not-restore-last", action="store_false",
                         help="Whether to not restore last (FC) layers.")
     parser.add_argument("--num-classes", type=int, default=NUM_CLASSES,
                         help="Number of classes to predict (including background).")
@@ -175,13 +177,17 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    saver.restore(sess, ckpt_path)
+    # saver.restore(sess, ckpt_path)
+    saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
 
 def main():
     """Create the model and start the training."""
     args = get_arguments()
+    args.random_scale = False
+    args.random_mirror =False
+    args.not_restore_last = False
     print(args)
 
     if args.not_restore_last:
@@ -190,7 +196,7 @@ def main():
         except Exception as e:
             print(e)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
@@ -201,6 +207,8 @@ def main():
     coord = tf.train.Coordinator()
 
     # Load reader.
+
+
     mode = tf.placeholder(tf.bool, shape=())
     with tf.name_scope("create_inputs"):
         reader = ImageReader(
@@ -461,11 +469,11 @@ def main():
                 'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
     coord.request_stop()
-    tboard_proc.kill()
+    # tboard_proc.kill()
     coord.join(threads)
 
 
 if __name__ == '__main__':
-    subprocess.call(shlex.split('pkill tensorboard'))
-    tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=./snapshots/'))
+    # subprocess.call(shlex.split('pkill tensorboard'))
+    # tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=./snapshots/'))
     main()
