@@ -84,6 +84,8 @@ def main():
         image, label = reader.image, reader.label
     image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
                                                                             dim=0)  # Add one batch dimension.
+    image_batch = tf.image.resize_area(image_batch, [512, 512])
+    # label_batch = tf.image.resize_bilinear(label_batch, [512, 512])
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -92,8 +94,8 @@ def main():
     restore_var = tf.global_variables()
 
     # Predictions.
-    raw_output = net.layers['fc1_voc12']
-    raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
+    raw_output = net.layers['concat_conv6']
+    raw_output = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
     raw_output = tf.argmax(raw_output, dimension=3)
     pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
 
