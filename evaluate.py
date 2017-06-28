@@ -21,7 +21,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 21
-RESTORE_FROM = './snapshots/'
+RESTORE_FROM = './a/'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
