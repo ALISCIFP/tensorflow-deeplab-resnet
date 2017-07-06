@@ -20,9 +20,10 @@ def mhd2ndarray(data_file):
 
 def ndarry2jpg_png(data_file, out_dir, subsetIndex, flist):
     data_path, fn = os.path.split(data_file)
-    # img_gt_file= data_path+"output/yes_lesion_no_rescale/seg/"+fn
+    # img_gt_file= data_path+"output_test_pretrained/yes_lesion_no_rescale/seg/"+fn
     img_gt_file = data_file.replace("subset" + str(subsetIndex),
-                                    "output/bronchilesion_no_rescale/subset" + str(subsetIndex) + "/seg")
+                                    "output_test_pretrained/bronchilesion_no_rescale/subset" + str(
+                                        subsetIndex) + "/seg")
 
     img = mhd2ndarray(data_file)
     img_gt = mhd2ndarray(img_gt_file)

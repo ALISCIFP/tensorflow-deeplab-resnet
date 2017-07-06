@@ -18,11 +18,11 @@ def layer(op):
             layer_input = self.terminals[0]
         else:
             layer_input = list(self.terminals)
-        # Perform the operation and get the output.
+        # Perform the operation and get the output_test_pretrained.
         layer_output = op(self, layer_input, *args, **kwargs)
         # Add to layer LUT.
         self.layers[name] = layer_output
-        # This output is now the input for the next layer.
+        # This output_test_pretrained is now the input for the next layer.
         self.feed(layer_output)
         # Return self for chained calls.
         return self
@@ -84,7 +84,7 @@ class Network(object):
         return self
 
     def get_output(self):
-        '''Returns the current network output.'''
+        '''Returns the current network output_test_pretrained.'''
         return self.terminals[-1]
 
     def get_unique_name(self, prefix):

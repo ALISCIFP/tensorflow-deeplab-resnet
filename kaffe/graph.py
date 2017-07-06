@@ -1,9 +1,10 @@
 from google.protobuf import text_format
 
 from .caffe import get_caffe_resolver
-from .errors import KaffeError, print_stderr
+from .errors import KaffeError
 from .layers import LayerAdapter, LayerType, NodeKind, NodeDispatch
 from .shapes import TensorShape
+
 
 class Node(object):
 
@@ -174,7 +175,7 @@ class GraphBuilder(object):
         kind = NodeKind.map_raw_kind(layer.type)
         if kind is None:
             raise KaffeError('Unknown layer type encountered: %s' % layer.type)
-        # We want to use the layer's top names (the "output" names), rather than the
+        # We want to use the layer's top names (the "output_test_pretrained" names), rather than the
         # name attribute, which is more of readability thing than a functional one.
         # Other layers will refer to a node by its "top name".
         return Node(layer.name, kind, layer=layer)
@@ -221,7 +222,7 @@ class GraphBuilder(object):
         # any connectivity. It's only used for data association. By convention, a layer with a
         # single top will often use the same name (although this is not required).
         #
-        # The current implementation only supports single-output nodes (note that a node can still
+        # The current implementation only supports single-output_test_pretrained nodes (note that a node can still
         # have multiple children, since multiple child nodes can refer to the single top's name).
         node_outputs = {}
         for layer in layers:
@@ -246,7 +247,7 @@ class GraphBuilder(object):
                 # by substituting this node wherever the overwritten node is referenced.
                 #
                 # Case 2: output_name violates the convention layer.name == output_name.
-                # Since we are working in the single-output regime, we will can rename it to
+                # Since we are working in the single-output_test_pretrained regime, we will can rename it to
                 # match the layer name.
                 #
                 # For both cases, future references to this top re-routes to this node.

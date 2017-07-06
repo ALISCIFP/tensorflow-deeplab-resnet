@@ -2,17 +2,17 @@
 
 # This script belongs to https://github.com/
 
-import os,glob
 import argparse
-
-import numpy as np
-import SimpleITK as sitk
-import cv2
-import scipy.misc
+import glob
+import os
 import random
 
+import SimpleITK as sitk
+import cv2
+import numpy as np
+import scipy.misc
 
-DATA_DIRECTORY = '/home/zack/Data/ILDDataset/output/yes_lesions_no_rescale_merge_yes/'
+DATA_DIRECTORY = '/home/zack/Data/ILDDataset/output_test_pretrained/yes_lesions_no_rescale_merge_yes/'
 OUT_DIRECTORY = "/home/zack/Data/ILD_jpg_png/"
 
 def mhd2ndarray(data_file):

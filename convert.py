@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-# This script belongs to https://github.com/ethereon/caffe-tensorflow
-import os
-import sys
-import numpy as np
 import argparse
+
+# This script belongs to https://github.com/ethereon/caffe-tensorflow
+import numpy as np
+
 from kaffe import KaffeError, print_stderr
 from kaffe.tensorflow import TensorFlowTransformer
 
@@ -18,9 +18,9 @@ def validate_arguments(args):
     if (args.data_output_path is not None) and (args.caffemodel is None):
         fatal_error('No input data path provided.')
     if (args.caffemodel is not None) and (args.data_output_path is None):
-        fatal_error('No output data path provided.')
+        fatal_error('No output_test_pretrained data path provided.')
     if (args.code_output_path is None) and (args.data_output_path is None):
-        fatal_error('No output path specified.')
+        fatal_error('No output_test_pretrained path specified.')
 
 
 def convert(def_path, caffemodel_path, data_output_path, code_output_path, phase):
@@ -45,8 +45,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('def_path', help='Model definition (.prototxt) path')
     parser.add_argument('--caffemodel', help='Model data (.caffemodel) path')
-    parser.add_argument('--data-output-path', help='Converted data output path')
-    parser.add_argument('--code-output-path', help='Save generated source to this path')
+    parser.add_argument('--data-output_test_pretrained-path', help='Converted data output_test_pretrained path')
+    parser.add_argument('--code-output_test_pretrained-path', help='Save generated source to this path')
     parser.add_argument('-p',
                         '--phase',
                         default='test',
