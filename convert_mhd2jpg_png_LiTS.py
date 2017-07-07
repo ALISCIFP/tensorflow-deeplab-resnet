@@ -25,7 +25,6 @@ def convert(data_dir, out_dir):
 
     list_of_all_files = zip(sorted(glob.glob(os.path.join(data_dir, "*/volume*.nii"))),
                             sorted(glob.glob(os.path.join(data_dir, "*/segmentation*.nii"))))
-
     random.shuffle(list_of_all_files)
 
     with open(os.path.join(data_dir, "dataset/trainLiver.txt"), 'w') as ftrain, \
@@ -46,7 +45,7 @@ def convert(data_dir, out_dir):
             img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=np.min(img))
 
             for i in xrange(0, img.shape[2]):
-                jpegpath = os.path.join(out_dir, "JPEGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".jpg")
+                jpegpath = os.path.join(out_dir, "JPEGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
                 pngpath = os.path.join(out_dir, "PNGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
                 scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
                 cv2.imwrite(pngpath, img_gt[:, :, i])
@@ -75,15 +74,14 @@ def convert(data_dir, out_dir):
 
                 for i in xrange(0, img.shape[2]):
                     jpegpath = os.path.join(out_dir, "JPEGImagesTumor",
-                                            data_file.split('/')[-1] + "_" + str(i) + ".jpg")
+                                            data_file.split('/')[-1] + "_" + str(i) + ".png")
                     pngpath = os.path.join(out_dir, "PNGImagesTumor", data_file.split('/')[-1] + "_" + str(i) + ".png")
                     scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
-                    cv2.imwrite(pngpath, img_gt[:, :, i])
+                    scipy.misc.imsave(pngpath, img_gt[:, :, i])
                     if idx <= int(math.floor(0.8 * len(list_of_all_files))):
                         ftrain.write(jpegpath + " " + pngpath + "\n")
                     else:
                         fval.write(jpegpath + " " + pngpath + "\n")
-
 
 def main():
     parser = argparse.ArgumentParser(description="mdh to jpg-png file converter")
