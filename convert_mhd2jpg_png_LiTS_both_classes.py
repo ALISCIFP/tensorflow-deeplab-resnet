@@ -41,10 +41,10 @@ def convert(data_dir, out_dir):
             img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=np.min(img))
 
             for i in xrange(0, img.shape[2]):
-                jpegpath = os.path.join(out_dir, "JPEGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
-                pngpath = os.path.join(out_dir, "PNGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
-                scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
-                cv2.imwrite(pngpath, img_gt[:, :, i])
+                jpegpath = os.path.join("JPEGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                pngpath = os.path.join("PNGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
+                cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
                 if '99' in data_file:
                     fval.write("/" + jpegpath + "\t" + pngpath + "\n")
                 else:

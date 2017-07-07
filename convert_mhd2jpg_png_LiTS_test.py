@@ -24,8 +24,6 @@ def convert(data_dir, out_dir):
 
         if not os.path.exists(os.path.join(out_dir, "JPEGImages")):
             os.makedirs(os.path.join(out_dir, "JPEGImages"))
-        if not os.path.exists(os.path.join(out_dir, "PNGImages")):
-            os.makedirs(os.path.join(out_dir, "PNGImages"))
 
         for data_file in glob.iglob(os.path.join(data_dir, "*/test-volume*.nii")):
             print("Writing: " + data_file)
@@ -33,9 +31,9 @@ def convert(data_dir, out_dir):
             img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=np.min(img))
 
             for i in xrange(0, img.shape[2]):
-                jpegpath = os.path.join(out_dir, "JPEGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
-                scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
-                ftest.write("/" + jpegpath + " " + "\n")
+                jpegpath = os.path.join("JPEGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
+                ftest.write("/" + jpegpath + "\n")
 
 
 def main():

@@ -45,10 +45,10 @@ def convert(data_dir, out_dir):
             img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=np.min(img))
 
             for i in xrange(0, img.shape[2]):
-                jpegpath = os.path.join(out_dir, "JPEGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
-                pngpath = os.path.join(out_dir, "PNGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
-                scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
-                cv2.imwrite(pngpath, img_gt[:, :, i])
+                jpegpath = os.path.join("JPEGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                pngpath = os.path.join("PNGImagesLiver", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
+                cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
                 if idx <= int(math.floor(0.8 * len(list_of_all_files))):
                     ftrain.write("/" + jpegpath + "\t" + pngpath + "\n")
                 else:
@@ -76,8 +76,8 @@ def convert(data_dir, out_dir):
                     jpegpath = os.path.join("JPEGImagesTumor",
                                             data_file.split('/')[-1] + "_" + str(i) + ".png")
                     pngpath = os.path.join("PNGImagesTumor", data_file.split('/')[-1] + "_" + str(i) + ".png")
-                    scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
-                    cv2.imwrite(pngpath, img_gt[:, :, i])
+                    scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
+                    cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
                     if idx <= int(math.floor(0.8 * len(list_of_all_files))):
                         ftrain.write("/" + jpegpath + "\t" + pngpath + "\n")
                     else:
