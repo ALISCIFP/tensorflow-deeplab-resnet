@@ -50,9 +50,9 @@ def convert(data_dir, out_dir):
                 scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
                 cv2.imwrite(pngpath, img_gt[:, :, i])
                 if idx <= int(math.floor(0.8 * len(list_of_all_files))):
-                    ftrain.write(jpegpath + " " + pngpath + "\n")
+                    ftrain.write("/" + jpegpath + " " + pngpath + "\n")
                 else:
-                    fval.write(jpegpath + " " + pngpath + "\n")
+                    fval.write("/" + jpegpath + " " + pngpath + "\n")
 
         with open(os.path.join(data_dir, "dataset/trainTumor.txt"), 'w') as ftrain, \
                 open(os.path.join(data_dir, "dataset/valTumor.txt"), 'w') as fval:
@@ -73,15 +73,15 @@ def convert(data_dir, out_dir):
                 img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=np.min(img))
 
                 for i in xrange(0, img.shape[2]):
-                    jpegpath = os.path.join(out_dir, "JPEGImagesTumor",
+                    jpegpath = os.path.join("JPEGImagesTumor",
                                             data_file.split('/')[-1] + "_" + str(i) + ".png")
-                    pngpath = os.path.join(out_dir, "PNGImagesTumor", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                    pngpath = os.path.join("PNGImagesTumor", data_file.split('/')[-1] + "_" + str(i) + ".png")
                     scipy.misc.imsave(jpegpath, img_pad[:, :, i:i + 3])
-                    scipy.misc.imsave(pngpath, img_gt[:, :, i])
+                    cv2.imwrite(pngpath, img_gt[:, :, i])
                     if idx <= int(math.floor(0.8 * len(list_of_all_files))):
-                        ftrain.write(jpegpath + " " + pngpath + "\n")
+                        ftrain.write("/" + jpegpath + "\t" + pngpath + "\n")
                     else:
-                        fval.write(jpegpath + " " + pngpath + "\n")
+                        fval.write("/" + jpegpath + "\t" + pngpath + "\n")
 
 def main():
     parser = argparse.ArgumentParser(description="mdh to jpg-png file converter")
