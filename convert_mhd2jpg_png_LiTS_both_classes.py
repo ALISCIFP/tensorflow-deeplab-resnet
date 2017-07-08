@@ -46,9 +46,9 @@ def convert(data_dir, out_dir):
                 scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
                 cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
                 if '99' in data_file:
-                    fval.write("/" + jpegpath + "\t" + pngpath + "\n")
+                    fval.write("/" + jpegpath + "\t" + "/" + pngpath + "\n")
                 else:
-                    ftrain.write("/" + jpegpath + "\t" + pngpath + "\n")
+                    ftrain.write("/" + jpegpath + "\t" + "/" + pngpath + "\n")
 
 
 def main():

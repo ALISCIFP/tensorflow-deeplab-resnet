@@ -50,9 +50,9 @@ def convert(data_dir, out_dir):
                 scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
                 cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
                 if idx <= int(math.floor(0.8 * len(list_of_all_files))):
-                    ftrain.write("/" + jpegpath + "\t" + pngpath + "\n")
+                    ftrain.write("/" + jpegpath + "\t" + "/" + pngpath + "\n")
                 else:
-                    fval.write("/" + jpegpath + "\t" + pngpath + "\n")
+                    fval.write("/" + jpegpath + "\t" + "/" + pngpath + "\n")
 
         with open(os.path.join(data_dir, "dataset/trainTumor.txt"), 'w') as ftrain, \
                 open(os.path.join(data_dir, "dataset/valTumor.txt"), 'w') as fval:
@@ -79,9 +79,9 @@ def convert(data_dir, out_dir):
                     scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
                     cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
                     if idx <= int(math.floor(0.8 * len(list_of_all_files))):
-                        ftrain.write("/" + jpegpath + "\t" + pngpath + "\n")
+                        ftrain.write("/" + jpegpath + "\t" + "/" + pngpath + "\n")
                     else:
-                        fval.write("/" + jpegpath + "\t" + pngpath + "\n")
+                        fval.write("/" + jpegpath + "\t" + "/" + pngpath + "\n")
 
 def main():
     parser = argparse.ArgumentParser(description="mdh to jpg-png file converter")
