@@ -8,15 +8,17 @@ from __future__ import print_function
 
 import argparse
 import csv
+import glob
 import os
 import re
 import tempfile
 
 import SimpleITK as sitk
 import numpy as np
+import scipy.ndimage
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels
+from deeplab_resnet import DeepLabResNetModel, ImageReader
 
 IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 
@@ -25,7 +27,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 5
-RESTORE_FROM = './snapshots/'
+RESTORE_FROM = './snapshotsLUNA16/'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -46,6 +48,8 @@ def get_arguments():
                         help="Number of classes to predict (including background).")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
+    parser.add_argument("--post-processing", type=bool, default=True,
+                        help="Post processing enable or disable")
     return parser.parse_args()
 
 
@@ -86,7 +90,10 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
+    if '.ckpt' in ckpt_path:
+        saver.restore(sess, ckpt_path)
+    else:
+        saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
 def main():
@@ -167,10 +174,7 @@ def main():
                     raw_output = net.layers['fc1_voc12']
                     raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
                     raw_output = tf.argmax(raw_output, dimension=3)
-                    image_output_raw = tf.image.encode_png(tf.cast(tf.transpose(raw_output, (1, 2, 0)), tf.uint8))
                     pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
-                    image_output = tf.image.encode_png(
-                        tf.squeeze(tf.py_func(decode_labels, [pred, 1, args.num_classes], tf.uint8), axis=0))
 
                     # mIoU
                     pred = tf.reshape(pred, [-1, ])
@@ -201,16 +205,15 @@ def main():
                     acc_per_class = np.zeros(args.num_classes)
 
                     for idx, line in enumerate(dict[key]):
-                        colored_label_png, raw_preds_png, preds, labels, acc, acc_per_class[0], acc_per_class[1], \
+                        preds, labels, acc, acc_per_class[0], acc_per_class[1], \
                         acc_per_class[2], acc_per_class[3], acc_per_class[4] = sess.run(
-                            [image_output, image_output_raw, raw_output, label_batch, accuracy, accuracy_per_class[0],
+                            [raw_output, label_batch, accuracy, accuracy_per_class[0],
                              accuracy_per_class[1], accuracy_per_class[2], accuracy_per_class[3],
                              accuracy_per_class[4]])
 
-                        with open('eval/imageout_raw/' + key + "_" + str(idx) + '.png', 'wb') as f:
-                            f.write(raw_preds_png)
-                        with open('eval/imageout/' + key + "_" + str(idx) + '.png', 'wb') as f:
-                            f.write(colored_label_png)
+                        if args.post_processing:
+                            preds[0] = scipy.ndimage.morphology.binary_erosion(preds[0])
+                            preds[0] = scipy.ndimage.morphology.binary_dilation(preds[0])
 
                         area_intersection, area_union = intersectionAndUnion(preds[0], labels[0, :, :, 0],
                                                                              args.num_classes)
@@ -242,7 +245,14 @@ def main():
                                         })
 
                     print("Writing: " + 'eval/mhdout/' + key + '_out.mhd')
-                    sitk.WriteImage(sitk.GetImageFromArray(prediction_out),
+                    mhd_out = sitk.GetImageFromArray(prediction_out)
+                    path_to_img = glob.glob(args.data_dir + '/seg-lungs-LUNA16/' + key + '.mhd')
+                    assert len(path_to_img) == 1
+                    img = sitk.ReadImage(glob.glob(args.data_dir + '/*/' + key + '.mhd')[0])
+                    mhd_out.SetDirection(img.GetDirection())
+                    mhd_out.SetOrigin(img.GetOrigin())
+                    mhd_out.SetSpacing(img.GetSpacing())
+                    sitk.WriteImage(mhd_out,
                                     'eval/mhdout/' + key + '_out.mhd')
 
                     coord.request_stop()
