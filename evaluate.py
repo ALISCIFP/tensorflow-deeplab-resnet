@@ -49,7 +49,7 @@ def get_arguments():
                         help="Number of classes to predict (including background).")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
-    parser.add_argument("--post-processing", type=bool, default=True,
+    parser.add_argument("--post-processing", type=bool, default=False,
                         help="Post processing enable or disable")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
                         help="Number of classes to predict (including background).")
@@ -138,7 +138,7 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                 if key not in dict_of_curr_processing:
                     dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512))
                     dict_of_curr_processing_len[key] = 1  # this is correct!
-                counter = np.zeros((2, num_classes))
+                    counter = np.zeros((2, num_classes))
 
                 if post_processing:
                     preds = scipy.ndimage.morphology.binary_erosion(preds)
@@ -162,20 +162,19 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                                              'Acc Class 2': acc_per_class[2],
                                              'Acc Class 3': acc_per_class[3], 'Acc Class 4': acc_per_class[4],
                                              'Total Acc': acc})
-
+                logfile_per_file.flush()
                 dict_of_curr_processing[key][idx] = preds
                 dict_of_curr_processing_len[key] += 1
 
-                IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
-
-
                 if dict_of_curr_processing_len[key] == num_slices:
                     print("Writing: " + 'eval/mhdout/' + key + '_out.mhd')
+                    IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
                     csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
                                         'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
                                         'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
                                         'mIoU': np.mean(IoU_per_class)
                                         })
+                    logfile.flush()
                     mhd_out = sitk.GetImageFromArray(dict_of_curr_processing[key])
                     path_to_img = glob.glob(data_dir + '/seg-lungs-LUNA16/' + key + '.mhd')
                     assert len(path_to_img) == 1
@@ -194,6 +193,7 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                             'IoU Class 3': global_IoU_per_class[3], 'IoU Class 4': global_IoU_per_class[4],
                             'mIoU': np.mean(global_IoU_per_class)
                             })
+        logfile.flush()
 
 
 def main():
