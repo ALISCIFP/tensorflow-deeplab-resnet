@@ -17,18 +17,14 @@ from PIL import Image
 #for LUNA 16
 #label_colours = [(0,0,0)
                 # 0=background
-<<<<<<< Updated upstream
- #               ,(128,0,0),(0,128,0),(128,128,0),(0,0,128)]
-=======
 #                ,(128,0,0),(0,128,0),(128,128,0),(0,0,128)]
->>>>>>> Stashed changes
                 # 1=left lung, 2=right lung, 3=pipe, 4=nodule,
 #for LUNA 16
-label_colours = [(0,0,0)
-                # 0=background
-               ,(128,0,0)]
-                # 1=Liver,
-#for ILD
+# label_colours = [(0,0,0)
+#                 # 0=background
+#                ,(128,0,0)]
+#                 # 1=Liver,
+# #for ILD
 label_colours = [(0,0,0)
 #                 # 0=background
                  ,(128,0,0),(0,128,0)]

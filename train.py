@@ -48,15 +48,9 @@ NUM_STEPS = 400000
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
-<<<<<<< Updated upstream
-SAVE_NUM_IMAGES = 1
-SAVE_PRED_EVERY = 11
-SNAPSHOT_DIR = './snapshotsLUNA16/'
-=======
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
 SNAPSHOT_DIR = './snapshots/'
->>>>>>> Stashed changes
 WEIGHT_DECAY = 0.0005
 
 
