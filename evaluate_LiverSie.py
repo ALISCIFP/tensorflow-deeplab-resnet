@@ -60,9 +60,8 @@ def get_arguments():
 
 
 def intersectionAndUnion(imPred, imLab, numClass):
-    imPred = np.asarray(imPred)
-    imLab = np.asarray(imLab)
-
+    imPred = imPred.astype(np.uint8)
+    imLab = imLab.astype(np.uint8)
     # Remove classes from unlabeled pixels in gt image.
     # We should not penalize detections in unlabeled portions of the image.
     # imPred = imPred * (imLab > 0)
