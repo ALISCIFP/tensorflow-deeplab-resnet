@@ -1,12 +1,11 @@
 python train.py  \
---data-dir /home/zack/Data/LITS/ \
---data-list  /home/zack/Data/LITS/dataset/train.txt  \
---val-data-list /home/zack/Data/LITS/dataset/val.txt  \
---batch-size 4 \
+--data-dir /home/victor/ssd/LITS \
+--data-list  /home/victor/ssd/LITS/dataset/train.txt  \
+--val-data-list /home/victor/ssd/LITS/dataset/val.txt  \
+--batch-size 5 \
 --num-classes 3 \
 --input-size '512,512'  \
---is-training \
---restore-from './snapshots/LITS4' \
---snapshot-dir './snapshots/LITS4t2' \
---gpu-mask '1'  \
---num-steps 150000 \
+--restore-from './snapshots/LITS4tlr' \
+--snapshot-dir './snapshots/LITS4tlr2' \
+--gpu-mask '0'  \
+--num-steps 300000 \
