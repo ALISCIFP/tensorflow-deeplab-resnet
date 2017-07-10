@@ -22,12 +22,17 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 # IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
-# IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
-IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
-# IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
+#IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
+#IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
+#IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
+IMG_MEAN = np.array((70.09696377,  70.09982598,  70.05608305), dtype=np.float32) #LITS
 
-LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
-                                  dtype=np.float32)
+
+#LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),dtype=np.float32)
+LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
+#LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
+#LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
+
 
 GPU_MASK = '1'
 BATCH_SIZE = 5
@@ -36,16 +41,16 @@ DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
-LEARNING_RATE = 2.5e-4
+LEARNING_RATE = 2.49e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 5
 NUM_STEPS = 400000
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
-SAVE_NUM_IMAGES = 1
-SAVE_PRED_EVERY = 11
-SNAPSHOT_DIR = './snapshotsLUNA16/'
+SAVE_NUM_IMAGES = 2
+SAVE_PRED_EVERY = 1000
+SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 
 
@@ -175,7 +180,8 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    saver.restore(sess, ckpt_path)
+#    saver.restore(sess, ckpt_path)
+    saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
 
@@ -373,8 +379,6 @@ def main():
                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]),
                      max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
-    all_summary = tf.summary.merge_all('all')
-    per_class_summary = tf.summary.merge_all('per_class')
     summary_writer_train = tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'train_all'),
                                                  graph=tf.get_default_graph())
     summary_writer_val = tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'val_all'),
@@ -394,6 +398,10 @@ def main():
     base_lr = tf.constant(args.learning_rate)
 
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - step_ph / args.num_steps), args.power))
+    tf.summary.scalar("learning_rate", learning_rate, collections=['all'])
+
+    all_summary = tf.summary.merge_all('all')
+    per_class_summary = tf.summary.merge_all('per_class')
 
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
     opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
@@ -461,11 +469,11 @@ def main():
                 'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
     coord.request_stop()
-    tboard_proc.kill()
+   # tboard_proc.kill()
     coord.join(threads)
 
 
 if __name__ == '__main__':
-    subprocess.call(shlex.split('pkill tensorboard'))
-    tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=./snapshots/'))
+   # subprocess.call(shlex.split('pkill tensorboard'))
+   # tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=./snapshots/'))
     main()
