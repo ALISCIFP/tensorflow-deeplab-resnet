@@ -11,7 +11,7 @@ import csv
 import glob
 import os
 import re
-import tempfile
+from multiprocessing import Process, Queue, Event
 
 import SimpleITK as sitk
 import numpy as np
@@ -27,6 +27,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 5
+BATCH_SIZE = 20
 RESTORE_FROM = './snapshotsLUNA16/'
 
 def get_arguments():
@@ -50,6 +51,8 @@ def get_arguments():
                         help="Where restore model parameters from.")
     parser.add_argument("--post-processing", type=bool, default=True,
                         help="Post processing enable or disable")
+    parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
+                        help="Number of classes to predict (including background).")
     return parser.parse_args()
 
 
@@ -96,6 +99,102 @@ def load(saver, sess, ckpt_path):
         saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
+
+def saving_process(queue, event, num_classes, data_dir, post_processing):
+    with open('eval/output.csv', 'wb') as logfile:
+        csvwriter = csv.DictWriter(logfile, fieldnames=['File', 'IoU Class 0',
+                                                        'IoU Class 1', 'IoU Class 2',
+                                                        'IoU Class 3', 'IoU Class 4', 'mIoU'
+                                                        ])
+        csvwriter.writeheader()
+        counter_global = np.zeros((2, num_classes))
+        dict_of_curr_processing = {}
+        dict_of_curr_processing_len = {}
+
+        while not (event.is_set() and queue.empty()):
+            key, idx, preds, labels, acc_per_class, acc, num_slices = queue.get()
+            if not os.path.exists('eval/output_' + key + '.csv'):
+                with open('eval/output_' + key + '.csv', 'wb') as logfile_per_file:
+                    csvwriter_per_file = csv.DictWriter(logfile_per_file, fieldnames=['Z Coord', 'IoU Class 0',
+                                                                                      'IoU Class 1', 'IoU Class 2',
+                                                                                      'IoU Class 3', 'IoU Class 4',
+                                                                                      'mIoU',
+                                                                                      'Acc Class 0', 'Acc Class 1',
+                                                                                      'Acc Class 2',
+                                                                                      'Acc Class 3', 'Acc Class 4',
+                                                                                      'Total Acc'])
+                    csvwriter_per_file.writeheader()
+
+            with open('eval/output_' + key + '.csv', 'wb') as logfile_per_file:
+                csvwriter_per_file = csv.DictWriter(logfile_per_file, fieldnames=['Z Coord', 'IoU Class 0',
+                                                                                  'IoU Class 1', 'IoU Class 2',
+                                                                                  'IoU Class 3', 'IoU Class 4',
+                                                                                  'mIoU',
+                                                                                  'Acc Class 0', 'Acc Class 1',
+                                                                                  'Acc Class 2',
+                                                                                  'Acc Class 3', 'Acc Class 4',
+                                                                                  'Total Acc'])
+
+                if key not in dict_of_curr_processing:
+                    dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512))
+                    dict_of_curr_processing_len[key] = 1  # this is correct!
+                counter = np.zeros((2, num_classes))
+
+                if post_processing:
+                    preds = scipy.ndimage.morphology.binary_erosion(preds)
+                    preds = scipy.ndimage.morphology.binary_dilation(preds)
+
+                area_intersection, area_union = intersectionAndUnion(preds, labels[:, :, 0],
+                                                                     num_classes)
+
+                counter[0] += area_intersection
+                counter[1] += area_union
+                counter_global[0] += area_intersection
+                counter_global[1] += area_union
+
+                IoU_per_class = area_intersection / (np.spacing(1) + area_union)
+
+                csvwriter_per_file.writerow({'Z Coord': idx, 'IoU Class 0': IoU_per_class[0],
+                                             'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
+                                             'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
+                                             'mIoU': np.mean(IoU_per_class),
+                                             'Acc Class 0': acc_per_class[0], 'Acc Class 1': acc_per_class[1],
+                                             'Acc Class 2': acc_per_class[2],
+                                             'Acc Class 3': acc_per_class[3], 'Acc Class 4': acc_per_class[4],
+                                             'Total Acc': acc})
+
+                dict_of_curr_processing[key][idx] = preds
+                dict_of_curr_processing_len[key] += 1
+
+                IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
+                csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
+                                    'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
+                                    'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
+                                    'mIoU': np.mean(IoU_per_class)
+                                    })
+
+                if dict_of_curr_processing_len[key] == num_slices:
+                    print("Writing: " + 'eval/mhdout/' + key + '_out.mhd')
+                    mhd_out = sitk.GetImageFromArray(dict_of_curr_processing[key])
+                    path_to_img = glob.glob(data_dir + '/seg-lungs-LUNA16/' + key + '.mhd')
+                    assert len(path_to_img) == 1
+                    img = sitk.ReadImage(path_to_img[0])
+                    mhd_out.SetDirection(img.GetDirection())
+                    mhd_out.SetOrigin(img.GetOrigin())
+                    mhd_out.SetSpacing(img.GetSpacing())
+                    sitk.WriteImage(mhd_out,
+                                    'eval/mhdout/' + key + '_out.mhd')
+                    del dict_of_curr_processing[key]
+                    dict_of_curr_processing_len[key] += 1
+
+        global_IoU_per_class = counter_global[0] / (np.spacing(1) + counter_global[1])
+        csvwriter.writerow({'File': 'Global', 'IoU Class 0': global_IoU_per_class[0],
+                            'IoU Class 1': global_IoU_per_class[1], 'IoU Class 2': global_IoU_per_class[2],
+                            'IoU Class 3': global_IoU_per_class[3], 'IoU Class 4': global_IoU_per_class[4],
+                            'mIoU': np.mean(global_IoU_per_class)
+                            })
+
+
 def main():
     """Create the model and start the evaluation process."""
 
@@ -105,165 +204,100 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     try:
-        os.makedirs('eval/imageout')
-        os.makedirs('eval/imageout_raw')
         os.makedirs('eval/mhdout')
     except:
         pass
 
-    dict = {}
-    with open(args.data_list, 'r') as f, open('eval/output.csv', 'wb') as logfile:
-        csvwriter = csv.DictWriter(logfile, fieldnames=['File', 'IoU Class 0',
-                                                        'IoU Class 1', 'IoU Class 2',
-                                                        'IoU Class 3', 'IoU Class 4', 'mIoU'
-                                                        ])
-        csvwriter.writeheader()
+    event_end = Event()
+    queue_proc = Queue()
+    with open(args.data_list, 'r') as f:
+        list_of_all_lines = f.readlines()
+        f.seek(0)
+
+        dict = {}
         for line in f:
             if re.match(".*\\/(.*)\\.mhd.*", line).group(1) not in dict:
                 dict[re.match(".*\\/(.*)\\.mhd.*", line).group(1)] = []
 
             dict[re.match(".*\\/(.*)\\.mhd.*", line).group(1)].append(line)
 
-        counter_global = np.zeros((2, args.num_classes))
-        step = 0
+        with tf.Graph().as_default():
+            # Create queue coordinator.
+            coord = tf.train.Coordinator()
 
-        for key in dict:
-            with tempfile.NamedTemporaryFile(mode='w') as tempf, open('eval/output_' + key + '.csv',
-                                                                      'wb') as logfile_per_file:
-                csvwriter_per_file = csv.DictWriter(logfile_per_file, fieldnames=['Z Coord', 'IoU Class 0',
-                                                                                  'IoU Class 1', 'IoU Class 2',
-                                                                                  'IoU Class 3', 'IoU Class 4', 'mIoU',
-                                                                                  'Acc Class 0', 'Acc Class 1',
-                                                                                  'Acc Class 2',
-                                                                                  'Acc Class 3', 'Acc Class 4',
-                                                                                  'Total Acc'])
-                csvwriter_per_file.writeheader()
+            # Load reader.
+            with tf.name_scope("create_inputs"):
+                reader = ImageReader(
+                    args.data_dir,
+                    args.data_list,
+                    (512, 512),  # No defined input size.
+                    False,  # No random scale.
+                    False,  # No random mirror.
+                    args.ignore_label,
+                    IMG_MEAN,
+                    coord,
+                    shuffle=False)
+            image_batch, label_batch = reader.dequeue(args.batch_size)
 
-                tempf.writelines(dict[key])
-                tempf.flush()
+            # Create network.
+            net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
 
-                prediction_out = np.zeros((len(dict[key]), 512, 512))
+            # Which variables to load.
+            restore_var = tf.global_variables()
 
-                with tf.Graph().as_default():
-                    # Create queue coordinator.
-                    coord = tf.train.Coordinator()
+            # Predictions.
+            raw_output = net.layers['fc1_voc12']
+            raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
+            raw_output = tf.argmax(raw_output, dimension=3)
+            pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
 
-                    # Load reader.
-                    with tf.name_scope("create_inputs"):
-                        reader = ImageReader(
-                            args.data_dir,
-                            tempf.name,
-                            None,  # No defined input size.
-                            False,  # No random scale.
-                            False,  # No random mirror.
-                            args.ignore_label,
-                            IMG_MEAN,
-                            coord,
-                            shuffle=False)
-                        image, label = reader.image, reader.label
-                    image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
-                                                                                            dim=0)  # Add one batch dimension.
+            # mIoU
+            pred = tf.reshape(pred, [-1, ])
+            gt = tf.reshape(label_batch, [-1, ])
+            # weights = tf.cast(tf.less_equal(gt, args.num_classes - 1),
+            #                   tf.int32)  # Ignoring all labels greater than or equal to n_classes.
+            correct_pred = tf.equal(tf.cast(pred, tf.uint8), gt)
+            accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-                    # Create network.
-                    net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+            accuracy_per_class = []
+            for i in xrange(0, args.num_classes):
+                curr_class = tf.constant(i, tf.uint8)
+                accuracy_per_class.append(tf.reduce_mean(
+                    tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
 
-                    # Which variables to load.
-                    restore_var = tf.global_variables()
+            sess = tf.Session()
+            sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
-                    # Predictions.
-                    raw_output = net.layers['fc1_voc12']
-                    raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
-                    raw_output = tf.argmax(raw_output, dimension=3)
-                    pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
+            # Load weights.
+            loader = tf.train.Saver(var_list=restore_var)
+            if args.restore_from is not None:
+                load(loader, sess, args.restore_from)
 
-                    # mIoU
-                    pred = tf.reshape(pred, [-1, ])
-                    gt = tf.reshape(label_batch, [-1, ])
-                    # weights = tf.cast(tf.less_equal(gt, args.num_classes - 1),
-                    #                   tf.int32)  # Ignoring all labels greater than or equal to n_classes.
-                    correct_pred = tf.equal(tf.cast(pred, tf.uint8), gt)
-                    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+            # Start queue threads.
 
-                    accuracy_per_class = []
-                    for i in xrange(0, args.num_classes):
-                        curr_class = tf.constant(i, tf.uint8)
-                        accuracy_per_class.append(tf.reduce_mean(
-                            tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
+            proc = Process(target=saving_process, args=(queue_proc, event_end, args.num_classes,
+                                                        args.data_dir, args.post_processing))
+            proc.start()
+            threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+            acc_per_class = np.zeros(args.num_classes)
 
-                    sess = tf.Session()
-                    sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
+            for sublist in [list_of_all_lines[i:i + args.batch_size] for i in
+                            xrange(0, len(list_of_all_lines), args.batch_size)]:
+                preds, labels, acc, acc_per_class[0], acc_per_class[1], \
+                acc_per_class[2], acc_per_class[3], acc_per_class[4] = sess.run(
+                    [raw_output, label_batch, accuracy, accuracy_per_class[0],
+                     accuracy_per_class[1], accuracy_per_class[2], accuracy_per_class[3],
+                     accuracy_per_class[4]])
+                for i, thing in enumerate(sublist):
+                    regex_match = re.match(".*\\/(.*)\\.mhd_([0-9]+).*", thing)
+                    # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
+                    queue_proc.put((regex_match.group(1), int(regex_match.group(2)), preds[i], labels[i], acc_per_class,
+                                    acc, len(dict[regex_match.group(1)])))
 
-                    # Load weights.
-                    loader = tf.train.Saver(var_list=restore_var)
-                    if args.restore_from is not None:
-                        load(loader, sess, args.restore_from)
-
-                    # Start queue threads.
-                    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-
-                    counter = np.zeros((2, args.num_classes))
-                    acc_per_class = np.zeros(args.num_classes)
-
-                    for idx, line in enumerate(dict[key]):
-                        preds, labels, acc, acc_per_class[0], acc_per_class[1], \
-                        acc_per_class[2], acc_per_class[3], acc_per_class[4] = sess.run(
-                            [raw_output, label_batch, accuracy, accuracy_per_class[0],
-                             accuracy_per_class[1], accuracy_per_class[2], accuracy_per_class[3],
-                             accuracy_per_class[4]])
-
-                        if args.post_processing:
-                            preds[0] = scipy.ndimage.morphology.binary_erosion(preds[0])
-                            preds[0] = scipy.ndimage.morphology.binary_dilation(preds[0])
-
-                        area_intersection, area_union = intersectionAndUnion(preds[0], labels[0, :, :, 0],
-                                                                             args.num_classes)
-
-                        counter[0] += area_intersection
-                        counter[1] += area_union
-                        counter_global[0] += area_intersection
-                        counter_global[1] += area_union
-
-                        IoU_per_class = area_intersection / (np.spacing(1) + area_union)
-
-                        csvwriter_per_file.writerow({'Z Coord': idx, 'IoU Class 0': IoU_per_class[0],
-                                                     'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
-                                                     'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
-                                                     'mIoU': np.mean(IoU_per_class),
-                                                     'Acc Class 0': acc_per_class[0], 'Acc Class 1': acc_per_class[1],
-                                                     'Acc Class 2': acc_per_class[2],
-                                                     'Acc Class 3': acc_per_class[3], 'Acc Class 4': acc_per_class[4],
-                                                     'Total Acc': acc})
-
-                        step += 1
-                        prediction_out[idx] = preds
-
-                    IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
-                    csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
-                                        'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
-                                        'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
-                                        'mIoU': np.mean(IoU_per_class)
-                                        })
-
-                    print("Writing: " + 'eval/mhdout/' + key + '_out.mhd')
-                    mhd_out = sitk.GetImageFromArray(prediction_out)
-                    path_to_img = glob.glob(args.data_dir + '/seg-lungs-LUNA16/' + key + '.mhd')
-                    assert len(path_to_img) == 1
-                    img = sitk.ReadImage(glob.glob(args.data_dir + '/*/' + key + '.mhd')[0])
-                    mhd_out.SetDirection(img.GetDirection())
-                    mhd_out.SetOrigin(img.GetOrigin())
-                    mhd_out.SetSpacing(img.GetSpacing())
-                    sitk.WriteImage(mhd_out,
-                                    'eval/mhdout/' + key + '_out.mhd')
-
-                    coord.request_stop()
-                    coord.join(threads)
-
-        global_IoU_per_class = counter_global[0] / (np.spacing(1) + counter_global[1])
-        csvwriter.writerow({'File': 'Global', 'IoU Class 0': global_IoU_per_class[0],
-                            'IoU Class 1': global_IoU_per_class[1], 'IoU Class 2': global_IoU_per_class[2],
-                            'IoU Class 3': global_IoU_per_class[3], 'IoU Class 4': global_IoU_per_class[4],
-                            'mIoU': np.mean(global_IoU_per_class)
-                            })
+            coord.request_stop()
+            coord.join(threads)
+            event_end.set()
+            proc.join()
 
 
 if __name__ == '__main__':
