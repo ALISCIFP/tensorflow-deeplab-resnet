@@ -125,7 +125,7 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                                                                                       'Total Acc'])
                     csvwriter_per_file.writeheader()
 
-            with open('eval/output_' + key + '.csv', 'wb') as logfile_per_file:
+            with open('eval/output_' + key + '.csv', 'ab') as logfile_per_file:
                 csvwriter_per_file = csv.DictWriter(logfile_per_file, fieldnames=['Z Coord', 'IoU Class 0',
                                                                                   'IoU Class 1', 'IoU Class 2',
                                                                                   'IoU Class 3', 'IoU Class 4',
@@ -167,14 +167,15 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                 dict_of_curr_processing_len[key] += 1
 
                 IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
-                csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
-                                    'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
-                                    'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
-                                    'mIoU': np.mean(IoU_per_class)
-                                    })
+
 
                 if dict_of_curr_processing_len[key] == num_slices:
                     print("Writing: " + 'eval/mhdout/' + key + '_out.mhd')
+                    csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
+                                        'IoU Class 1': IoU_per_class[1], 'IoU Class 2': IoU_per_class[2],
+                                        'IoU Class 3': IoU_per_class[3], 'IoU Class 4': IoU_per_class[4],
+                                        'mIoU': np.mean(IoU_per_class)
+                                        })
                     mhd_out = sitk.GetImageFromArray(dict_of_curr_processing[key])
                     path_to_img = glob.glob(data_dir + '/seg-lungs-LUNA16/' + key + '.mhd')
                     assert len(path_to_img) == 1
