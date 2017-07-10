@@ -78,7 +78,7 @@ def saving_process(queue, event, data_dir, post_processing):
     while not (event.is_set() and queue.empty()):
         key, idx, preds, num_slices = queue.get()
         if key not in dict_of_curr_processing:
-            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512))
+            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512), dtype=np.int16)
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
         if post_processing:
@@ -96,6 +96,7 @@ def saving_process(queue, event, data_dir, post_processing):
             assert len(path_to_img) == 1
             img = nib.load(path_to_img[0])
             nii_out = nib.Nifti1Image(dict_of_curr_processing[key].transpose((1, 2, 0)), img.affine, header=img.header)
+            nii_out.set_data_dtype(np.int16)
             nib.save(nii_out, fname_out)
             del dict_of_curr_processing[key]
             dict_of_curr_processing_len[key] += 1
