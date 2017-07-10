@@ -131,7 +131,7 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                 if key not in dict_of_curr_processing:
                     dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512))
                     dict_of_curr_processing_len[key] = 1  # this is correct!
-                counter = np.zeros((2, num_classes))
+                    counter = np.zeros((2, num_classes))
 
                 if post_processing:
                     preds = scipy.ndimage.morphology.binary_erosion(preds)
@@ -151,15 +151,13 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                                              'IoU Class 1': IoU_per_class[1], 'mIoU': np.mean(IoU_per_class),
                                              'Acc Class 0': acc_per_class[0], 'Acc Class 1': acc_per_class[1],
                                              'Total Acc': acc})
-
+                logfile_per_file.flush()
                 dict_of_curr_processing[key][idx] = preds
                 dict_of_curr_processing_len[key] += 1
 
-                IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
-
-
                 if dict_of_curr_processing_len[key] == num_slices:
                     print("Writing: " + 'eval/mhdout/' + key + '.mhd')
+                    IoU_per_class = counter[0] / (np.spacing(1) + counter[1])
                     csvwriter.writerow({'File': key, 'IoU Class 0': IoU_per_class[0],
                                         'IoU Class 1': IoU_per_class[1], 'mIoU': np.mean(IoU_per_class)
                                         })
@@ -174,12 +172,13 @@ def saving_process(queue, event, num_classes, data_dir, post_processing):
                                     'eval/mhdout/' + key + '.mhd')
                     del dict_of_curr_processing[key]
                     dict_of_curr_processing_len[key] += 1
+                    logfile.flush()
 
         global_IoU_per_class = counter_global[0] / (np.spacing(1) + counter_global[1])
         csvwriter.writerow({'File': 'Global', 'IoU Class 0': global_IoU_per_class[0],
                             'IoU Class 1': global_IoU_per_class[1],'mIoU': np.mean(global_IoU_per_class)
                             })
-
+        logfile.flush()
 
 def main():
     """Create the model and start the evaluation process."""
