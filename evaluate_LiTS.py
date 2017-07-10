@@ -89,7 +89,6 @@ def saving_process(queue, event, data_dir, post_processing):
         dict_of_curr_processing_len[key] += 1
 
         if dict_of_curr_processing_len[key] == num_slices:
-            dict_of_curr_processing[key][dict_of_curr_processing[key] == 1] = 0
             fname_out = 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii'
             print("Writing: " + fname_out)
             path_to_img = glob.glob(data_dir + '/*/' + key + '.nii')
