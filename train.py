@@ -45,7 +45,7 @@ RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 11
-SNAPSHOT_DIR = './snapshots/'
+SNAPSHOT_DIR = './snapshotsLUNA16/'
 WEIGHT_DECAY = 0.0005
 
 
