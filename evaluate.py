@@ -21,7 +21,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 21
-RESTORE_FROM = './a/'
+RESTORE_FROM = '/mnt/data/snapshotsVOCRefinement/'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -85,7 +85,6 @@ def main():
     image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
                                                                             dim=0)  # Add one batch dimension.
     image_batch = tf.image.resize_area(image_batch, [512, 512])
-    # label_batch = tf.image.resize_bilinear(label_batch, [512, 512])
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
