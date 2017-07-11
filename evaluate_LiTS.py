@@ -96,7 +96,7 @@ def saving_process(queue, event, data_dir, post_processing):
             assert len(path_to_img) == 1
             img = nib.load(path_to_img[0])
             nii_out = nib.Nifti1Image(dict_of_curr_processing[key].transpose((1, 2, 0)), img.affine, header=img.header)
-            nii_out.set_data_dtype(np.int16)
+            nii_out.set_data_dtype(np.uint8)
             nib.save(nii_out, fname_out)
             del dict_of_curr_processing[key]
             dict_of_curr_processing_len[key] += 1
