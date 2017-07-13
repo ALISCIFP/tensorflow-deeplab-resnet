@@ -41,7 +41,7 @@ def convert(data_dir, out_dir):
             img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=np.min(img))
 
             for i in xrange(0, img.shape[2]):
-                jpegpath = os.path.join("JPEGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
+                jpegpath = os.path.join("JPEGImages", data_file.split('/')[-1] + "_" + str(i) + ".jpg")
                 pngpath = os.path.join("PNGImages", data_file.split('/')[-1] + "_" + str(i) + ".png")
                 scipy.misc.imsave(os.path.join(out_dir, jpegpath), img_pad[:, :, i:i + 3])
                 cv2.imwrite(os.path.join(out_dir, pngpath), img_gt[:, :, i])
