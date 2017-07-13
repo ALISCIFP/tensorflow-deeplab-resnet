@@ -20,7 +20,7 @@ def convert(data_dir, out_dir):
     if not os.path.exists(os.path.join(out_dir, "dataset")):
         os.makedirs(os.path.join(out_dir, "dataset"))
 
-    with open(os.path.join(data_dir, "dataset/testJPEG.txt"), 'w') as ftest:
+    with open(os.path.join(data_dir, "dataset/test.txt"), 'w') as ftest:
 
         if not os.path.exists(os.path.join(out_dir, "JPEGImagesTest")):
             os.makedirs(os.path.join(out_dir, "JPEGImagesTest"))
