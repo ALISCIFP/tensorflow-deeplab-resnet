@@ -5,7 +5,7 @@ python train.py  \
 --batch-size 5 \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from './snapshots/LITS4tlr' \
---snapshot-dir './snapshots/LITS4tlr2' \
---gpu-mask '0'  \
---num-steps 300000 \
+--restore-from './snapshots/LITS4' \
+--snapshot-dir './snapshots/LITS4_refine' \
+--gpu-mask '1'  \
+--num-steps 535068 \
