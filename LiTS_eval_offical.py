@@ -4,7 +4,8 @@
 # # Evaluation script for LITS Challenge
 
 # In[1]:
-
+import os,glob
+import argparse
 from medpy import metric
 from surface import Surface
 import glob
@@ -53,7 +54,7 @@ def get_scores(pred,label,vxlspacing):
 # In[5]:
 def eval(label,prob,outpath):
 
-
+    results = []
     loaded_label = nb.load(label)
     loaded_prob = nb.load(prob)
 
