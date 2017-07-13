@@ -103,7 +103,7 @@ def main():
 
 
     args = parser.parse_args()
-    eval(args.labesl,args.probs,args.out_dir)
+    eval(args.labels,args.probs,args.out_dir)
 
 
 if __name__ == '__main__':
