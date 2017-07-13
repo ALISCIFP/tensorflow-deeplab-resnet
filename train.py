@@ -258,6 +258,7 @@ def main():
     conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
+    concat_trainable = [v for v in all_trainable if 'concat' in v.name] # only train concat layers -- by zack 07,13,2017
     assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
 
@@ -434,17 +435,19 @@ def main():
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
     opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
     opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 20.0, args.momentum)
-
-    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable)
+    opt_concat = tf.train.MomentumOptimizer(learning_rate, args.momentum)
+    
+    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable+concat_trainable)
     grads_conv = grads[:len(conv_trainable)]
     grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
-    grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
-
+    grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):(len(conv_trainable) + len(fc_w_trainable)+len(fc_b_trainable))]
+    grads_concat = grads[(len(conv_trainable) + len(fc_w_trainable)+len(fc_b_trainable)):]
+    
     train_op_conv = opt_conv.apply_gradients(zip(grads_conv, conv_trainable))
     train_op_fc_w = opt_fc_w.apply_gradients(zip(grads_fc_w, fc_w_trainable))
     train_op_fc_b = opt_fc_b.apply_gradients(zip(grads_fc_b, fc_b_trainable))
-
-    train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b)
+    train_op_concat = opt_concat.apply_gradients(zip(grads_concat, concat_trainable))
+    train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b,train_op_concat)
 
     # Set up tf session and initialize variables.
     sess = tf.Session()
@@ -453,7 +456,7 @@ def main():
     sess.run(init)
 
     # Saver for storing checkpoints of the model.
-    saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=10)
+    saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=100)
 
     # Load variables if the checkpoint is provided.
     inital_step_value = 1
@@ -494,7 +497,7 @@ def main():
             feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
             acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
                 [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
+                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op_concat],
                 feed_dict=feed_dict)
 
             summary_writer_train.add_summary(summary_t, step)
