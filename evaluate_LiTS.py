@@ -27,7 +27,7 @@ DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 3
 BATCH_SIZE = 20
-RESTORE_FROM = './LITS4tlr2bk/'
+RESTORE_FROM = './LITS4tlr2/'
 
 
 def get_arguments():
