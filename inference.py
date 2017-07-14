@@ -102,7 +102,7 @@ def main():
     # Predictions.
     raw_output = net.layers['fc1_voc12']
     # raw_output = net.layers['concat_conv6']
-    raw_output_up = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
+    raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(label_batch)[1:3, ])
     raw_output_up = tf.argmax(raw_output_up, dimension=3)
     pred = tf.expand_dims(raw_output_up, dim=3)
     
