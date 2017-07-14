@@ -266,11 +266,11 @@ def main():
                    'fc' not in v.name and 'concat' not in v.name or not args.not_restore_last]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
-    conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
+    conv_trainable = [v for v in all_trainable if 'fc' not in v.name and 'concat' not in v.name]  # lr * 1.0
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
     concat_trainable = [v for v in all_trainable if 'concat' in v.name] # only train concat layers -- by zack 07,13,2017
-    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
+    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable) + len(concat_trainable))
     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
