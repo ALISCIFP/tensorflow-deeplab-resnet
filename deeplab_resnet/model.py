@@ -426,17 +426,17 @@ class DeepLabResNetModel(Network):
          .concat(axis=-1, name='concat_input'))
 
         (self.feed('concat_input')
-         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv1')
+         .conv(1, 1, 32, 1, 1, biased=True, relu=False, name='concat_conv1', padding='SAME')
          .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv1_bn'))
 
         (self.feed('concat_conv1_bn')
          .relu(name='concat_conv2_relu')
-         .conv(3, 3, 64, 1, 1, biased=True, relu=False, name='concat_conv2')
+         .conv(2, 2, 64, 1, 1, biased=True, relu=False, name='concat_conv2', padding='SAME')
          .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv2_bn'))
 
         (self.feed('concat_conv2_bn')
          .relu(name='concat_conv3_relu')
-         .conv(3, 3, 128, 1, 1, biased=True, relu=False, name='concat_conv3')
+         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv3')
          .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv3_bn'))
 
         (self.feed('concat_conv3_bn')
@@ -446,12 +446,22 @@ class DeepLabResNetModel(Network):
 
         (self.feed('concat_conv4_bn')
          .relu(name='concat_conv5_relu')
-         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv5')
+         .conv(3, 3, 128, 1, 1, biased=True, relu=False, name='concat_conv5')
          .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv5_bn'))
 
         (self.feed('concat_conv5_bn')
          .relu(name='concat_conv6_relu')
-         .conv(3, 3, num_classes, 1, 1, biased=True, relu=False, name='concat_conv6'))
+         .conv(3, 3, 64, 1, 1, biased=True, relu=False, name='concat_conv6')
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv6_bn'))
+
+        (self.feed('concat_conv6_bn')
+         .relu(name='concat_conv7_relu')
+         .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv7')
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv7_bn'))
+
+        (self.feed('concat_conv7_bn')
+         .relu(name='concat_conv8_relu')
+         .conv(3, 3, num_classes, 1, 1, biased=True, relu=False, name='concat_conv8'))
 
 
 class DeepLabResNetModelOld(Network):
