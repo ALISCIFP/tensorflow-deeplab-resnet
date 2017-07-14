@@ -30,7 +30,7 @@ IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32
 # LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
 #                                   dtype=np.float32)
 
-GPU_MASK = '1'
+GPU_MASK = '0'
 BATCH_SIZE = 4
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None

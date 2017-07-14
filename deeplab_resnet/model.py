@@ -428,40 +428,54 @@ class DeepLabResNetModel(Network):
         (self.feed('concat_input')
          .batch_normalization(is_training=is_training, activation_fn=None, name='concat_bn')
          .conv(1, 1, 32, 1, 1, biased=True, relu=False, name='concat_conv1', padding='SAME')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv1_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv1_bn')
+         .relu(name='concat_conv2_relu'))
 
-        (self.feed('concat_conv1_bn')
-         .relu(name='concat_conv2_relu')
+        (self.feed('concat_conv1_bn',
+                   'concat_conv2_relu')
+         .add(name='concat_1+2')
          .conv(2, 2, 64, 1, 1, biased=True, relu=False, name='concat_conv2', padding='SAME')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv2_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv2_bn')
+         .relu(name='concat_conv3_relu'))
 
-        (self.feed('concat_conv2_bn')
-         .relu(name='concat_conv3_relu')
+        (self.feed('concat_conv2_bn',
+                   'concat_conv3_relu')
+         .add(name='concat_2+3')
          .conv(3, 3, 128, 1, 1, biased=True, relu=False, name='concat_conv3')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv3_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv3_bn')
+         .relu(name='concat_conv4_relu'))
 
-        (self.feed('concat_conv3_bn')
-         .relu(name='concat_conv4_relu')
+        (self.feed('concat_conv3_bn',
+                   'concat_conv4_relu')
+         .add(name='concat_3+4')
          .conv(3, 3, 256, 1, 1, biased=True, relu=False, name='concat_conv4')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv4_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv4_bn')
+         .relu(name='concat_conv5_relu'))
 
-        (self.feed('concat_conv4_bn')
-         .relu(name='concat_conv5_relu')
+        (self.feed('concat_conv4_bn',
+                   'concat_conv5_relu')
+         .add(name='concat_4+5')
          .conv(3, 3, 128, 1, 1, biased=True, relu=False, name='concat_conv5')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv5_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv5_bn')
+         .relu(name='concat_conv6_relu'))
 
-        (self.feed('concat_conv5_bn')
-         .relu(name='concat_conv6_relu')
+        (self.feed('concat_conv5_bn',
+                   'concat_conv6_relu')
+         .add(name='concat_5+6')
          .conv(3, 3, 64, 1, 1, biased=True, relu=False, name='concat_conv6')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv6_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv6_bn')
+         .relu(name='concat_conv7_relu'))
 
-        (self.feed('concat_conv6_bn')
-         .relu(name='concat_conv7_relu')
+        (self.feed('concat_conv6_bn',
+                   'concat_conv7_relu')
+         .add(name='concat_6+7')
          .conv(3, 3, 32, 1, 1, biased=True, relu=False, name='concat_conv7')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv7_bn'))
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv7_bn')
+         .relu(name='concat_conv8_relu'))
 
-        (self.feed('concat_conv7_bn')
-         .relu(name='concat_conv8_relu')
+        (self.feed('concat_conv7_bn',
+                   'concat_conv8_relu')
+         .add(name='concat_7+8')
          .conv(3, 3, num_classes, 1, 1, biased=True, relu=False, name='concat_conv8'))
 
 
