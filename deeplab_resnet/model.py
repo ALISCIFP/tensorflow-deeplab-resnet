@@ -426,6 +426,7 @@ class DeepLabResNetModel(Network):
          .concat(axis=-1, name='concat_input'))
 
         (self.feed('concat_input')
+         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv1_bn_input')
          .conv(1, 1, 32, 1, 1, biased=True, relu=False, name='concat_conv1', padding='SAME')
          .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv1_bn'))
 
