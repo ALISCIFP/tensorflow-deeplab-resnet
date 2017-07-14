@@ -12,7 +12,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels
+from deeplab_resnet import DeepLabResNetModelOld, ImageReader, decode_labels
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 GPU_MASK = '0'
@@ -94,14 +94,14 @@ def main():
     # img -= IMG_MEAN
     
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+    net = DeepLabResNetModelOld({'data': image_batch}, is_training=False, num_classes=args.num_classes)
 
     # Which variables to load.
     restore_var = tf.global_variables()
 
     # Predictions.
-    # raw_output = net.layers['fc1_voc12']
-    raw_output = net.layers['concat_conv6']
+    raw_output = net.layers['fc1_voc12']
+    # raw_output = net.layers['concat_conv6']
     raw_output_up = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
     raw_output_up = tf.argmax(raw_output_up, dimension=3)
     pred = tf.expand_dims(raw_output_up, dim=3)

@@ -21,7 +21,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 21
-RESTORE_FROM = '/mnt/data/snapshotsVOCRefinement/'
+RESTORE_FROM = './deeplab_resnet.ckpt'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -93,7 +93,7 @@ def main():
     restore_var = tf.global_variables()
 
     # Predictions.
-    raw_output = net.layers['concat_conv6']
+    raw_output = net.layers['concat_conv8']
     raw_output = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
     raw_output = tf.argmax(raw_output, dimension=3)
     pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
