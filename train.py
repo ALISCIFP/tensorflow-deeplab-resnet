@@ -258,7 +258,7 @@ def main():
     # if they are presented in var_list of the optimiser definition.
 
     # Predictions.
-    raw_output = net.layers['concat_conv6']
+    raw_output = net.layers['concat_conv8']
     raw_output_old = net.layers['fc1_voc12']
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
