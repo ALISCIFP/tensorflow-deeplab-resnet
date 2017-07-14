@@ -48,7 +48,7 @@ RESTORE_FROM = './deeplab_resnet.ckpt'
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
-SNAPSHOT_DIR = '/mnt/data/snapshots/'
+SNAPSHOT_DIR = '/mnt/data/snapshots2/'
 WEIGHT_DECAY = 0.0005
 
 
