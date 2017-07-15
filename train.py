@@ -43,12 +43,11 @@ NUM_CLASSES = 21
 NUM_STEPS = 1000000
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
-# RESTORE_FROM = '/mnt/data/snapshots/'
+RESTORE_FROM = None
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
-SNAPSHOT_DIR = '/mnt/data/snapshots/'
+SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
 
 
@@ -125,8 +124,8 @@ def get_arguments():
                         help="Base learning rate for training with polynomial decay.")
     parser.add_argument("--momentum", type=float, default=MOMENTUM,
                         help="Momentum component of the optimiser.")
-    parser.add_argument("--not-restore-last", action="store_true",
-                        help="Whether to not restore last (FC) layers.")
+    parser.add_argument("--first-run", action="store_true",
+                        help="First run?")
     parser.add_argument("--num-classes", type=int, default=NUM_CLASSES,
                         help="Number of classes to predict (including background).")
     parser.add_argument("--num-steps", type=int, default=NUM_STEPS,
@@ -201,7 +200,7 @@ def main():
 
     tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=' + args.snapshot_dir))
 
-    if args.not_restore_last:
+    if args.first_run:
         try:
             shutil.rmtree(args.snapshot_dir)
         except Exception as e:
@@ -256,22 +255,24 @@ def main():
     # If is_training=True, the statistics will be updated during the training.
     # Note that is_training=False still updates BN parameters gamma (scale) and beta (offset)
     # if they are presented in var_list of the optimiser definition.
-
-    # Predictions.
-    raw_output = net.layers['concat_conv8']
-    raw_output_old = net.layers['fc1_voc12']
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
     restore_var = [v for v in tf.global_variables() if
-                   'fc' not in v.name and 'concat' not in v.name or not args.not_restore_last]
+                   'concat' not in v.name or not args.first_run]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
     conv_trainable = [v for v in all_trainable if 'fc' not in v.name and 'concat' not in v.name]  # lr * 1.0
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
-    concat_trainable = [v for v in all_trainable if 'concat' in v.name] # only train concat layers -- by zack 07,13,2017
+    concat_trainable = [v for v in all_trainable if
+                        'concat' in v.name]  # only train concat layers -- by zack 07,13,2017
     assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable) + len(concat_trainable))
     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
+    # Predictions.
+    # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], conv_trainable, summarize=100)
+    # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], concat_trainable, summarize=100)
+    raw_output = net.layers['concat_conv8']
+    raw_output_old = net.layers['fc1_voc12']
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
