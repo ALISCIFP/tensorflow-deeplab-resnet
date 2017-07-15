@@ -10,7 +10,6 @@ from __future__ import print_function
 import argparse
 import os
 import re
-import shutil
 import time
 
 import numpy as np
@@ -195,12 +194,6 @@ def main():
     """Create the model and start the training."""
     args = get_arguments()
     print(args)
-
-    if args.first_run:
-        try:
-            shutil.rmtree(args.snapshot_dir)
-        except Exception as e:
-            print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -415,18 +408,13 @@ def main():
     tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
     tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-    images_summary_concat = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    labels_summary_concat = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
+    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_concat = tf.py_func(decode_labels, [pred_concat, args.save_num_images, args.num_classes], tf.uint8)
-    tf.summary.image('concat output',
-                     tf.concat(axis=2, values=[images_summary_concat, labels_summary_concat, preds_summary_concat]),
-                     max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
-
-    images_summary_resnet = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    labels_summary_resnet = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_resnet = tf.py_func(decode_labels, [pred_resnet, args.save_num_images, args.num_classes], tf.uint8)
-    tf.summary.image('resnet output',
-                     tf.concat(axis=2, values=[images_summary_resnet, labels_summary_resnet, preds_summary_resnet]),
+    tf.summary.image('image, gt, resnet, concat',
+                     tf.concat(axis=2,
+                               values=[images_summary, labels_summary, preds_summary_resnet, preds_summary_concat]),
                      max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
     all_summary = tf.summary.merge_all('all')
