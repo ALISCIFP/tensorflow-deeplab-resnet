@@ -261,7 +261,7 @@ def main():
     # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], conv_trainable, summarize=100)
     # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], concat_trainable, summarize=100)
     raw_output = net.layers['concat_conv8']
-    raw_output_old = net.layers['fc1_voc12']
+    raw_output_old = net.layers['fc1_voc12_resized']
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
@@ -294,8 +294,8 @@ def main():
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction_old = tf.reshape(raw_output_old, [-1, args.num_classes])
-    label_proc_old = prepare_label(label_batch, tf.stack(raw_output_old.get_shape()[1:3]), num_classes=args.num_classes,
-                               one_hot=False)  # [batch_size, h, w]
+    label_proc_old = prepare_label(label_batch, tf.stack([h, w]), num_classes=args.num_classes,
+                                   one_hot=False)  # [batch_size, h, w]
     raw_gt_old = tf.reshape(label_proc_old, [-1, ])
     indices_old = tf.squeeze(tf.where(tf.less_equal(raw_gt_old, args.num_classes - 1)), 1)
     gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
@@ -322,13 +322,11 @@ def main():
                    + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
-    raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
-    raw_output_up = tf.argmax(raw_output_up, dimension=3)
-    pred_concat = tf.expand_dims(raw_output_up, dim=3)
+    raw_output = tf.argmax(raw_output, dimension=3)
+    pred_concat = tf.expand_dims(raw_output, dim=3)
 
-    raw_output_up_old = tf.image.resize_bilinear(raw_output_old, tf.shape(image_batch)[1:3, ])
-    raw_output_up_old = tf.argmax(raw_output_up_old, dimension=3)
-    pred_resnet = tf.expand_dims(raw_output_up_old, dim=3)
+    raw_output_old = tf.argmax(raw_output_old, dimension=3)
+    pred_resnet = tf.expand_dims(raw_output_old, dim=3)
 
     # Image summary.
     reduced_loss_train = tf.Variable(0, trainable=False, dtype=tf.float32)
