@@ -17,7 +17,7 @@ import numpy as np
 import scipy.ndimage
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader
+from deeplab_resnet import DeepLabResNetModel, ImageReader, dense_crf, inv_preprocess
 
 IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
 
@@ -26,7 +26,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 3
-BATCH_SIZE = 20
+BATCH_SIZE = 1  # Do not change
 RESTORE_FROM = './LITS4tlr2/'
 
 
@@ -155,6 +155,11 @@ def main():
             # Predictions.
             raw_output = net.layers['fc1_voc12']
             raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
+
+            # CRF
+            inv_image = tf.py_func(inv_preprocess, [image_batch, args.batch_size, IMG_MEAN], tf.uint8)
+            raw_output = tf.py_func(dense_crf, [tf.nn.softmax(raw_output), inv_image], tf.float32)
+
             raw_output = tf.argmax(raw_output, dimension=3)
 
             sess = tf.Session()
@@ -176,7 +181,7 @@ def main():
                 preds = sess.run([raw_output])[0]
                 for i, thing in enumerate(sublist):
                     regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
-                    # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
+                    print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
                     queue_proc.put(
                         (regex_match.group(1), int(regex_match.group(2)), preds[i], len(dict[regex_match.group(1)])))
 

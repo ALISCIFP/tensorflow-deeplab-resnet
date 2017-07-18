@@ -12,7 +12,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader
+from deeplab_resnet import DeepLabResNetModel, ImageReader, dense_crf, inv_preprocess
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
 
@@ -95,6 +95,11 @@ def main():
     # Predictions.
     raw_output = net.layers['concat_conv8']
     raw_output = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
+
+    # CRF
+    inv_image = tf.py_func(inv_preprocess, [image_batch, args.batch_size, IMG_MEAN], tf.uint8)
+    raw_output = tf.py_func(dense_crf, [tf.nn.softmax(raw_output), inv_image], tf.float32)
+
     raw_output = tf.argmax(raw_output, dimension=3)
     pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
 
