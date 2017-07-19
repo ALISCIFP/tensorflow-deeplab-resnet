@@ -153,7 +153,7 @@ def main():
             restore_var = tf.global_variables()
 
             # Predictions.
-            raw_output = net.layers['fc1_voc12']
+            raw_output = net.layers['concat_conv8']
             raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
 
             # CRF
