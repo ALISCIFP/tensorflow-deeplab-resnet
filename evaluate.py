@@ -82,9 +82,9 @@ def main():
             coord,
             shuffle=False)
         image, label = reader.image, reader.label
-    image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
-                                                                            dim=0)  # Add one batch dimension.
-    image_batch = tf.image.resize_bilinear(image_batch, [512, 512])
+    image_batch_orig, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
+                                                                                 dim=0)  # Add one batch dimension.
+    image_batch = tf.image.resize_bilinear(image_batch_orig, [512, 512])
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -97,7 +97,7 @@ def main():
     raw_output = tf.image.resize_bilinear(raw_output, tf.shape(label_batch)[1:3, ])
 
     # CRF
-    inv_image = tf.py_func(inv_preprocess, [image_batch, 1, IMG_MEAN], tf.uint8)
+    inv_image = tf.py_func(inv_preprocess, [image_batch_orig, 1, IMG_MEAN], tf.uint8)
     raw_output = tf.py_func(dense_crf, [tf.nn.softmax(raw_output), inv_image], tf.float32)
 
     raw_output = tf.argmax(raw_output, dimension=3)
