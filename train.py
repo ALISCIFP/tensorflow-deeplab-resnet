@@ -44,7 +44,7 @@ IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.49e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 5
+NUM_CLASSES = 3
 NUM_STEPS = 400000
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -273,20 +273,9 @@ def main():
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
     # Pixel-wise softmax loss.
-    loss = []
-    accuracy_per_class = []
-    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
-    for i in xrange(0, args.num_classes):
-        curr_class = tf.constant(i, tf.int32)
-        loss.append(softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
-                                                                                          weights=tf.where(
-                                                                                              tf.equal(gt, curr_class),
-                                                                                              tf.zeros_like(gt),
-                                                                                              tf.ones_like(gt))))
-        accuracy_per_class.append(
-            tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
+    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
+    reduced_loss = tf.reduce_mean(loss) + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
@@ -304,15 +293,6 @@ def main():
     reduced_loss_val = tf.cond(mode, lambda: reduced_loss_val, lambda: tf.assign(reduced_loss_val, reduced_loss))
     accuracy_val = tf.cond(mode, lambda: accuracy_val, lambda: tf.assign(accuracy_val, accuracy))
 
-    accuracy_per_class_train = []
-    accuracy_per_class_val = []
-    for i in xrange(0, args.num_classes):
-        temp_train_var = tf.Variable(0, trainable=False, dtype=tf.float32)
-        temp_val_var = tf.Variable(0, trainable=False, dtype=tf.float32)
-        accuracy_per_class_train.append(
-            tf.cond(mode, lambda: tf.assign(temp_train_var, accuracy_per_class[i]), lambda: temp_train_var))
-        accuracy_per_class_val.append(
-            tf.cond(mode, lambda: temp_val_var, lambda: tf.assign(temp_val_var, accuracy_per_class[i])))
 
     accuracy_output = tf.cond(mode, lambda: accuracy_train, lambda: accuracy_val)
     loss_output = tf.cond(mode, lambda: reduced_loss_train, lambda: reduced_loss_val)
@@ -359,17 +339,14 @@ def main():
 
     IoU_summary_output_intermed = tf.cond(mode, lambda: IoU_summary, lambda: Val_IoU_summary)
     IoU_summary_no_reset_output_intermed = tf.cond(mode, lambda: IoU_summary_no_reset, lambda: Val_IoU_summary_no_reset)
-    accuracy_per_class_output_intermed = tf.cond(mode, lambda: accuracy_per_class_train, lambda: accuracy_per_class_val)
 
     class_number = tf.placeholder(tf.int32, shape=())
 
     IoU_summary_output = tf.gather(IoU_summary_output_intermed, class_number)
     IoU_summary_no_reset_output = tf.gather(IoU_summary_no_reset_output_intermed, class_number)
-    accuracy_per_class_output = tf.gather(accuracy_per_class_output_intermed, class_number)
 
     tf.summary.scalar("IoU per class", IoU_summary_output, collections=['per_class'])
     tf.summary.scalar("IoU (no reset) per class", IoU_summary_no_reset_output, collections=['per_class'])
-    tf.summary.scalar("Accuracy per class", accuracy_per_class_output, collections=['per_class'])
 
     mIoU_output = tf.cond(mode, lambda: mIoU, lambda: Val_mIoU)
     mIoU_no_reset_output = tf.cond(mode, lambda: mIoU_no_reset, lambda: Val_mIoU_no_reset)
@@ -443,8 +420,8 @@ def main():
         # mode False -> val, mode True -> train
         if step % args.save_pred_every == 0:
             feed_dict = {step_ph: step, mode: False, class_number: step % args.num_classes}
-            acc, loss_value, mI, mINR, _, _, _, summary_v_this_class, summary_v = sess.run(
-                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
+            acc, loss_value, mI, mINR, _, _, summary_v_this_class, summary_v = sess.run(
+                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output,
                  IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary], feed_dict=feed_dict)
             save(saver, sess, args.snapshot_dir, step)
 
@@ -457,8 +434,8 @@ def main():
                     step, loss_value, acc, mI, mINR, duration))
         else:
             feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
-            acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
-                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
+            acc, loss_value, mI, mINR, _, _, summary_t_this_class, summary_t, _ = sess.run(
+                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output,
                  IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
                 feed_dict=feed_dict)
 
