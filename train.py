@@ -42,7 +42,7 @@ DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
-LEARNING_RATE = 2.49e-4
+LEARNING_RATE = 2.49e-5
 MOMENTUM = 0.9
 NUM_CLASSES = 5
 NUM_STEPS = 400000
@@ -181,7 +181,7 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-#    saver.restore(sess, ckpt_path)
+    #saver.restore(sess, ckpt_path)
     saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
