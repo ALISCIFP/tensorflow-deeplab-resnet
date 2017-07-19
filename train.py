@@ -35,11 +35,11 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
 
 
-GPU_MASK = '1'
+GPU_MASK = '6'
 BATCH_SIZE = 5
-DATA_DIRECTORY = None
-DATA_LIST_PATH = None
-VAL_DATA_LIST_PATH = None
+DATA_DIRECTORY = '/home/z003hvsa/Data/LITS'
+DATA_LIST_PATH = '/home/z003hvsa/Data/LITS/dataset/train.txt'
+VAL_DATA_LIST_PATH = '/home/z003hvsa/Data/LITS/dataset/val.txt'
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.49e-4
@@ -48,7 +48,7 @@ NUM_CLASSES = 5
 NUM_STEPS = 400000
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
+RESTORE_FROM = None
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 1000
 SNAPSHOT_DIR = './snapshots/'
