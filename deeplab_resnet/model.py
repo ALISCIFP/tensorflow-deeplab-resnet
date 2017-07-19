@@ -42,7 +42,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('bn2a_branch2c',
                    'bn2b_branch2c')
-             .concat(name='res2b')
+             .concat(axis =-1,name='res2b')
              .relu(name='res2b_relu')
              .conv(1, 1, 64, 1, 1, biased=False, relu=False, name='res2c_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2c_branch2a')
@@ -53,7 +53,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res2b',
                    'bn2c_branch2c')
-             .concat(name='res2c') #192
+             .concat(axis =-1,name='res2c') #192
              .relu(name='res2c_relu')
              .conv(1, 1, 64, 2, 2, biased=False, relu=False, name='res3a_branch1') #64*64
              .batch_normalization(is_training=is_training, activation_fn=None, name='bn3a_branch1'))
@@ -77,7 +77,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('bn3a_branch2c',
                    'bn3b1_branch2c')
-             .concat(name='res3b1')
+             .concat(axis =-1,name='res3b1')
              .relu(name='res3b1_relu')
              .conv(1, 1, 128, 1, 1, biased=False, relu=False, name='res3b2_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b2_branch2a')
@@ -88,7 +88,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res3b1',
                    'bn3b2_branch2c')
-             .concat(name='res3b2')
+             .concat(axis =-1,name='res3b2')
              .relu(name='res3b2_relu')
              .conv(1, 1, 128, 1, 1, biased=False, relu=False, name='res3b3_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b3_branch2a')
@@ -97,16 +97,14 @@ class DeepLabResNetModel(Network):
              .conv(1, 1, 16, 1, 1, biased=False, relu=False, name='res3b3_branch2c')
              .batch_normalization(is_training=is_training, activation_fn=None, name='bn3b3_branch2c'))
 
-        (self.feed('res3b2_relu', 
-                   'bn3b3_branch2c')
-             .add(name='res3b3')
+        (self.feed('bn3b3_branch2c')
              .relu(name='res3b3_relu')
              .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4a_branch1')
              .batch_normalization(is_training=is_training, activation_fn=None, name='bn4a_branch1'))
 
         (self.feed('res3b2',
                    'bn3b3_branch2c')
-             .concat(name='catres3b3')
+             .concat(axis =-1,name='catres3b3')
              .relu(name='catres3b3_relu')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4a_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4a_branch2a')
@@ -117,7 +115,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('catres3b3',
                    'bn4a_branch2c')
-             .concat(name='res4a')
+             .concat(axis =-1,name='res4a')
              .relu(name='res4a_relu')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b1_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b1_branch2a')
@@ -128,7 +126,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res4a',
                    'bn4b1_branch2c')
-             .concat(name='res4b1')
+             .concat(axis =-1,name='res4b1')
              .relu(name='res4b1_relu')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b2_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b2_branch2a')
@@ -139,7 +137,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res4b1',
                    'bn4b2_branch2c')
-             .concat(name='res4b2')
+             .concat(axis =-1,name='res4b2')
              .relu(name='res4b2_relu')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b3_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b3_branch2a')
@@ -150,7 +148,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res4b2',
                    'bn4b3_branch2c')
-             .concat(name='res4b3')
+             .concat(axis =-1,name='res4b3')
              .relu(name='res4b3_relu')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b4_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b4_branch2a')
@@ -161,25 +159,23 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res4b3',
                    'bn4b4_branch2c')
-             .concat(name='res4b4')
+             .concat(axis =-1,name='res4b4')
              .relu(name='res4b4_relu')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b5_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b5_branch2a')
              .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b5_branch2b')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b5_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b5_branch2c')
+             .conv(1, 1, 16, 1, 1, biased=False, relu=False, name='res4b5_branch2c')
              .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b5_branch2c'))
 
-        (self.feed('res4b4_relu',
-                   'bn4b5_branch2c')
-             .add(name='res4b5')
+        (self.feed('bn4b5_branch2c')
              .relu(name='res4b5_relu')
              .conv(1, 1, 2048, 1, 1, biased=False, relu=False, name='res5a_branch1')
              .batch_normalization(is_training=is_training, activation_fn=None, name='bn5a_branch1'))
 
         (self.feed('res4b4',
                    'bn4b5_branch2c')
-             .concat(name='cat5a')
+             .concat(axis =-1,name='cat5a')
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res5a_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5a_branch2a')
              .atrous_conv(3, 3, 512, 4, padding='SAME', biased=False, relu=False, name='res5a_branch2b')
@@ -189,7 +185,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('cat5a',
                    'bn5a_branch2c')
-             .concat(name='res5a')
+             .concat(axis =-1,name='res5a')
              .relu(name='res5a_relu')
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res5b_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5b_branch2a')
@@ -200,7 +196,7 @@ class DeepLabResNetModel(Network):
 
         (self.feed('res5a',
                    'bn5b_branch2c')
-             .concat(name='res5b')
+             .concat(axis =-1,name='res5b')
              .relu(name='res5b_relu')
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res5c_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5c_branch2a')
@@ -209,9 +205,10 @@ class DeepLabResNetModel(Network):
              .conv(1, 1, 32, 1, 1, biased=False, relu=False, name='res5c_branch2c')
              .batch_normalization(is_training=is_training, activation_fn=None, name='bn5c_branch2c'))
 
-        (self.feed('res5b',
+        (self.feed('bn3a_branch1',
+                   'res5b',
                    'bn5c_branch2c')
-             .concat(name='res5c')
+             .concat(axis =-1,name='res5c')
              .relu(name='res5c_relu')
              .atrous_conv(3, 3, num_classes, 6, padding='SAME', relu=False, name='fc1_voc12_c0'))
 
