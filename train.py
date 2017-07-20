@@ -35,14 +35,14 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
 
 
-GPU_MASK = '6'
+GPU_MASK = '0'
 BATCH_SIZE = 5
 DATA_DIRECTORY = '/home/z003hvsa/Data/LITS'
 DATA_LIST_PATH = '/home/z003hvsa/Data/LITS/dataset/train.txt'
 VAL_DATA_LIST_PATH = '/home/z003hvsa/Data/LITS/dataset/val.txt'
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
-LEARNING_RATE = 2.49e-4
+LEARNING_RATE = 1e-3
 MOMENTUM = 0.9
 NUM_CLASSES = 3
 NUM_STEPS = 400000
