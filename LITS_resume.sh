@@ -5,7 +5,10 @@ python train.py  \
 --batch-size 8 \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from './snapshots/LITS50' \
---snapshot-dir './snapshots/LITS50v2' \
+--restore-from './snapshots/LITS50v4' \
+--snapshot-dir './snapshots/LITS50v5' \
 --gpu-mask '1'  \
---num-steps 290000 \
+--random-scale \
+--learning-rate 2.5e-6 \
+--random-mirror \
+--num-steps 60000 \
