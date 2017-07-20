@@ -208,7 +208,7 @@ class DeepLabResNetModel(Network):
                    'bn3b2_branch2c_dense',
                    'bn3b3_branch2c_dense')
          .concat(axis=-1, name='3b3_combine_dpn_only')
-         .conv(1, 1, 24 * 4, 2, 2, biased=False, relu=False, name='3b3_combine_dpn_downscale'))
+         .conv(1, 1, 24 * 4, 1, 1, biased=False, relu=False, name='3b3_combine_dpn_downscale'))
 
         (self.feed('res4a_relu',
                    '3b3_combine_dpn_downscale',
@@ -384,7 +384,7 @@ class DeepLabResNetModel(Network):
                    'bn4b5_branch2c_dense',
                    'bn4b6_branch2c_dense')
          .concat(axis=-1, name='4b6_combine_dpn_only')
-         .conv(1, 1, 128 * 7, 2, 2, biased=False, relu=False, name='4b6_combine_dpn_downscale'))
+         .conv(1, 1, 128 * 7, 1, 1, biased=False, relu=False, name='4b6_combine_dpn_downscale'))
 
         (self.feed('res5a_relu',
                    '4b6_combine_dpn_downscale',
