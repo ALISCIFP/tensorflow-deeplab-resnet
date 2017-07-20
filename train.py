@@ -30,8 +30,8 @@ IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32
 # LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
 #                                   dtype=np.float32)
 
-GPU_MASK = '0'
-BATCH_SIZE = 4
+GPU_MASK = '1'
+BATCH_SIZE = 6
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
@@ -43,12 +43,11 @@ NUM_CLASSES = 21
 NUM_STEPS = 1000000
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
-# RESTORE_FROM = '/mnt/data/snapshots2/'
+RESTORE_FROM = None
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
-SNAPSHOT_DIR = '/mnt/data/snapshots2/'
+SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
 
 
@@ -125,8 +124,8 @@ def get_arguments():
                         help="Base learning rate for training with polynomial decay.")
     parser.add_argument("--momentum", type=float, default=MOMENTUM,
                         help="Momentum component of the optimiser.")
-    parser.add_argument("--not-restore-last", action="store_true",
-                        help="Whether to not restore last (FC) layers.")
+    parser.add_argument("--first-run", action="store_true",
+                        help="first run?")
     parser.add_argument("--num-classes", type=int, default=NUM_CLASSES,
                         help="Number of classes to predict (including background).")
     parser.add_argument("--num-steps", type=int, default=NUM_STEPS,
@@ -201,7 +200,7 @@ def main():
 
     tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=' + args.snapshot_dir))
 
-    if args.not_restore_last:
+    if args.first_run:
         try:
             shutil.rmtree(args.snapshot_dir)
         except Exception as e:
@@ -258,19 +257,18 @@ def main():
     # if they are presented in var_list of the optimiser definition.
 
     # Predictions.
-    raw_output = net.layers['concat_conv8']
-    raw_output_old = net.layers['fc1_voc12']
+    raw_output = net.layers['fc1_voc12']
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
     restore_var = [v for v in tf.global_variables() if
-                   'fc' not in v.name and 'concat' not in v.name or not args.not_restore_last]
+                   'dense' not in v.name or not args.first_run]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
     conv_trainable = [v for v in all_trainable if 'fc' not in v.name and 'concat' not in v.name]  # lr * 1.0
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
-    concat_trainable = [v for v in all_trainable if 'concat' in v.name] # only train concat layers -- by zack 07,13,2017
-    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable) + len(concat_trainable))
+    #   concat_trainable = [v for v in all_trainable if 'concat' in v.name] # only train concat layers -- by zack 07,13,2017
+    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
@@ -302,43 +300,15 @@ def main():
         accuracy_per_class.append(
             tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
 
-    # Predictions: ignoring all predictions with labels greater or equal than n_classes
-    raw_prediction_old = tf.reshape(raw_output_old, [-1, args.num_classes])
-    label_proc_old = prepare_label(label_batch, tf.stack(raw_output_old.get_shape()[1:3]), num_classes=args.num_classes,
-                               one_hot=False)  # [batch_size, h, w]
-    raw_gt_old = tf.reshape(label_proc_old, [-1, ])
-    indices_old = tf.squeeze(tf.where(tf.less_equal(raw_gt_old, args.num_classes - 1)), 1)
-    gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
-    prediction_old = tf.gather(raw_prediction_old, indices_old)
-
-    # Pixel-wise softmax loss.
-    #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
-    # for i in xrange(0, args.num_classes):
-    #     curr_class = tf.constant(i, tf.int32)
-        # loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
-        #                                                                                         labels=gt_old,
-        #                                                                                         weights=tf.where(
-        #                                                                                             tf.equal(gt_old,
-        #                                                                                                      curr_class),
-        #                                                                                             tf.zeros_like(
-        #                                                                                                 gt_old),
-        #                                                                                             tf.ones_like(
-        #                                                                                                 gt_old))))
 
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = 0.2 * tf.reduce_mean(
-        tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
-                   + 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
+    reduced_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                    + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
     raw_output_up = tf.argmax(raw_output_up, dimension=3)
     pred_concat = tf.expand_dims(raw_output_up, dim=3)
-
-    raw_output_up_old = tf.image.resize_bilinear(raw_output_old, tf.shape(image_batch)[1:3, ])
-    raw_output_up_old = tf.argmax(raw_output_up_old, dimension=3)
-    pred_resnet = tf.expand_dims(raw_output_up_old, dim=3)
 
     # Image summary.
     reduced_loss_train = tf.Variable(0, trainable=False, dtype=tf.float32)
@@ -425,13 +395,6 @@ def main():
                      tf.concat(axis=2, values=[images_summary_concat, labels_summary_concat, preds_summary_concat]),
                      max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
-    images_summary_resnet = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    labels_summary_resnet = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
-    preds_summary_resnet = tf.py_func(decode_labels, [pred_resnet, args.save_num_images, args.num_classes], tf.uint8)
-    tf.summary.image('resnet output',
-                     tf.concat(axis=2, values=[images_summary_resnet, labels_summary_resnet, preds_summary_resnet]),
-                     max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
-
     all_summary = tf.summary.merge_all('all')
     per_class_summary = tf.summary.merge_all('per_class')
     summary_writer_train = tf.summary.FileWriter(os.path.join(args.snapshot_dir, 'train_all'),
@@ -457,19 +420,19 @@ def main():
     opt_conv = tf.train.MomentumOptimizer(learning_rate * args.conv_lr_multiplier, args.momentum)
     opt_fc_w = tf.train.MomentumOptimizer(learning_rate * args.fc_w_lr_multiplier, args.momentum)
     opt_fc_b = tf.train.MomentumOptimizer(learning_rate * args.fc_b_lr_multiplier, args.momentum)
-    opt_concat = tf.train.MomentumOptimizer(learning_rate * args.concat_lr_multiplier, args.momentum)
-    
-    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable+concat_trainable)
+    #    opt_concat = tf.train.MomentumOptimizer(learning_rate * args.concat_lr_multiplier, args.momentum)
+
+    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable)
     grads_conv = grads[:len(conv_trainable)]
     grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
     grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):(len(conv_trainable) + len(fc_w_trainable)+len(fc_b_trainable))]
-    grads_concat = grads[(len(conv_trainable) + len(fc_w_trainable)+len(fc_b_trainable)):]
+    #   grads_concat = grads[(len(conv_trainable) + len(fc_w_trainable)+len(fc_b_trainable)):]
     
     train_op_conv = opt_conv.apply_gradients(zip(grads_conv, conv_trainable))
     train_op_fc_w = opt_fc_w.apply_gradients(zip(grads_fc_w, fc_w_trainable))
     train_op_fc_b = opt_fc_b.apply_gradients(zip(grads_fc_b, fc_b_trainable))
-    train_op_concat = opt_concat.apply_gradients(zip(grads_concat, concat_trainable))
-    train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b,train_op_concat)
+    #    train_op_concat = opt_concat.apply_gradients(zip(grads_concat, concat_trainable))
+    train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b)
 
     # Set up tf session and initialize variables.
     sess = tf.Session()
@@ -478,7 +441,7 @@ def main():
     sess.run(init)
 
     # Saver for storing checkpoints of the model.
-    saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=100)
+    saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=10)
 
     # Load variables if the checkpoint is provided.
     inital_step_value = 1
@@ -525,7 +488,7 @@ def main():
             feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
             acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
                 [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op_concat],
+                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
                 feed_dict=feed_dict)
 
             summary_writer_train.add_summary(summary_t, step)
