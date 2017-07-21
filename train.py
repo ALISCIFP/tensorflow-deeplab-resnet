@@ -10,9 +10,7 @@ from __future__ import print_function
 import argparse
 import os
 import re
-import shlex
 import shutil
-import subprocess
 import time
 
 import numpy as np
@@ -198,8 +196,6 @@ def main():
     """Create the model and start the training."""
     args = get_arguments()
     print(args)
-
-    tboard_proc = subprocess.Popen(shlex.split('/home/victor/miniconda2/bin/tensorboard --logdir=' + args.snapshot_dir))
 
     if args.first_run:
         try:
@@ -507,10 +503,8 @@ def main():
                 'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
     coord.request_stop()
-    tboard_proc.kill()
     coord.join(threads)
 
 
 if __name__ == '__main__':
-    subprocess.call(shlex.split('pkill tensorboard'))
     main()
