@@ -53,7 +53,7 @@ class DeepLabResNetModel(Network):
                    'res2c_branch2c')
              .add(name='res2c')
              .selu(name='res2c_selu')
-             .conv(1, 1, 512, 2, 2, biased=False, relu=False, name='res3a_branch1')
+             .conv(1, 1, 512, 2, 2, biased=False, relu=False, name='res3a_branch1'))
 
         (self.feed('res2c_selu')
              .conv(1, 1, 128, 2, 2, biased=False, relu=False, name='res3a_branch2a')
