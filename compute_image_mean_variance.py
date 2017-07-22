@@ -43,9 +43,10 @@ def main():
     for f in flist:
         fjpg= args.data_dir+f.split("\t")[0]
         if not os.path.exists(fjpg):
-            print fjpg
+            print fjpgß
             continue
         jpgnparray = misc.imread(fjpg)
+        jpgnparray =jpgnparray.astype(np.float32)
         im_mean_per += jpgnparray
         print 'max',jpgnparray.max()
         im_mean_square_per +=np.power(jpgnparray,2)
