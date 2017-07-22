@@ -45,19 +45,20 @@ def main():
             continue
         jpgnparray = misc.imread(fjpg)
         im_mean += jpgnparray
-        im_mean_square +=jpgnparray^2
+        im_mean_square +=np.power(jpgnparray,2)
         count+=1
         if count % 1000 == 0:
             print count
     im_mean = im_mean/count
     im_mean_square = im_mean_square/count
-    scipy.misc.imsave(DATA_DIRECTORY+'train-mean.jpeg',im_mean)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-mean_square.jpeg',im_mean_square)
-    im_var = np.sqrt(im_mean_square - im_mean^2)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-var.jpeg',im_var)
+    im_var = np.sqrt(im_mean_square - np.power(im_mean,2))
     print im_mean
     print im_mean_square
     print im_var
+    scipy.misc.imsave(DATA_DIRECTORY+'train-mean.jpeg',im_mean)
+    scipy.misc.imsave(DATA_DIRECTORY+'train-mean_square.jpeg',im_mean_square)
+    scipy.misc.imsave(DATA_DIRECTORY+'train-var.jpeg',im_var)
+
 
 
 
