@@ -35,46 +35,49 @@ def main():
     args = parser.parse_args()
     flist = open(args.data_list)
     count = 0
-    count_per = 0
     im_mean =np.zeros((512,512,3),dtype=np.float32)
     im_mean_square =np.zeros((512,512,3),dtype=np.float32)
-    im_mean_per =np.zeros((512,512,3),dtype=np.float32)
-    im_mean_square_per =np.zeros((512,512,3),dtype=np.float32)
-    for f in flist:
-        fjpg= args.data_dir+f.split("\t")[0]
-        if not os.path.exists(fjpg):
-            print fjpg
-            continue
+    # for f in flist:
+    #     fjpg= args.data_dir+f.split("\`t")[0]
+    #
+    #     jpgnparray = misc.imread(fjpg)
+    #     jpgnparray =jpgnparray.astype(np.float32)
+    #     im_mean += jpgnparray
+    #     im_mean_square +=np.power(jpgnparray,2)
+    #     count +=1
+    #     if count % 1000 == 0:
+    #         print count
+    flist_test = args.data_list.replace('train','test')
+    ftlist = open(flist_test)
+
+    for ft in ftlist:
+        fjpg= args.data_dir+ft
+
         jpgnparray = misc.imread(fjpg)
         jpgnparray =jpgnparray.astype(np.float32)
-        im_mean_per += jpgnparray
-        im_mean_square_per +=np.power(jpgnparray,2)
-        count_per+=1
+        im_mean += jpgnparray
+        im_mean_square +=np.power(jpgnparray,2)
         count +=1
         if count % 1000 == 0:
             print count
-            im_mean_per = im_mean_per/1000
-            im_mean = ((count/1000 -1)*im_mean + im_mean_per)/(count/1000)
-            im_mean_square_per = im_mean_square_per / 1000
-            im_mean_square = ((count / 1000 - 1) * im_mean_square + im_mean_square_per) / (count / 1000)
-            im_mean_per =np.zeros((512,512,3),dtype=np.float32)
-            im_mean_square_per =np.zeros((512,512,3),dtype=np.float32)
-            count_per = 0
+
+    im_mean = im_mean/count
+    im_mean_square = im_mean_square/count
     im_var= np.sqrt(im_mean_square - np.power(im_mean,2))
     im_var_std = np.sqrt(im_var)
     print im_mean
     print im_mean_square
     print im_var
     print im_var_std
-    np.save(DATA_DIRECTORY+'train-mean',im_mean)
-    np.save(DATA_DIRECTORY+'train-mean_square',im_mean_square)
-    np.save(DATA_DIRECTORY+'train-var',im_var)
-    np.save(DATA_DIRECTORY+'train-var_std',im_var_std)
+    np.save(DATA_DIRECTORY+'mean',im_mean)
+    np.save(DATA_DIRECTORY+'mean_square',im_mean_square)
+    np.save(DATA_DIRECTORY+'var',im_var)
+    np.save(DATA_DIRECTORY+'var_std',im_var_std)
 
-    scipy.misc.imsave(DATA_DIRECTORY+'train-mean.jpeg',im_mean)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-mean_square.jpeg',im_mean_square)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-var.jpeg',im_var)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-var-std.jpeg',im_var_std)
+    scipy.misc.imsave(DATA_DIRECTORY+'mean.jpeg',im_mean)
+    scipy.misc.imsave(DATA_DIRECTORY+'mean_square.jpeg',im_mean_square)
+    scipy.misc.imsave(DATA_DIRECTORY+'var.jpeg',im_var)
+    scipy.misc.imsave(DATA_DIRECTORY+'var_std.jpeg',im_var_std)
 
 
 
