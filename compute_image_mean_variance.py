@@ -55,6 +55,10 @@ def main():
     print im_mean
     print im_mean_square
     print im_var
+    np.save(DATA_DIRECTORY+'train-mean',im_mean)
+    np.save(DATA_DIRECTORY+'train-mean_square',im_mean_square)
+    np.save(DATA_DIRECTORY+'train-var',im_var)
+
     scipy.misc.imsave(DATA_DIRECTORY+'train-mean.jpeg',im_mean)
     scipy.misc.imsave(DATA_DIRECTORY+'train-mean_square.jpeg',im_mean_square)
     scipy.misc.imsave(DATA_DIRECTORY+'train-var.jpeg',im_var)
