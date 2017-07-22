@@ -285,7 +285,7 @@ class DeepLabResNetModel(Network):
              .selu(name='selu4b18_branch2b')
              .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b18_branch2c'))
 
-        (self.feed('res4b17_relu', 
+        (self.feed('res4b17_selu',
                    'res4b18_branch2c')
              .add(name='res4b18')
              .selu(name='res4b18_selu')
@@ -295,7 +295,7 @@ class DeepLabResNetModel(Network):
              .selu(name='selu4b19_branch2b')
              .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b19_branch2c'))
 
-        (self.feed('res4b18_relu', 
+        (self.feed('res4b18_selu',
                    'res4b19_branch2c')
              .add(name='res4b19')
              .selu(name='res4b19_selu')
@@ -315,7 +315,7 @@ class DeepLabResNetModel(Network):
              .selu(name='selu4b21_branch2b')
              .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b21_branch2c'))
 
-        (self.feed('res4b20_relu', 
+        (self.feed('res4b20_selu',
                    'res4b21_branch2c')
              .add(name='res4b21')
              .selu(name='res4b21_selu')
