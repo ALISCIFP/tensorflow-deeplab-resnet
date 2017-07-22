@@ -37,16 +37,16 @@ def main():
     count = 0
     im_mean =np.zeros((512,512,3),dtype=np.float32)
     im_mean_square =np.zeros((512,512,3),dtype=np.float32)
-    # for f in flist:
-    #     fjpg= args.data_dir+f.split("\`t")[0]
-    #
-    #     jpgnparray = misc.imread(fjpg)
-    #     jpgnparray =jpgnparray.astype(np.float32)
-    #     im_mean += jpgnparray
-    #     im_mean_square +=np.power(jpgnparray,2)
-    #     count +=1
-    #     if count % 1000 == 0:
-    #         print count
+    for f in flist:
+        fjpg= args.data_dir+f.split("\t")[0]
+
+        jpgnparray = misc.imread(fjpg)
+        jpgnparray =jpgnparray.astype(np.float32)
+        im_mean += jpgnparray
+        im_mean_square +=np.power(jpgnparray,2)
+        count +=1
+        if count % 1000 == 0:
+            print count
     flist_test = args.data_list.replace('train','test')
     ftlist = open(flist_test)
 
