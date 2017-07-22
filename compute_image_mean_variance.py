@@ -35,8 +35,8 @@ def main():
     args = parser.parse_args()
     flist = open(args.data_list)
     count = 0
-    im_mean =np.zeros((512,512,3),dtype=np.float32)
-    im_mean_square =np.zeros((512,512,3),dtype=np.float32)
+    im_mean =np.zeros((512,512,3),dtype=np.float128)
+    im_mean_square =np.zeros((512,512,3),dtype=np.float128)
 
     for f in flist:
         fjpg= args.data_dir+f.split("\t")[0]
