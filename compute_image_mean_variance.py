@@ -51,7 +51,7 @@ def main():
     ftlist = open(flist_test)
 
     for ft in ftlist:
-        fjpg= args.data_dir+ft.split('\n')
+        fjpg= args.data_dir+ft.strip('\n')
 
         jpgnparray = misc.imread(fjpg)
         jpgnparray =jpgnparray.astype(np.float32)
