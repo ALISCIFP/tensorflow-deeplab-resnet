@@ -17,8 +17,8 @@ DATA_LIST_PATH = '/home/zack/Data/ILD_jpg_png/dataset/train.txt'
 DATA_DIRECTORY = '/home/zack/Data/LITS/'
 DATA_LIST_PATH = '/home/zack/Data/LITS/dataset/train.txt'
 
-DATA_DIRECTORY = '/home/z003hvsa/Data/LiverData_2D_final'
-DATA_LIST_PATH = '/home/z003hvsa/Data/LiverData_2D_final/dataset/train.txt'
+# DATA_DIRECTORY = '/home/z003hvsa/Data/LiverData_2D_final'
+# DATA_LIST_PATH = '/home/z003hvsa/Data/LiverData_2D_final/dataset/train.txt'
 
 def main():
 
