@@ -30,13 +30,13 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  #LITS
 
 GPU_MASK = '1'
-BATCH_SIZE = 6
+BATCH_SIZE = 4
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
-LEARNING_RATE = 0.05
+LEARNING_RATE = 0.0001
 MOMENTUM = 0.9
 NUM_CLASSES = 3
 NUM_STEPS = 1000000
@@ -257,11 +257,46 @@ def main():
     raw_output = net.layers['fc1_voc12']
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
-    restore_var = [v for v in tf.global_variables() if
-                   'dense' not in v.name or not args.first_run]
+    restore_var = [v for v in tf.global_variables() if 'fc' not in v.name and
+                   'dense' not in v.name and
+                   'dpn' not in v.name
+                   and 'res5c_branch2a' not in v.name
+                   and 'res5a_branch1' not in v.name
+                   #                 and 'bn5a_branch2a' not in v.name
+                   # and 'bn5a_branch2b' not in v.name
+                   and 'res2b_branch2a' not in v.name
+                   # and 'bn5b_branch2b' not in v.name
+                   # and 'bn5b_branch2a' not in v.name
+                   # and 'bn5c_branch2a' not in v.name
+                   # and 'bn5c_branch2b' not in v.name
+                   and 'res3b3_branch2a' not in v.name
+                   and 'res3a_branch2a' not in v.name
+                   and 'res2c_branch2a' not in v.name
+                   # and 'res5a_branch1' not in v.name
+                   and 'res3a_branch1' not in v.name
+                   and 'res3b2_branch2a' not in v.name
+                   # and 'res5c_branch2c' not in v.name
+                   and 'res3b1_branch2a' not in v.name
+                   # and 'res5c_branch2b' not in v.name
+                   and 'res4a_branch2a' not in v.name
+                   # and 'res5c_branch2a' not in v.name
+                   and 'res4b1_branch2a' not in v.name
+                   and 'res4a_branch1' not in v.name
+                   and 'res4b2_branch2a' not in v.name
+                   and 'res4b4_branch2a' not in v.name
+                   and 'res4b3_branch2a' not in v.name
+                   and 'res4b5_branch2a' not in v.name
+                   and 'res4b6_branch2a' not in v.name
+                   and 'res5a_branch2a' not in v.name
+                   # and 'res5a_branch2c' not in v.name
+                   and 'res5b_branch2a' not in v.name
+                   # and 'res5b_branch2c' not in v.name
+                   # and 'res5a_branch2b' not in v.name
+                   # and 'res5b_branch2b' not in v.name
+                   or not args.first_run]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
-    conv_trainable = [v for v in all_trainable if 'fc' not in v.name and 'concat' not in v.name]  # lr * 1.0
+    conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
     #   concat_trainable = [v for v in all_trainable if 'concat' in v.name] # only train concat layers -- by zack 07,13,2017
