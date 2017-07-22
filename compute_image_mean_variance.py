@@ -48,9 +48,7 @@ def main():
         jpgnparray = misc.imread(fjpg)
         jpgnparray =jpgnparray.astype(np.float32)
         im_mean_per += jpgnparray
-        print 'max',jpgnparray.max()
         im_mean_square_per +=np.power(jpgnparray,2)
-        print 'square max',np.power(jpgnparray,2).max()
         count_per+=1
         count +=1
         if count % 1000 == 0:
@@ -68,15 +66,15 @@ def main():
     print im_mean_square
     print im_var
     print im_var_std
-    np.save(DATA_DIRECTORY+'train-mean1k',im_mean)
-    np.save(DATA_DIRECTORY+'train-mean_square1k',im_mean_square)
-    np.save(DATA_DIRECTORY+'train-var1k',im_var)
-    np.save(DATA_DIRECTORY+'train-var_std1k',im_var_std)
+    np.save(DATA_DIRECTORY+'train-mean',im_mean)
+    np.save(DATA_DIRECTORY+'train-mean_square',im_mean_square)
+    np.save(DATA_DIRECTORY+'train-var',im_var)
+    np.save(DATA_DIRECTORY+'train-var_std',im_var_std)
 
-    scipy.misc.imsave(DATA_DIRECTORY+'train-mean1k.jpeg',im_mean)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-mean_square1k.jpeg',im_mean_square)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-var1k.jpeg',im_var)
-    scipy.misc.imsave(DATA_DIRECTORY+'train-var-std1k.jpeg',im_var_std)
+    scipy.misc.imsave(DATA_DIRECTORY+'train-mean.jpeg',im_mean)
+    scipy.misc.imsave(DATA_DIRECTORY+'train-mean_square.jpeg',im_mean_square)
+    scipy.misc.imsave(DATA_DIRECTORY+'train-var.jpeg',im_var)
+    scipy.misc.imsave(DATA_DIRECTORY+'train-var-std.jpeg',im_var_std)
 
 
 
