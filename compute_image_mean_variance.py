@@ -47,7 +47,9 @@ def main():
             continue
         jpgnparray = misc.imread(fjpg)
         im_mean_per += jpgnparray
+        print 'max',jpgnparray.max()
         im_mean_square_per +=np.power(jpgnparray,2)
+        print 'square max',np.power(jpgnparray,2).max()
         count_per+=1
         count +=1
         if count % 1000 == 0:
