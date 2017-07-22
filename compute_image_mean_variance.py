@@ -43,7 +43,7 @@ def main():
     for f in flist:
         fjpg= args.data_dir+f.split("\t")[0]
         if not os.path.exists(fjpg):
-            print fjpgß
+            print fjpg
             continue
         jpgnparray = misc.imread(fjpg)
         jpgnparray =jpgnparray.astype(np.float32)
