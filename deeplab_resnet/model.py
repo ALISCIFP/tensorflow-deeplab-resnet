@@ -364,13 +364,13 @@ class DeepLabResNetModel(Network):
              .selu(name='res5c_selu')
              .atrous_conv(3, 3, num_classes, 6, padding='SAME', relu=False, name='fc1_voc12_c0'))
 
-        (self.feed('res5c_relu')
+        (self.feed('res5c_selu')
              .atrous_conv(3, 3, num_classes, 12, padding='SAME', relu=False, name='fc1_voc12_c1'))
 
-        (self.feed('res5c_relu')
+        (self.feed('res5c_selu')
              .atrous_conv(3, 3, num_classes, 18, padding='SAME', relu=False, name='fc1_voc12_c2'))
 
-        (self.feed('res5c_relu')
+        (self.feed('res5c_selu')
              .atrous_conv(3, 3, num_classes, 24, padding='SAME', relu=False, name='fc1_voc12_c3'))
 
         (self.feed('fc1_voc12_c0', 
