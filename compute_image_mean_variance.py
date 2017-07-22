@@ -51,11 +51,14 @@ def main():
         count_per+=1
         count +=1
         if count % 1000 == 0:
+            print count
             im_mean_per = im_mean_per/1000
             im_mean = ((count/1000 -1)*im_mean + im_mean_per)/(count/1000)
             im_mean_square_per = im_mean_square_per / 1000
             im_mean_square = ((count / 1000 - 1) * im_mean_square + im_mean_square_per) / (count / 1000)
-
+            im_mean_per =np.zeros((512,512,3),dtype=np.float32)
+            im_mean_square_per =np.zeros((512,512,3),dtype=np.float32)
+            count_per = 0
     im_var= np.sqrt(im_mean_square - np.power(im_mean,2))
     im_var_std = np.sqrt(im_var)
     print im_mean
