@@ -110,12 +110,15 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     label_contents = tf.read_file(input_queue[1])
     
     img = tf.image.decode_png(img_contents, channels=3)
-    img_r, img_g, img_b = tf.split(value=img, num_or_size_splits=3, axis=2)
-    img = tf.cast(tf.concat(axis=2, values=[img_b, img_g, img_r]), dtype=tf.float32)
+    img = tf.cast(img,dtype=tf.float32)
     # Extract global mean.
     img -= img_mean
     # Scale by global variance
     img /=img_var
+
+    img_r, img_g, img_b = tf.split(value=img, num_or_size_splits=3, axis=2)
+    img = tf.concat(axis=2, values=[img_b, img_g, img_r])
+
     label = tf.image.decode_png(label_contents, channels=1)
 
     if input_size is not None:
