@@ -14,15 +14,16 @@ from PIL import Image
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels
 
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
+IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)
 GPU_MASK = '0'
 IGNORE_LABEL = 255
-NUM_CLASSES = 21
-SAVE_DIR = './output/'
+NUM_CLASSES = 3
+SAVE_DIR = './LITS4t/output'
+
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
-    
+
     Returns:
       A list of parsed arguments.
     """
@@ -43,16 +44,18 @@ def get_arguments():
                         help="The index of the label to ignore during the training.")
     return parser.parse_args()
 
+
 def load(saver, sess, ckpt_path):
     '''Load trained weights.
-    
+
     Args:
       saver: TensorFlow saver object.
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
-    ''' 
+    '''
     saver.restore(sess, ckpt_path)
     print("Restored model parameters from {}".format(ckpt_path))
+
 
 def main():
     """Create the model and start the evaluation process."""
@@ -73,7 +76,7 @@ def main():
         reader = ImageReader(
             args.data_dir,
             args.data_list,
-            None,  # No defined input size.
+            (512, 512),  # No defined input size.
             False,  # No random scale.
             False,  # No random mirror.
             args.ignore_label,
@@ -84,7 +87,6 @@ def main():
     image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
                                                                             dim=0)  # Add one batch dimension.
 
-    image_batch = tf.image.resize_area(image_batch, [512, 512])
     # # Prepare image.
     # img = tf.image.decode_jpeg(tf.read_file(args.img_path), channels=3)
     # # Convert RGB to BGR.
@@ -92,7 +94,7 @@ def main():
     # img = tf.cast(tf.concat(axis=2, values=[img_b, img_g, img_r]), dtype=tf.float32)
     # # Extract mean.
     # img -= IMG_MEAN
-    
+
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
 
@@ -100,13 +102,13 @@ def main():
     restore_var = tf.global_variables()
 
     # Predictions.
-    # raw_output = net.layers['fc1_voc12']
-    raw_output = net.layers['concat_conv6']
+    raw_output = net.layers['fc1_voc12']
+    # raw_output = net.layers['concat_conv6']
     raw_output_up = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
     raw_output_up = tf.argmax(raw_output_up, dimension=3)
     pred = tf.expand_dims(raw_output_up, dim=3)
-    
-    # Set up TF session and initialize variables. 
+
+    # Set up TF session and initialize variables.
     sess = tf.Session()
     init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
@@ -137,6 +139,6 @@ def main():
     coord.request_stop()
     coord.join(threads)
 
-    
+
 if __name__ == '__main__':
     main()

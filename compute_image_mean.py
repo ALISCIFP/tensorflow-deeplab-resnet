@@ -13,9 +13,11 @@ from scipy import misc
 DATA_DIRECTORY = '/home/zack/Data/ILD_jpg_png/'
 DATA_LIST_PATH = '/home/zack/Data/ILD_jpg_png/dataset/train.txt'
 
-DATA_DIRECTORY = '/home/zack/Data/LUNA16/'
-DATA_LIST_PATH = '/home/zack/Data/LUNA16/dataset/train.txt'
+DATA_DIRECTORY = '/home/zack/Data/LITS/'
+DATA_LIST_PATH = '/home/zack/Data/LITS/dataset/train.txt'
 
+DATA_DIRECTORY = '/home/z003hvsa/Data/LiverData_2D_final'
+DATA_LIST_PATH = '/home/z003hvsa/Data/LiverData_2D_final/dataset/train.txt'
 
 def main():
 
@@ -34,7 +36,10 @@ def main():
     count = 0
     im_mean =[0.0,0.0,0.0]
     for f in flist:
-        fjpg= args.data_dir+f.split()[0]
+        fjpg= args.data_dir+f.split("\t")[0]
+        if not os.path.exists(fjpg):
+            print fjpg
+            continue
         jpgnparray = misc.imread(fjpg)
         im_mean += np.mean(np.mean(jpgnparray,axis=0),axis =0)
         count+=1

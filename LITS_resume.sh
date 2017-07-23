@@ -1,12 +1,13 @@
 python train.py  \
---data-dir /home/zack/Data/LITS/ \
+--data-dir /home/zack/Data/LITS \
 --data-list  /home/zack/Data/LITS/dataset/train.txt  \
---val-data-list /home/zack/Data/LITS/dataset/val.txt  \
---batch-size 4 \
---not-restore-last \
+--val-data-list /home/zack/Dat/LITS/dataset/val.txt  \
+--batch-size 5 \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from './snapshots/LITS4t2' \
---snapshot-dir './snapshots/LITS4t2_refine' \
+--restore-from './snapshots/LITS4' \
+--snapshot-dir './snapshots/LITS4_refine' \
+--img-mean /home/zack/Data/LITS/mean.npy \
+--img-var /home/zack/Data/LITS/var.npy \
 --gpu-mask '1'  \
---num-steps 435068 \
+--num-steps 535068 \
