@@ -262,24 +262,14 @@ def main():
                    'dpn' not in v.name
                    and 'res5c_branch2a' not in v.name
                    and 'res5a_branch1' not in v.name
-                   #                 and 'bn5a_branch2a' not in v.name
-                   # and 'bn5a_branch2b' not in v.name
                    and 'res2b_branch2a' not in v.name
-                   # and 'bn5b_branch2b' not in v.name
-                   # and 'bn5b_branch2a' not in v.name
-                   # and 'bn5c_branch2a' not in v.name
-                   # and 'bn5c_branch2b' not in v.name
                    and 'res3b3_branch2a' not in v.name
                    and 'res3a_branch2a' not in v.name
                    and 'res2c_branch2a' not in v.name
-                   # and 'res5a_branch1' not in v.name
                    and 'res3a_branch1' not in v.name
                    and 'res3b2_branch2a' not in v.name
-                   # and 'res5c_branch2c' not in v.name
                    and 'res3b1_branch2a' not in v.name
-                   # and 'res5c_branch2b' not in v.name
                    and 'res4a_branch2a' not in v.name
-                   # and 'res5c_branch2a' not in v.name
                    and 'res4b1_branch2a' not in v.name
                    and 'res4a_branch1' not in v.name
                    and 'res4b2_branch2a' not in v.name
@@ -288,11 +278,7 @@ def main():
                    and 'res4b5_branch2a' not in v.name
                    and 'res4b6_branch2a' not in v.name
                    and 'res5a_branch2a' not in v.name
-                   # and 'res5a_branch2c' not in v.name
                    and 'res5b_branch2a' not in v.name
-                   # and 'res5b_branch2c' not in v.name
-                   # and 'res5a_branch2b' not in v.name
-                   # and 'res5b_branch2b' not in v.name
                    or not args.first_run]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
