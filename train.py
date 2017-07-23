@@ -25,7 +25,6 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 #IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 #IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
-IMG_MEAN = np.array((70.09696377,  70.09982598,  70.05608305), dtype=np.float32) #LITS
 #[ 69.9417258   70.08041571  69.92282781] #LITS PNG format
 
 
@@ -34,7 +33,8 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
 #LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
 
-
+IMG_MEAN=''
+IMG_VAR=''
 GPU_MASK = '1'
 BATCH_SIZE = 5
 DATA_DIRECTORY = None
@@ -142,6 +142,10 @@ def get_arguments():
                         help="Whether to randomly scale the inputs during the training.")
     parser.add_argument("--random-seed", type=int, default=RANDOM_SEED,
                         help="Random seed to have reproducible results.")
+    parser.add_argument("--img-mean", type=str, default=IMG_MEAN,
+                        help="the tain and val iamges mean.")
+    parser.add_argument("--img-var", type=str, default=IMG_VAR,
+                        help="the tain and val iamges variance.")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
     parser.add_argument("--save-num-images", type=int, default=SAVE_NUM_IMAGES,
@@ -206,7 +210,8 @@ def main():
 
     # Create queue coordinator.
     coord = tf.train.Coordinator()
-
+    mean = np.load(args.img_mean)
+    var = np.load(args.img_var)
     # Load reader.
     mode = tf.placeholder(tf.bool, shape=())
     with tf.name_scope("create_inputs"):
@@ -217,9 +222,11 @@ def main():
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
-            IMG_MEAN,
+            mean,
+            var,
             coord)
         image_batch_train, label_batch_train = reader.dequeue(args.batch_size)
+
 
     with tf.name_scope("val_inputs"):
         reader = ImageReader(
@@ -229,7 +236,8 @@ def main():
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
-            IMG_MEAN,
+            mean,
+            var,
             coord)
         image_batch_val, label_batch_val = reader.dequeue(args.batch_size)
 
