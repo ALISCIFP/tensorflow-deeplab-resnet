@@ -326,7 +326,7 @@ def main():
     loss_output = tf.cond(mode, lambda: reduced_loss_train, lambda: reduced_loss_val)
     tf.summary.scalar("Loss", loss_output, collections=['all'])
     tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
-    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, mean], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
 
