@@ -378,4 +378,4 @@ class DeepLabResNetModel(Network):
                    'fc1_voc12_c2', 
                    'fc1_voc12_c3')
              .add(name='fc1_voc12')
-             .drop_selu(rate=0.05,training = is_training,name='fc1_voc12_drop'))
+             .dropout_selu(rate=0.05,training = is_training,name='fc1_voc12_drop'))
