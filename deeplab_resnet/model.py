@@ -7,7 +7,7 @@ from kaffe.tensorflow import Network
 import tensorflow as tf
 
 class DeepLabResNetModel(Network):
-    def setup(self, is_training, num_classes):
+    def setup(self,is_training, num_classes):
         '''Network definition.
         
         Args:
@@ -377,4 +377,5 @@ class DeepLabResNetModel(Network):
                    'fc1_voc12_c1', 
                    'fc1_voc12_c2', 
                    'fc1_voc12_c3')
-             .add(name='fc1_voc12'))
+             .add(name='fc1_voc12')
+             .drop_selu(rate=0.05,training = is_training,name='fc1_voc12_drop'))
