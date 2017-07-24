@@ -2,13 +2,14 @@ python train.py  \
 --data-dir /home/zack/Data/LITS \
 --data-list  /home/zack/Data/LITS/dataset/train.txt  \
 --val-data-list /home/zack/Data/LITS/dataset/val.txt  \
---batch-size 2 \
+--batch-size 3 \
 --is-training \
+--random-mirror \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from './snapshots/LITS4/model.ckpt-220000' \
---snapshot-dir './snapshots/LITS4_selu2' \
+--restore-from './snapshots/LITS4_selu_drop' \
+--snapshot-dir './snapshots/LITS4_selu_drop_mirror' \
 --img-mean /home/zack/Data/LITS/mean.npy \
 --img-var /home/zack/Data/LITS/var_std.npy \
---gpu-mask '0'  \
+--gpu-mask '1'  \
 --num-steps 8000000 \
