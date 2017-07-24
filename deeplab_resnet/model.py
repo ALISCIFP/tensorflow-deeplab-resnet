@@ -413,7 +413,7 @@ class DeepLabResNetModel(Network):
              .concat(axis = -1,name='concat_all'))
 
         (self.feed('concat_all')
-             .dropout(0.95,name='concat_call_dropout'))
+             .dropout(0.95,name='concat_all_dropout'))
 
         (self.feed('concat_all_dropout')
              .relu(name='res5c_relu')
