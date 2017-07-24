@@ -362,20 +362,20 @@ class DeepLabResNetModel(Network):
                    'res5c_branch2c')
              .add(name='res5c')
              .selu(name='res5c_selu')
+             .dropout_selu(rate=0.05, training=is_training, name='res5c_selu_drop')
              .atrous_conv(3, 3, num_classes, 6, padding='SAME', relu=False, name='fc1_voc12_c0'))
 
-        (self.feed('res5c_selu')
+        (self.feed('res5c_selu_drop')
              .atrous_conv(3, 3, num_classes, 12, padding='SAME', relu=False, name='fc1_voc12_c1'))
 
-        (self.feed('res5c_selu')
+        (self.feed('res5c_selu_drop')
              .atrous_conv(3, 3, num_classes, 18, padding='SAME', relu=False, name='fc1_voc12_c2'))
 
-        (self.feed('res5c_selu')
+        (self.feed('res5c_selu_drop')
              .atrous_conv(3, 3, num_classes, 24, padding='SAME', relu=False, name='fc1_voc12_c3'))
 
         (self.feed('fc1_voc12_c0', 
                    'fc1_voc12_c1', 
                    'fc1_voc12_c2', 
                    'fc1_voc12_c3')
-             .add(name='fc1_voc12')
-             .dropout_selu(rate=0.05,training = is_training,name='fc1_voc12_drop'))
+             .add(name='fc1_voc12'))
