@@ -10,7 +10,6 @@ from __future__ import print_function
 import argparse
 import os
 import re
-import shutil
 import time
 
 import numpy as np
@@ -208,11 +207,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    if args.first_run:
-        try:
-            shutil.rmtree(args.snapshot_dir)
-        except Exception as e:
-            print(e)
+    # if args.first_run:
+    #     try:
+    #         shutil.rmtree(args.snapshot_dir)
+    #     except Exception as e:
+    #         print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
