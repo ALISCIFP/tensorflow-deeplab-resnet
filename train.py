@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 # IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
 #IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
@@ -197,7 +197,7 @@ def main():
         except Exception as e:
             print(e)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
