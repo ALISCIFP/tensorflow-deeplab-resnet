@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import re
 import shutil
 import time
 
@@ -35,7 +36,7 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 
 IMG_MEAN=''
 IMG_VAR=''
-GPU_MASK = '1'
+GPU_MASK = '0'
 BATCH_SIZE = 4
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
@@ -370,7 +371,7 @@ def main():
     counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
     counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
-    counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
+    counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred_concat, axis=-1),
                                                                               tf.squeeze(label_batch, axis=-1), counter,
                                                                               counter_no_reset, args.num_classes,
                                                                               args.batch_size, step_ph,
@@ -379,7 +380,7 @@ def main():
                                         lambda: [counter, counter_no_reset])
     counter_val, counter_no_reset_val = tf.cond(mode,
                                                 lambda: [counter_val, counter_no_reset_val],
-                                                lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
+                                                lambda: tf.py_func(update_IoU, [tf.squeeze(pred_concat, axis=-1),
                                                                                 tf.squeeze(label_batch, axis=-1),
                                                                                 counter_val, counter_no_reset_val,
                                                                                 args.num_classes, args.batch_size,
@@ -416,7 +417,7 @@ def main():
     tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
     tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-    images_summary_concat = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    images_summary_concat = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, mean], tf.uint8)
     labels_summary_concat = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_concat = tf.py_func(decode_labels, [pred_concat, args.save_num_images, args.num_classes], tf.uint8)
     tf.summary.image('concat output',
