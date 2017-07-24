@@ -413,6 +413,9 @@ class DeepLabResNetModel(Network):
              .concat(axis = -1,name='concat_all'))
 
         (self.feed('concat_all')
+             .dropout(0.95,name='concat_call_dropout'))
+
+        (self.feed('concat_all_dropout')
              .relu(name='res5c_relu')
              .atrous_conv(3, 3, num_classes, 6, padding='SAME', relu=False, name='fc1_voc12_c0_concat'))
 
