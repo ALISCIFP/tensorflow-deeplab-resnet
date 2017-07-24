@@ -25,7 +25,8 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 #IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 #IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
-IMG_MEAN = np.array((70.09696377,  70.09982598,  70.05608305), dtype=np.float32) #LITS
+IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
+
 #[ 69.9417258   70.08041571  69.92282781] #LITS PNG format
 
 
