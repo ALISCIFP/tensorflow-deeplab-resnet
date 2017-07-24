@@ -19,13 +19,15 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 # IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32) #VOC2012
 #IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 #IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
-IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
+# IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
+IMG_MEAN = np.array((45.95747361,  46.00602707, 46.02499091), dtype=np.float32)  # Liver_Siemens
+
 #[ 69.9417258   70.08041571  69.92282781] #LITS PNG format
 
 
@@ -45,7 +47,7 @@ INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.49e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 5
-NUM_STEPS = 400000
+NUM_STEPS = 290000
 POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = './deeplab_resnet.ckpt'
@@ -103,7 +105,7 @@ def update_IoU(preds, labels, counter, counter_no_reset, numClass, batch_size, s
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
-    
+
     Returns:
       A list of parsed arguments.
     """
@@ -175,13 +177,13 @@ def save(saver, sess, logdir, step):
 
 def load(saver, sess, ckpt_path):
     '''Load trained weights.
-    
+
     Args:
       saver: TensorFlow Saver object.
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-#    saver.restore(sess, ckpt_path)
+    # saver.restore(sess, ckpt_path)
     saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
@@ -197,7 +199,7 @@ def main():
         except Exception as e:
             print(e)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
@@ -238,9 +240,9 @@ def main():
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
-    # For a small batch size, it is better to keep 
+    # For a small batch size, it is better to keep
     # the statistics of the BN layers (running means and variances)
-    # frozen, and to not update the values provided by the pre-trained model. 
+    # frozen, and to not update the values provided by the pre-trained model.
     # If is_training=True, the statistics will be updated during the training.
     # Note that is_training=False still updates BN parameters gamma (scale) and beta (offset)
     # if they are presented in var_list of the optimiser definition.
