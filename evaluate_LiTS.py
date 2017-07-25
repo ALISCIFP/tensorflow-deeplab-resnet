@@ -19,15 +19,15 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader
 
-IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
+IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  # LITS
 
-GPU_MASK = '0'
+GPU_MASK = '1'
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 3
-BATCH_SIZE = 20
-RESTORE_FROM = './LITS4tlr2/'
+BATCH_SIZE = 1
+RESTORE_FROM = './snapshots/'
 
 
 def get_arguments():

@@ -4,7 +4,6 @@ import os
 import nibabel as nb
 import numpy as np
 from medpy import metric
-
 from surface import Surface
 
 
@@ -36,7 +35,7 @@ labels = sorted(glob.glob(label_path + 'label*.nii'))
 probs = sorted(glob.glob(prob_path + 'probs*.nii'))
 
 labels = ['/mnt/data/LITS/Training Batch 2/segmentation-99.nii']
-probs = ['./LITS4t2/niiout/segmentation-99.nii']
+probs = ['./eval/niiout/segmentation-99.nii']
 
 results = []
 outpath = './data/results.csv'

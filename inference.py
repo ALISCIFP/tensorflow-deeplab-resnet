@@ -14,10 +14,10 @@ from PIL import Image
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels
 
-IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-GPU_MASK = '0'
+IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  # LITS
+GPU_MASK = '1'
 IGNORE_LABEL = 255
-NUM_CLASSES = 21
+NUM_CLASSES = 3
 SAVE_DIR = './output/'
 
 def get_arguments():
@@ -100,8 +100,8 @@ def main():
     restore_var = tf.global_variables()
 
     # Predictions.
-    # raw_output = net.layers['fc1_voc12']
-    raw_output = net.layers['concat_conv6']
+    raw_output = net.layers['fc1_voc12']
+    #raw_output = net.layers['concat_conv6']
     raw_output_up = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
     raw_output_up = tf.argmax(raw_output_up, dimension=3)
     pred = tf.expand_dims(raw_output_up, dim=3)
