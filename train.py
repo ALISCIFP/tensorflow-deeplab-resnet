@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, Discriminator, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 # IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
 # IMG_MEAN = np.array((40.9729668, 42.62135134, 40.93294311), dtype=np.float32)  # ILD
@@ -26,8 +26,6 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 #
 # LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
 #                                   dtype=np.float32)
-IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  #LITS
-
 #LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),dtype=np.float32)
 LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
@@ -201,7 +199,11 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    saver.restore(sess, ckpt_path)
+    if 'ckpt' in ckpt_path:
+        saver.restore(sess, ckpt_path)
+    else:
+        saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
+
     print("Restored model parameters from {}".format(ckpt_path))
 
 
@@ -216,7 +218,7 @@ def main():
     #     except Exception as e:
     #         print(e)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
