@@ -426,3 +426,18 @@ class DeepLabResNetModel(Network):
                    'fc1_voc12_c2',
                    'fc1_voc12_c3')
          .add(name='fc1_voc12'))
+
+
+class Discriminator(Network):
+    def setup(self, is_training, num_classes):
+        (self.feed('discrim_data')
+         .conv(3, 3, 96, 2, 2, biased=False, relu=False, name='discrim_conv1')
+         .selu(name='discrim_selu_conv1')
+         .conv(3, 3, 64, 2, 2, biased=False, relu=False, name='discrim_conv2')
+         .selu(name='discrim_selu_conv2')
+         .max_pool(3, 3, 1, 1, name='discrim_pool1')
+         .conv(3, 3, 32, 1, 1, biased=False, relu=False, name='discrim_conv3')
+         .selu(name='discrim_selu_conv3')
+         .conv(1, 1, 32, 1, 1, biased=False, relu=False, name='discrim_conv4')
+         .selu(name='discrim_selu_conv4')
+         .conv(1, 1, 2, 1, 1, biased=False, relu=False, name='discrim_conv5'))

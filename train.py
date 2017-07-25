@@ -15,7 +15,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import DeepLabResNetModel, Discriminator, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
@@ -35,7 +35,7 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 
 IMG_MEAN=''
 IMG_VAR=''
-GPU_MASK = '0'
+GPU_MASK = '1'
 BATCH_SIZE = 5
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
@@ -54,6 +54,7 @@ SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
+DISCRIM_INTERVAL = 50
 
 
 def intersectionAndUnion(imPred, imLab, numClass):
@@ -154,7 +155,9 @@ def get_arguments():
     parser.add_argument("--save-pred-every", type=int, default=SAVE_PRED_EVERY,
                         help="Save summaries and checkpoint every often.")
     parser.add_argument("--val-interval", type=int, default=VAL_INTERVAL,
-                        help="Save summaries and checkpoint every often.")
+                        help="Run validation every x minibatches")
+    parser.add_argument("--discrim-interval", type=int, default=DISCRIM_INTERVAL,
+                        help="Train discriminator every x minibatches")
     parser.add_argument("--snapshot-dir", type=str, default=SNAPSHOT_DIR,
                         help="Where to save snapshots of the model.")
     parser.add_argument("--weight-decay", type=float, default=WEIGHT_DECAY,
@@ -269,11 +272,34 @@ def main():
 
     # Predictions.
     raw_output = net.layers['fc1_voc12']
+    label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]), num_classes=args.num_classes,
+                               one_hot=False)  # [batch_size, h, w]
+
+    list_of_inputs = [(tf.cast(label_proc, tf.int32), tf.ones([args.batch_size, 16, 16], dtype=tf.int32)), (
+    tf.cast(tf.argmax(raw_output, axis=-1), tf.int32), tf.zeros([args.batch_size, 16, 16], dtype=tf.int32))]
+    example_batch, label_discrim_batch = tf.train.shuffle_batch_join(
+        list_of_inputs, batch_size=args.batch_size, capacity=12 + 3 * args.batch_size,
+        min_after_dequeue=12, enqueue_many=True)
+
+    discrim_net = Discriminator({'discrim_data': tf.one_hot(example_batch, 2, axis=-1)}, is_training=args.is_training,
+                                num_classes=args.num_classes)
+    discrim_net = discrim_net.layers['discrim_conv5']
+    output_op_discrim = tf.cast(tf.argmax(discrim_net, axis=-1), tf.int32)
+
+    correct_pred_discrim = tf.equal(output_op_discrim, label_discrim_batch)
+    accuracy_discrim = tf.reduce_mean(tf.cast(correct_pred_discrim, tf.float32))
+
+    loss_discrim = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net, labels=label_discrim_batch)
+
+    tf.summary.scalar("Loss Discrim", loss_discrim, collections=['all'])
+    tf.summary.scalar("Accuracy Discrim", accuracy_discrim, collections=['all'])
+
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
     restore_var = [v for v in tf.global_variables() if 'fc' not in v.name and
                    'dense' not in v.name and
-                   'dpn' not in v.name
+                   'dpn' not in v.name and
+                   'discrim' not in v.name
                    and 'res5c_branch2a' not in v.name
                    and 'res5a_branch1' not in v.name
                    and 'res2b_branch2a' not in v.name
@@ -296,16 +322,16 @@ def main():
                    or not args.first_run]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
-    conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
+    conv_trainable = [v for v in all_trainable if 'fc' not in v.name and 'discrim' not in v.name]  # lr * 1.0
     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
-    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
+    discrim_trainable = [v for v in all_trainable if 'discrim' in v.name]  # lr * 1.0
+    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable) + len(discrim_trainable))
     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
-    label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]), num_classes=args.num_classes,
-                               one_hot=False)  # [batch_size, h, w]
+
     raw_gt = tf.reshape(label_proc, [-1, ])
     indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.num_classes - 1)), 1)
     gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
@@ -330,7 +356,7 @@ def main():
         accuracy_per_class.append(
             tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses)
+    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses) + tf.reduce_mean(loss_discrim)
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
@@ -448,15 +474,18 @@ def main():
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
     opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
     opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 20.0, args.momentum)
+    opt_discrim = tf.train.MomentumOptimizer(learning_rate, args.momentum)
 
-    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable)
+    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable + discrim_trainable)
     grads_conv = grads[:len(conv_trainable)]
     grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
     grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
+    grads_discrim = grads[(len(conv_trainable) + len(fc_w_trainable) + len(fc_b_trainable)):]
 
     train_op_conv = opt_conv.apply_gradients(zip(grads_conv, conv_trainable))
     train_op_fc_w = opt_fc_w.apply_gradients(zip(grads_fc_w, fc_w_trainable))
     train_op_fc_b = opt_fc_b.apply_gradients(zip(grads_fc_b, fc_b_trainable))
+    train_op_discrim = opt_discrim.apply_gradients(zip(grads_discrim, discrim_trainable))
 
     train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b)
 
@@ -511,13 +540,32 @@ def main():
                 'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
         else:
-            feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
-            acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
-                [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
-                feed_dict=feed_dict)
+            if step % args.discrim_interval == 17:
+                feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
+                acc, loss_value, summary_t, _ = sess.run(
+                    [accuracy_discrim, loss_discrim, all_summary, train_op_discrim],
+                    feed_dict=feed_dict)
 
-            summary_writer_train.add_summary(summary_t, step)
+                summary_writer_train.add_summary(summary_t, step)
+
+                duration = time.time() - start_time
+                print(
+                    'step {:d} \t discrim: loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
+                        step, loss_value, acc, mI, mINR, duration))
+            else:
+                feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
+                acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
+                    [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
+                     IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
+                    feed_dict=feed_dict)
+
+                summary_writer_train.add_summary(summary_t, step)
+
+                duration = time.time() - start_time
+                print(
+                    'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
+                        step, loss_value, acc, mI, mINR, duration))
+
             if step % args.per_class_train_summary_interval == 0:
                 for i, writer in enumerate(summary_writer_per_class_train):
                     feed_dict = {step_ph: step, mode: True, class_number: i}
@@ -526,11 +574,6 @@ def main():
                          IoU_summary_output, IoU_summary_no_reset_output, per_class_summary],
                         feed_dict=feed_dict)
                     writer.add_summary(summary_t_this_class, step)
-
-            duration = time.time() - start_time
-            print(
-                'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
-                    step, loss_value, acc, mI, mINR, duration))
     coord.request_stop()
     coord.join(threads)
 
