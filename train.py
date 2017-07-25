@@ -550,8 +550,8 @@ def main():
 
                 duration = time.time() - start_time
                 print(
-                    'step {:d} \t discrim: loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
-                        step, loss_value, acc, mI, mINR, duration))
+                    'step {:d} \t discrim: loss = {:.3f}, acc = {:.3f}, ({:.3f} sec/step)'.format(
+                        step, loss_value, acc, duration))
             else:
                 feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
                 acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
