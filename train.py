@@ -17,15 +17,26 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
-IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
+# IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 # IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
 #
 # LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
 #                                   dtype=np.float32)
+#IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
+IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
+
+#[ 69.9417258   70.08041571  69.92282781] #LITS PNG format
+
+
+#LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),dtype=np.float32)
+LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
+#LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
+#LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
+
 
 GPU_MASK = '1'
 BATCH_SIZE = 4
@@ -42,8 +53,8 @@ POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = None
 SAVE_NUM_IMAGES = 1
-SAVE_PRED_EVERY = 100
-VAL_INTERVAL = 11
+SAVE_PRED_EVERY = 1000
+VAL_INTERVAL = 1000
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
 
@@ -147,11 +158,11 @@ def get_arguments():
                         help="Where to save snapshots of the model.")
     parser.add_argument("--weight-decay", type=float, default=WEIGHT_DECAY,
                         help="Regularisation parameter for L2-loss.")
-    parser.add_argument("--conv-lr-multiplier", type=float, default=1.0,
+    parser.add_argument("--conv-lr-multiplier", type=float, default=0.0,
                         help="conv learning rate multiplier")
-    parser.add_argument("--fc-w-lr-multiplier", type=float, default=10.0,
+    parser.add_argument("--fc-w-lr-multiplier", type=float, default=0.0,
                         help="fc_w learning rate multiplier")
-    parser.add_argument("--fc-b-lr-multiplier", type=float, default=20.0,
+    parser.add_argument("--fc-b-lr-multiplier", type=float, default=0.0,
                         help="fc_b learning rate multiplier")
     parser.add_argument("--concat-lr-multiplier", type=float, default=10.0,
                         help="concat learning rate multiplier")
@@ -186,7 +197,10 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    saver.restore(sess, ckpt_path)
+    if 'ckpt' in ckpt_path:
+        saver.restore(sess, ckpt_path)
+    else:
+        saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
 
@@ -195,7 +209,7 @@ def main():
     args = get_arguments()
     print(args)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
@@ -301,24 +315,10 @@ def main():
     gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
     prediction_old = tf.gather(raw_prediction_old, indices_old)
 
-    # Pixel-wise softmax loss.
-    #softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
-    # for i in xrange(0, args.num_classes):
-    #     curr_class = tf.constant(i, tf.int32)
-        # loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
-        #                                                                                         labels=gt_old,
-        #                                                                                         weights=tf.where(
-        #                                                                                             tf.equal(gt_old,
-        #                                                                                                      curr_class),
-        #                                                                                             tf.zeros_like(
-        #                                                                                                 gt_old),
-        #                                                                                             tf.ones_like(
-        #                                                                                                 gt_old))))
-
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = 0.2 * tf.reduce_mean(
+    reduced_loss = 0.0 * tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
-                   + 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
+                   + 1.0 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                    + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
@@ -510,7 +510,7 @@ def main():
             feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
             acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
                 [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op_concat],
+                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
                 feed_dict=feed_dict)
 
             summary_writer_train.add_summary(summary_t, step)
