@@ -40,7 +40,7 @@ DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
-LEARNING_RATE = 2.5e-4
+LEARNING_RATE = 5e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 3
 NUM_STEPS = 1000000
@@ -52,7 +52,7 @@ SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
-DISCRIM_INTERVAL = 50
+DISCRIM_INTERVAL = 5
 
 
 def intersectionAndUnion(imPred, imLab, numClass):
@@ -294,8 +294,18 @@ def main():
                                                                               tf.argmax(discrim_net_gen, axis=-1),
                                                                               tf.int32)))
 
-    tf.summary.scalar("Loss Discrim Train", loss_discrim_train, collections=['all'])
-    tf.summary.scalar("Accuracy Discrim Train", accuracy_discrim_train, collections=['all'])
+    tf.summary.scalar("Loss Discrim Train", loss_discrim_train, collections=['train'])
+    tf.summary.scalar("Accuracy Discrim Train", accuracy_discrim_train, collections=['train'])
+
+    example_batch_summary = tf.py_func(decode_labels, [example_batch, args.save_num_images, args.num_classes], tf.uint8)
+    label_discrim_batch_summary = tf.py_func(decode_labels,
+                                             [label_discrim_batch, args.save_num_images, args.num_classes], tf.uint8)
+    discrim_train_summary = tf.py_func(decode_labels, [output_op_discrim_train, args.save_num_images, args.num_classes],
+                                       tf.uint8)
+    tf.summary.image('concat output',
+                     tf.concat(axis=2,
+                               values=[example_batch_summary, label_discrim_batch_summary, discrim_train_summary]),
+                     max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
@@ -427,7 +437,7 @@ def main():
     images_summary_concat = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary_concat = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_concat = tf.py_func(decode_labels, [pred_concat, args.save_num_images, args.num_classes], tf.uint8)
-    tf.summary.image('concat output',
+    tf.summary.image('seg output',
                      tf.concat(axis=2, values=[images_summary_concat, labels_summary_concat, preds_summary_concat]),
                      max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
@@ -522,7 +532,7 @@ def main():
                 'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                     step, loss_value, acc, mI, mINR, duration))
         else:
-            if step % args.discrim_interval == 17:
+            if step % args.discrim_interval == 1:
                 feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
                 acc, loss_value, summary_t, _ = sess.run(
                     [accuracy_discrim_train, loss_discrim_train, all_summary, train_op_discrim],
