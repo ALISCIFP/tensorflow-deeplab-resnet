@@ -395,7 +395,6 @@ def main():
     tf.summary.scalar("Loss", loss_output, collections=['all'])
     tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
 
-    tf.summary.scalar("Memory Use", tf.contrib.memory_stats.BytesLimit(), collections=['all'])
     counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
     counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
