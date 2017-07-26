@@ -33,8 +33,6 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
 #LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
 
-IMG_MEAN=''
-IMG_VAR=''
 GPU_MASK = '1'
 BATCH_SIZE = 5
 DATA_DIRECTORY = None
@@ -144,10 +142,6 @@ def get_arguments():
                         help="Whether to randomly scale the inputs during the training.")
     parser.add_argument("--random-seed", type=int, default=RANDOM_SEED,
                         help="Random seed to have reproducible results.")
-    parser.add_argument("--img-mean", type=str, default=IMG_MEAN,
-                        help="the tain and val iamges mean.")
-    parser.add_argument("--img-var", type=str, default=IMG_VAR,
-                        help="the tain and val iamges variance.")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
     parser.add_argument("--save-num-images", type=int, default=SAVE_NUM_IMAGES,
@@ -225,8 +219,6 @@ def main():
 
     # Create queue coordinator.
     coord = tf.train.Coordinator()
-    mean = np.load(args.img_mean)
-    var = np.load(args.img_var)
     # Load reader.
     mode = tf.placeholder(tf.bool, shape=())
     step_ph = tf.placeholder(dtype=tf.float32, shape=())
@@ -239,8 +231,6 @@ def main():
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
-            mean,
-            var,
             coord)
         image_batch_train, label_batch_train = reader.dequeue(args.batch_size)
 
@@ -253,8 +243,6 @@ def main():
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
-            mean,
-            var,
             coord)
         image_batch_val, label_batch_val = reader.dequeue(args.batch_size)
 
@@ -275,24 +263,33 @@ def main():
     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]), num_classes=args.num_classes,
                                one_hot=False)  # [batch_size, h, w]
 
-    list_of_inputs = [(tf.cast(label_proc, tf.int32), tf.ones([args.batch_size, 16, 16], dtype=tf.int32)), (
-    tf.cast(tf.argmax(raw_output, axis=-1), tf.int32), tf.zeros([args.batch_size, 16, 16], dtype=tf.int32))]
-    example_batch, label_discrim_batch = tf.train.shuffle_batch_join(
-        list_of_inputs, batch_size=args.batch_size, capacity=12 + 3 * args.batch_size,
-        min_after_dequeue=12, enqueue_many=True)
+    example_batch = tf.concat([tf.cast(label_proc, tf.int32), tf.cast(tf.argmax(raw_output, axis=-1), tf.int32)],
+                              axis=0)
+    label_discrim_batch = tf.concat(
+        [tf.ones([args.batch_size, 16, 16], dtype=tf.int32), tf.zeros([args.batch_size, 16, 16], dtype=tf.int32)],
+        axis=0)
 
-    discrim_net = Discriminator({'discrim_data': tf.one_hot(example_batch, 2, axis=-1)}, is_training=args.is_training,
-                                num_classes=args.num_classes)
-    discrim_net = discrim_net.layers['discrim_conv5']
-    output_op_discrim = tf.cast(tf.argmax(discrim_net, axis=-1), tf.int32)
+    discrim_net_train = Discriminator({'discrim_data': tf.one_hot(example_batch, 2, axis=-1)},
+                                      is_training=args.is_training,
+                                      num_classes=2)
+    discrim_net_train = discrim_net_train.layers['discrim_conv5']
+    output_op_discrim_train = tf.cast(tf.argmax(discrim_net_train, axis=-1), tf.int32)
 
-    correct_pred_discrim = tf.equal(output_op_discrim, label_discrim_batch)
-    accuracy_discrim = tf.reduce_mean(tf.cast(correct_pred_discrim, tf.float32))
+    correct_pred_discrim_train = tf.equal(output_op_discrim_train, label_discrim_batch)
+    accuracy_discrim_train = tf.reduce_mean(tf.cast(correct_pred_discrim_train, tf.float32))
 
-    loss_discrim = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net, labels=label_discrim_batch)
+    loss_discrim_train = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net_train,
+                                                                        labels=label_discrim_batch)
 
-    tf.summary.scalar("Loss Discrim", loss_discrim, collections=['all'])
-    tf.summary.scalar("Accuracy Discrim", accuracy_discrim, collections=['all'])
+    discrim_net_gen = Discriminator({'discrim_data': raw_output}, is_training=args.is_training,
+                                    num_classes=2)
+    discrim_net_gen = discrim_net_gen.layers['discrim_conv5']
+
+    loss_discrim_gen = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net_gen,
+                                                                      labels=tf.ones_like(raw_output))
+
+    tf.summary.scalar("Loss Discrim Train", loss_discrim_train, collections=['all'])
+    tf.summary.scalar("Accuracy Discrim Train", accuracy_discrim_train, collections=['all'])
 
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
@@ -335,7 +332,7 @@ def main():
         accuracy_per_class.append(
             tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses) + tf.reduce_mean(loss_discrim)
+    reduced_loss = tf.reduce_mean(tf.stack(loss)) + tf.add_n(l2_losses) + tf.reduce_mean(loss_discrim_gen)
 
     # Processed predictions: for visualisation.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
@@ -455,11 +452,11 @@ def main():
     opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 20.0, args.momentum)
     opt_discrim = tf.train.MomentumOptimizer(learning_rate, args.momentum)
 
-    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable + discrim_trainable)
+    grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable)
     grads_conv = grads[:len(conv_trainable)]
     grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
     grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
-    grads_discrim = grads[(len(conv_trainable) + len(fc_w_trainable) + len(fc_b_trainable)):]
+    grads_discrim = tf.gradients(loss_discrim_train, discrim_trainable)
 
     train_op_conv = opt_conv.apply_gradients(zip(grads_conv, conv_trainable))
     train_op_fc_w = opt_fc_w.apply_gradients(zip(grads_fc_w, fc_w_trainable))
@@ -522,7 +519,7 @@ def main():
             if step % args.discrim_interval == 17:
                 feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
                 acc, loss_value, summary_t, _ = sess.run(
-                    [accuracy_discrim, loss_discrim, all_summary, train_op_discrim],
+                    [accuracy_discrim_train, loss_discrim_train, all_summary, train_op_discrim],
                     feed_dict=feed_dict)
 
                 summary_writer_train.add_summary(summary_t, step)
