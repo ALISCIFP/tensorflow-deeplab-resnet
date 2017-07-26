@@ -12,7 +12,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader
+from deeplab_resnet import DeepLabResNetModel, ImageReader, dense_crf, inv_preprocess
 
 IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
 
@@ -21,7 +21,7 @@ DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 21
-RESTORE_FROM = './deeplab_resnet.ckpt'
+RESTORE_FROM = '/mnt/data/snapshots'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -82,9 +82,9 @@ def main():
             coord,
             shuffle=False)
         image, label = reader.image, reader.label
-    image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
-                                                                            dim=0)  # Add one batch dimension.
-    image_batch = tf.image.resize_area(image_batch, [512, 512])
+    image_batch_orig, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label,
+                                                                                 dim=0)  # Add one batch dimension.
+    image_batch = tf.image.resize_bilinear(image_batch_orig, [512, 512])
 
     # Create network.
     net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -94,7 +94,12 @@ def main():
 
     # Predictions.
     raw_output = net.layers['concat_conv8']
-    raw_output = tf.image.resize_area(raw_output, tf.shape(label_batch)[1:3, ])
+    raw_output = tf.image.resize_bilinear(raw_output, tf.shape(label_batch)[1:3, ])
+
+    # CRF
+    inv_image = tf.py_func(inv_preprocess, [image_batch_orig, 1, IMG_MEAN], tf.uint8)
+    raw_output = tf.py_func(dense_crf, [tf.nn.softmax(raw_output), inv_image], tf.float32)
+
     raw_output = tf.argmax(raw_output, dimension=3)
     pred = tf.expand_dims(raw_output, dim=3)  # Create 4-d tensor.
 
