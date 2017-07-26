@@ -616,11 +616,9 @@ def main():
         # Saver for storing checkpoints of the model.
         saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=10)
 
-        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        run_metadata = tf.RunMetadata()
         # Set up tf session and initialize variables.
         sess = tf.Session(config=tf.ConfigProto(
-            log_device_placement=True))
+            allow_soft_placement=True))
         init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
         sess.run(init)
@@ -685,14 +683,8 @@ def main():
                     acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
                         [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
                          IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
-                        feed_dict=feed_dict, options=options, run_metadata=run_metadata)
+                        feed_dict=feed_dict)
 
-                    from tensorflow.python.client import timeline
-
-                    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-                    chrome_trace = fetched_timeline.generate_chrome_trace_format()
-                    with open('timeline_01.json', 'w') as f:
-                        f.write(chrome_trace)
 
                     summary_writer_train.add_summary(summary_t, step)
 
