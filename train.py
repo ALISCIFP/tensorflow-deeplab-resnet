@@ -10,7 +10,6 @@ from __future__ import print_function
 import argparse
 import os
 import re
-import shutil
 import time
 
 import numpy as np
@@ -238,11 +237,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    if args.first_run:
-        try:
-            shutil.rmtree(args.snapshot_dir)
-        except Exception as e:
-            print(e)
+    # if args.first_run:
+    #     try:
+    #         shutil.rmtree(args.snapshot_dir)
+    #     except Exception as e:
+    #         print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -489,11 +488,12 @@ def main():
                                                                       tf.shape(example_batch)[1:3, ])
 
         example_batch_summary = tf.py_func(decode_labels,
-                                           [tf.cast(example_batch, tf.int32), 2 * args.save_num_images, 2],
+                                           [tf.expand_dims(tf.cast(tf.argmax(example_batch, axis=-1), tf.int32),
+                                                           axis=-1), args.save_num_images, 2],
                                            tf.uint8)
         label_discrim_batch_summary = tf.py_func(decode_labels,
-                                                 [label_discrim_batch_concat, 2 * args.save_num_images, 2], tf.uint8)
-        discrim_train_summary = tf.py_func(decode_labels, [discrim_net_train_concat, 2 * args.save_num_images, 2],
+                                                 [label_discrim_batch_concat, args.save_num_images, 2], tf.uint8)
+        discrim_train_summary = tf.py_func(decode_labels, [discrim_net_train_concat, args.save_num_images, 2],
                                            tf.uint8)
         tf.summary.image('discrim output',
                          tf.concat(axis=2,
