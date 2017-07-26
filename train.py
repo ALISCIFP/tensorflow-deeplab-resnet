@@ -498,7 +498,7 @@ def main():
         tf.summary.image('discrim output',
                          tf.concat(axis=2,
                                    values=[example_batch_summary, label_discrim_batch_summary, discrim_train_summary]),
-                         max_outputs=2 * args.save_num_images, collections=['all'])  # Concatenate row-wise.
+                         max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
         # Processed predictions: for visualisation.
         raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
