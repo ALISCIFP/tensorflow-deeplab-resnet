@@ -108,47 +108,41 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     """
 
     img_contents = tf.read_file(input_queue[0])
-    [str_head,str_tail] = tf.string_split(input_queue[0],"_")
-    [str_head2,str_tail2] = tf.string_split(str_tail,".")
-
-    str_tail_num = tf.cast(str_head2,tf.uint16)
-    f0 = tf.string_join([str_head, '_', tf.cast(str_tail_num - 3, tf.string), '.', str_tail2])
-    f2 = tf.string_join([str_head, '_', tf.cast(str_tail_num + 3, tf.string), '.', str_tail2])
-
-
-    if os.path.exists(f2):
-        img2_contents = tf.read_file(f2)
-    else:
-        img2_contents = img_contents
-
-
+    # str_split1 = tf.string_split(input_queue[0],delimiter="_")
+    # aa= tf.string_split('a b c')
+    # str_split2 = tf.string_split(str_split1.values[1],delimiter=".")
+    #
+    # str_tail_num = tf.cast(str_split2[0],tf.uint16)
+    # f0 = tf.string_join([str_split1.values[0], '_', tf.cast(str_tail_num - 3, tf.string), '.', str_split2[1]])
+    # f2 = tf.string_join([str_split1.values[0], '_', tf.cast(str_tail_num + 3, tf.string), '.', str_split2[1]])
+    #
     label_contents = tf.read_file(input_queue[1])
-    
+    #
     img = tf.image.decode_png(img_contents, channels=3)
     img_r, img_g, img_b = tf.split(axis=2, num_or_size_splits=3, value=img)
     img = tf.cast(tf.concat(axis=2, values=[img_b, img_g, img_r]), dtype=tf.float32)
     # Extract mean.
     img -= img_mean
-
-    if os.path.exists(f0):
-        img0_contents = tf.read_file(f0)
-        img0 = tf.image.decode_png(img0_contents, channels=3)
-        img0_r, img0_g, img0_b = tf.split(axis=2, num_or_size_splits=3, value=img0)
-        img0 = tf.cast(tf.concat(axis=2, values=[img0_b, img0_g, img0_r]), dtype=tf.float32)
-        # Extract mean.
-        img0 -= img_mean
-    else:
-        img0 = img
-
-    if os.path.exists(f2):
-        img2_contents = tf.read_file(f2)
-        img2 = tf.image.decode_png(img2_contents, channels=3)
-        img2_r, img2_g, img2_b = tf.split(axis=2, num_or_size_splits=3, value=img2)
-        img2 = tf.cast(tf.concat(axis=2, values=[img2_b, img2_g, img2_r]), dtype=tf.float32)
-        # Extract mean.
-        img2 -= img_mean
-    else:
-        img2 = img
+    #
+    # if os.path.exists(f0):
+    #     img0_contents = tf.read_file(f0)
+    #     img0 = tf.image.decode_png(img0_contents, channels=3)
+    #     img0_r, img0_g, img0_b = tf.split(axis=2, num_or_size_splits=3, value=img0)
+    #     img0 = tf.cast(tf.concat(axis=2, values=[img0_b, img0_g, img0_r]), dtype=tf.float32)
+    #     # Extract mean.
+    #     img0 -= img_mean
+    # else:
+    #     img0 = img
+    #
+    # if os.path.exists(f2):
+    #     img2_contents = tf.read_file(f2)
+    #     img2 = tf.image.decode_png(img2_contents, channels=3)
+    #     img2_r, img2_g, img2_b = tf.split(axis=2, num_or_size_splits=3, value=img2)
+    #     img2 = tf.cast(tf.concat(axis=2, values=[img2_b, img2_g, img2_r]), dtype=tf.float32)
+    #     # Extract mean.
+    #     img2 -= img_mean
+    # else:
+    #     img2 = img
 
     label = tf.image.decode_png(label_contents, channels=1)
 
@@ -166,7 +160,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
         # Randomly crops the images and labels.
         img, label = random_crop_and_pad_image_and_labels(img, label, h, w, ignore_label)
 
-        img = tf.concat([img2,img,img0],axis=-1)
+        # img = tf.concat([img2,img,img0],axis=-1)
 
     return img, label
 

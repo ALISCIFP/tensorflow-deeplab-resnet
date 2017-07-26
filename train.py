@@ -209,7 +209,7 @@ def main():
     args = get_arguments()
     print(args)
 
-    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
