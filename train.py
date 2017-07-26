@@ -19,13 +19,24 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
-IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
+# IMG_MEAN = np.array((104.00698793, 116.66876762, 122.67891434), dtype=np.float32)  # VOC2012
 # IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 # IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
 #
 # LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
 #                                   dtype=np.float32)
+#IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
+IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
+
+#[ 69.9417258   70.08041571  69.92282781] #LITS PNG format
+
+
+#LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),dtype=np.float32)
+LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
+#LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
+#LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
+
 
 GPU_MASK = '1'
 BATCH_SIZE = 4
@@ -147,11 +158,11 @@ def get_arguments():
                         help="Where to save snapshots of the model.")
     parser.add_argument("--weight-decay", type=float, default=WEIGHT_DECAY,
                         help="Regularisation parameter for L2-loss.")
-    parser.add_argument("--conv-lr-multiplier", type=float, default=1.0,
+    parser.add_argument("--conv-lr-multiplier", type=float, default=0.0,
                         help="conv learning rate multiplier")
-    parser.add_argument("--fc-w-lr-multiplier", type=float, default=10.0,
+    parser.add_argument("--fc-w-lr-multiplier", type=float, default=0.0,
                         help="fc_w learning rate multiplier")
-    parser.add_argument("--fc-b-lr-multiplier", type=float, default=20.0,
+    parser.add_argument("--fc-b-lr-multiplier", type=float, default=0.0,
                         help="fc_b learning rate multiplier")
     parser.add_argument("--concat-lr-multiplier", type=float, default=10.0,
                         help="concat learning rate multiplier")
@@ -186,7 +197,10 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    saver.restore(sess, ckpt_path)
+    if 'ckpt' in ckpt_path:
+        saver.restore(sess, ckpt_path)
+    else:
+        saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
 
@@ -260,7 +274,7 @@ def main():
     # Predictions.
     # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], conv_trainable, summarize=100)
     # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], concat_trainable, summarize=100)
-    raw_output = net.layers['concat_conv8']
+    raw_output = net.layers['concat_conv5']
     raw_output_old = net.layers['fc1_voc12']
 
     # Predictions: ignoring all predictions with labels greater or equal than n_classes
@@ -316,7 +330,7 @@ def main():
         #                                                                                                 gt_old))))
 
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = 0.2 * tf.reduce_mean(
+    reduced_loss = 0.0 * tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
                    + 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                    + tf.add_n(l2_losses)
