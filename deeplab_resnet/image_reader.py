@@ -90,7 +90,7 @@ def read_labeled_image_list(data_dir, data_list):
 
 
 def read_images_from_disk(input_queue, input_size, random_scale, random_mirror,
-                          ignore_label):  # optional pre-processing arguments
+                          ignore_label, img_mean):  # optional pre-processing arguments
     """Read one image and its corresponding mask with optional pre-processing.
     
     Args:
@@ -112,10 +112,13 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror,
     label_contents = tf.read_file(input_queue[1])
     
     img = tf.image.decode_png(img_contents, channels=3)
-    img = tf.cast(img,dtype=tf.float32)
+
 
     img_r, img_g, img_b = tf.split(value=img, num_or_size_splits=3, axis=2)
     img = tf.concat(axis=2, values=[img_b, img_g, img_r])
+    img = tf.cast(img, dtype=tf.float32)
+    # Extract mean.
+    img -= img_mean
 
     label = tf.image.decode_png(label_contents, channels=1)
 
@@ -141,7 +144,7 @@ class ImageReader(object):
     '''
 
     def __init__(self, data_dir, data_list, input_size,
-                 random_scale, random_mirror, ignore_label, coord, shuffle=True, num_threads=4):
+                 random_scale, random_mirror, ignore_label, img_mean, coord, shuffle=True, num_threads=4):
         '''Initialise an ImageReader.
         
         Args:
@@ -167,7 +170,7 @@ class ImageReader(object):
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
                                                    shuffle=shuffle)  # not shuffling if it is val
         self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror,
-                                                       ignore_label)
+                                                       ignore_label, img_mean)
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.

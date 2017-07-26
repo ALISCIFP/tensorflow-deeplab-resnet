@@ -34,7 +34,7 @@ LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
 
 GPU_MASK = '1'
-BATCH_SIZE = 5
+BATCH_SIZE = 4
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
@@ -231,6 +231,7 @@ def main():
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
+            IMG_MEAN,
             coord)
         image_batch_train, label_batch_train = reader.dequeue(args.batch_size)
 
@@ -243,6 +244,7 @@ def main():
             args.random_scale,
             args.random_mirror,
             args.ignore_label,
+            IMG_MEAN,
             coord)
         image_batch_val, label_batch_val = reader.dequeue(args.batch_size)
 
@@ -269,24 +271,28 @@ def main():
         [tf.ones([args.batch_size, 16, 16], dtype=tf.int32), tf.zeros([args.batch_size, 16, 16], dtype=tf.int32)],
         axis=0)
 
-    discrim_net_train = Discriminator({'discrim_data': tf.one_hot(example_batch, 2, axis=-1)},
+    with tf.variable_scope('adv_loss'):
+        discrim_net_train = Discriminator({'discrim_data': tf.one_hot(example_batch, args.num_classes, axis=-1)},
                                       is_training=args.is_training,
                                       num_classes=2)
-    discrim_net_train = discrim_net_train.layers['discrim_conv5']
-    output_op_discrim_train = tf.cast(tf.argmax(discrim_net_train, axis=-1), tf.int32)
+        discrim_net_train = discrim_net_train.layers['discrim_conv5']
+        output_op_discrim_train = tf.cast(tf.argmax(discrim_net_train, axis=-1), tf.int32)
 
-    correct_pred_discrim_train = tf.equal(output_op_discrim_train, label_discrim_batch)
-    accuracy_discrim_train = tf.reduce_mean(tf.cast(correct_pred_discrim_train, tf.float32))
+        correct_pred_discrim_train = tf.equal(output_op_discrim_train, label_discrim_batch)
+        accuracy_discrim_train = tf.reduce_mean(tf.cast(correct_pred_discrim_train, tf.float32))
 
-    loss_discrim_train = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net_train,
-                                                                        labels=label_discrim_batch)
+        loss_discrim_train = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net_train,
+                                                                                           labels=label_discrim_batch))
 
-    discrim_net_gen = Discriminator({'discrim_data': raw_output}, is_training=args.is_training,
+    with tf.variable_scope('adv_loss', reuse=True):
+        discrim_net_gen = Discriminator({'discrim_data': raw_output}, is_training=args.is_training,
                                     num_classes=2)
-    discrim_net_gen = discrim_net_gen.layers['discrim_conv5']
+        discrim_net_gen = discrim_net_gen.layers['discrim_conv5']
 
-    loss_discrim_gen = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net_gen,
-                                                                      labels=tf.ones_like(raw_output))
+        loss_discrim_gen = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=discrim_net_gen,
+                                                                          labels=tf.ones_like(tf.cast(
+                                                                              tf.argmax(discrim_net_gen, axis=-1),
+                                                                              tf.int32)))
 
     tf.summary.scalar("Loss Discrim Train", loss_discrim_train, collections=['all'])
     tf.summary.scalar("Accuracy Discrim Train", accuracy_discrim_train, collections=['all'])
@@ -418,7 +424,7 @@ def main():
     tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
     tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-    images_summary_concat = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, mean], tf.uint8)
+    images_summary_concat = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary_concat = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_concat = tf.py_func(decode_labels, [pred_concat, args.save_num_images, args.num_classes], tf.uint8)
     tf.summary.image('concat output',
