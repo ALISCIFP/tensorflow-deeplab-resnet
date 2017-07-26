@@ -209,7 +209,7 @@ def main():
     args = get_arguments()
     print(args)
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
@@ -330,9 +330,9 @@ def main():
         #                                                                                                 gt_old))))
 
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-    reduced_loss = 0.0 * tf.reduce_mean(
+    reduced_loss = 1.0 * tf.reduce_mean(
         tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
-                   + 0.8 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
+                   + 0.00001 * tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                    + tf.add_n(l2_losses)
 
     # Processed predictions: for visualisation.
@@ -524,7 +524,7 @@ def main():
             feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
             acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
                 [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op_concat],
+                 IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
                 feed_dict=feed_dict)
 
             summary_writer_train.add_summary(summary_t, step)
