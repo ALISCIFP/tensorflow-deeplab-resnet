@@ -10,6 +10,7 @@ from __future__ import print_function
 import argparse
 import os
 import re
+import shutil
 import time
 
 import numpy as np
@@ -52,7 +53,7 @@ SAVE_PRED_EVERY = 100
 VAL_INTERVAL = 11
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
-DISCRIM_INTERVAL = 5
+DISCRIM_INTERVAL = 10
 
 
 def intersectionAndUnion(imPred, imLab, numClass):
@@ -158,6 +159,8 @@ def get_arguments():
                         help="Regularisation parameter for L2-loss.")
     parser.add_argument("--conv-lr-multiplier", type=float, default=1.0,
                         help="conv learning rate multiplier")
+    parser.add_argument("--discrim-lr-multiplier", type=float, default=1.0,
+                        help="discrim learning rate multiplier")
     parser.add_argument("--fc-w-lr-multiplier", type=float, default=10.0,
                         help="fc_w learning rate multiplier")
     parser.add_argument("--fc-b-lr-multiplier", type=float, default=20.0,
@@ -204,11 +207,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    # if args.first_run:
-    #     try:
-    #         shutil.rmtree(args.snapshot_dir)
-    #     except Exception as e:
-    #         print(e)
+    if args.first_run:
+        try:
+            shutil.rmtree(args.snapshot_dir)
+        except Exception as e:
+            print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -265,16 +268,17 @@ def main():
     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]), num_classes=args.num_classes,
                                one_hot=False)  # [batch_size, h, w]
 
-    example_batch = tf.concat([tf.cast(label_proc, tf.int32), tf.cast(tf.argmax(raw_output, axis=-1), tf.int32)],
-                              axis=0)
+    example_batch = tf.one_hot(
+        tf.concat([tf.cast(label_proc, tf.int32), tf.cast(tf.argmax(raw_output, axis=-1), tf.int32)],
+                  axis=0), args.num_classes, axis=-1)
     label_discrim_batch = tf.concat(
         [tf.ones([args.batch_size, 16, 16], dtype=tf.int32), tf.zeros([args.batch_size, 16, 16], dtype=tf.int32)],
         axis=0)
 
     with tf.variable_scope('adv_loss'):
-        discrim_net_train = Discriminator({'discrim_data': tf.one_hot(example_batch, args.num_classes, axis=-1)},
-                                      is_training=args.is_training,
-                                      num_classes=2)
+        discrim_net_train = Discriminator({'discrim_data': example_batch},
+                                          is_training=args.is_training,
+                                          num_classes=2)
         discrim_net_train = discrim_net_train.layers['discrim_conv5']
         output_op_discrim_train = tf.cast(tf.argmax(discrim_net_train, axis=-1), tf.int32)
 
@@ -294,18 +298,28 @@ def main():
                                                                               tf.argmax(discrim_net_gen, axis=-1),
                                                                               tf.int32)))
 
-    tf.summary.scalar("Loss Discrim Train", loss_discrim_train, collections=['train'])
-    tf.summary.scalar("Accuracy Discrim Train", accuracy_discrim_train, collections=['train'])
+    tf.summary.scalar("Loss Discrim Train", loss_discrim_train, collections=['all'])
+    tf.summary.scalar("Accuracy Discrim Train", accuracy_discrim_train, collections=['all'])
 
-    example_batch_summary = tf.py_func(decode_labels, [example_batch, args.save_num_images, args.num_classes], tf.uint8)
-    label_discrim_batch_summary = tf.py_func(decode_labels,
-                                             [label_discrim_batch, args.save_num_images, args.num_classes], tf.uint8)
-    discrim_train_summary = tf.py_func(decode_labels, [output_op_discrim_train, args.save_num_images, args.num_classes],
+    # Processed predictions: for visualisation.
+    discrim_net_train_up = tf.image.resize_bilinear(discrim_net_train, tf.shape(example_batch)[1:3, ])
+    discrim_net_train_up = tf.argmax(discrim_net_train_up, dimension=3)
+    discrim_net_train_concat = tf.expand_dims(discrim_net_train_up, dim=3)
+
+    # Processed predictions: for visualisation.
+    label_discrim_batch_concat = tf.image.resize_nearest_neighbor(tf.expand_dims(label_discrim_batch, dim=3),
+                                                                  tf.shape(example_batch)[1:3, ])
+
+    example_batch_summary = tf.py_func(decode_labels, [tf.cast(example_batch, tf.int32), 2 * args.save_num_images, 2],
                                        tf.uint8)
-    tf.summary.image('concat output',
+    label_discrim_batch_summary = tf.py_func(decode_labels,
+                                             [label_discrim_batch_concat, 2 * args.save_num_images, 2], tf.uint8)
+    discrim_train_summary = tf.py_func(decode_labels, [discrim_net_train_concat, 2 * args.save_num_images, 2],
+                                       tf.uint8)
+    tf.summary.image('discrim output',
                      tf.concat(axis=2,
                                values=[example_batch_summary, label_discrim_batch_summary, discrim_train_summary]),
-                     max_outputs=args.save_num_images, collections=['all'])  # Concatenate row-wise.
+                     max_outputs=2 * args.save_num_images, collections=['all'])  # Concatenate row-wise.
 
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
@@ -381,7 +395,7 @@ def main():
     tf.summary.scalar("Loss", loss_output, collections=['all'])
     tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
 
-
+    tf.summary.scalar("Memory Use", tf.contrib.memory_stats.BytesLimit(), collections=['all'])
     counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
     counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
@@ -463,10 +477,10 @@ def main():
 
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - step_ph / args.num_steps), args.power))
 
-    opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
-    opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
-    opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 20.0, args.momentum)
-    opt_discrim = tf.train.MomentumOptimizer(learning_rate, args.momentum)
+    opt_conv = tf.train.MomentumOptimizer(learning_rate * args.conv_lr_multiplier, args.momentum)
+    opt_fc_w = tf.train.MomentumOptimizer(learning_rate * args.fc_w_lr_multiplier, args.momentum)
+    opt_fc_b = tf.train.MomentumOptimizer(learning_rate * args.fc_b_lr_multiplier, args.momentum)
+    opt_discrim = tf.train.MomentumOptimizer(learning_rate * args.discrim_lr_multiplier, args.momentum)
 
     grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable)
     grads_conv = grads[:len(conv_trainable)]
