@@ -47,7 +47,7 @@ IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 2.5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 21
+NUM_CLASSES = 3
 NUM_STEPS = 1000000
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -261,7 +261,7 @@ def main():
     # Which variables to load. Running means and variances are not trainable,
     # thus all_variables() should be restored.
     restore_var = [v for v in tf.global_variables() if
-                   'concat' not in v.name or not args.first_run]
+                   'concat' not in v.name and 'conv1' not in v.name and 'fc' not in v.name or not args.first_run]
     all_trainable = [v for v in tf.trainable_variables() if 'beta' not in v.name and 'gamma' not in v.name]
     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
     conv_trainable = [v for v in all_trainable if 'fc' not in v.name and 'concat' not in v.name]  # lr * 1.0
@@ -272,8 +272,7 @@ def main():
     assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable) + len(concat_trainable))
     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
     # Predictions.
-    # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], conv_trainable, summarize=100)
-    # net.layers['concat_conv8'] = tf.Print(net.layers['concat_conv8'], concat_trainable, summarize=100)
+
     raw_output = net.layers['concat_conv5']
     raw_output_old = net.layers['fc1_voc12']
 
@@ -422,7 +421,8 @@ def main():
     tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
     tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    images_orig = image_batch[:, :, :, 3:6]
+    images_summary = tf.py_func(inv_preprocess, [images_orig, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_concat = tf.py_func(decode_labels, [pred_concat, args.save_num_images, args.num_classes], tf.uint8)
     preds_summary_resnet = tf.py_func(decode_labels, [pred_resnet, args.save_num_images, args.num_classes], tf.uint8)

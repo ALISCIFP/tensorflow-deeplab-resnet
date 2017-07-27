@@ -19,11 +19,11 @@ class DeepLabResNetModel(Network):
           num_classes: number of classes to predict (including background).
         '''
         (self.feed('data')
-             .conv(7, 7, 64, 2, 2, biased=False, relu=False, name='concat_conv1')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1')
-             .max_pool(3, 3, 2, 2, name='pool1')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='concat_res2a_branch1')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn2a_branch1'))
+         .conv(7, 7, 64, 2, 2, biased=False, relu=False, name='conv1')
+         .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1')
+         .max_pool(3, 3, 2, 2, name='pool1')
+         .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='concat_res2a_branch1')
+         .batch_normalization(is_training=is_training, activation_fn=None, name='bn2a_branch1'))
 
         (self.feed('pool1')
              .conv(1, 1, 64, 1, 1, biased=False, relu=False, name='res2a_branch2a')
