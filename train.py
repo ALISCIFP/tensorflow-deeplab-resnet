@@ -183,8 +183,10 @@ def load(saver, sess, ckpt_path):
       sess: TensorFlow session.
       ckpt_path: path to checkpoint file with parameters.
     '''
-    # saver.restore(sess, ckpt_path)
-    saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
+    if 'ckpt' in ckpt_path:
+        saver.restore(sess, ckpt_path)
+    else:
+        saver.restore(sess, tf.train.latest_checkpoint(ckpt_path))
     print("Restored model parameters from {}".format(ckpt_path))
 
 
