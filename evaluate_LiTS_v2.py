@@ -18,8 +18,9 @@ import scipy.ndimage
 import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader
+IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
 
-IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  # LITS
+#IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  # LITS
 
 GPU_MASK = '0'
 DATA_DIRECTORY = None
@@ -78,7 +79,7 @@ def saving_process(queue, event, data_dir, post_processing):
     while not (event.is_set() and queue.empty()):
         key, idx, preds, num_slices = queue.get()
         if key not in dict_of_curr_processing:
-            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512), dtype=np.int16)
+            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
         dict_of_curr_processing[key][idx] = preds
@@ -88,13 +89,13 @@ def saving_process(queue, event, data_dir, post_processing):
             if post_processing:
                 preds_liver = np.copy(dict_of_curr_processing[key])
                 preds_liver[preds_liver == 2] = 1
-                preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver, np.ones((3, 3, 3)), iterations=3)
+                #preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8), np.ones((3, 3, 3),np.uint8), iterations=1)
 
                 preds_lesion = np.copy(dict_of_curr_processing[key])
                 preds_lesion[preds_lesion == 1] = 0
                 preds_lesion[preds_lesion == 2] = 1
-                preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion, np.ones((3, 3, 3)), iterations=3)
-                dict_of_curr_processing[key] = preds_lesion + preds_liver
+                preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8), np.ones((3, 3, 3),np.uint8), iterations=3)
+                dict_of_curr_processing[key] = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
 
             fname_out = 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii'
             print("Writing: " + fname_out)

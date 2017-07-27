@@ -16,7 +16,7 @@ import nibabel as nib
 import numpy as np
 import scipy.ndimage
 import tensorflow as tf
-
+import cv2
 from deeplab_resnet import DeepLabResNetModel, ImageReader
 
 IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
@@ -82,9 +82,16 @@ def saving_process(queue, event, data_dir, post_processing):
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
         if post_processing:
-            preds = scipy.ndimage.morphology.binary_erosion(preds)
-            preds = scipy.ndimage.morphology.binary_dilation(preds)
-
+            kernel = np.ones((3,3), np.uint8)
+#            img_liver = preds.astype(np.uint8)
+#            img_liver[img_liver==2] = 1
+#            img_liver = cv2.erode(img_liver, kernel, iterations=1)
+#            img_lesion = preds.astype(np.uint8)
+#            img_lesion[img_lesion==1] = 0
+#            img_lesion[img_lesion == 2] =1
+#            img_lesion = cv2.dilate(img_lesion, kernel, iterations=3)
+#            preds = img_liver.astype(np.int16) + img_lesion.astype(np.int16)
+            preds = cv2.dilate(preds.astype(np.uint8),kernel,iterations=3)
         dict_of_curr_processing[key][idx] = preds
         dict_of_curr_processing_len[key] += 1
 
