@@ -14,7 +14,7 @@ import scipy
 DATA_DIRECTORY = '/home/zack/Data/ILD_jpg_png/'
 DATA_LIST_PATH = '/home/zack/Data/ILD_jpg_png/dataset/train.txt'
 
-DATA_DIRECTORY = '/home/zack/Data/newLITS/'
+DATA_DIRECTORY = '/home/zack/Data/newLITS'
 DATA_LIST_PATH = '/home/zack/Data/newLITS/dataset/train.txt'
 
 # DATA_DIRECTORY = '/home/z003hvsa/Data/LiverData_2D_final'
