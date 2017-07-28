@@ -8,7 +8,6 @@ import math
 import os
 
 import SimpleITK as sitk
-import cv2
 import numpy as np
 import scipy.misc
 
@@ -40,30 +39,24 @@ def rescale(input_image, output_spacing, bilinear=False):
     return resampler.Execute(input_image)
 
 
-def ndarry2jpg_png(data_file, img_gt_file, out_dir, flist):
+def ndarry2jpg_png(data_file, out_dir, flist):
     img = sitk.ReadImage(data_file)
-    img_gt = sitk.ReadImage(img_gt_file)
 
     img = rescale(img, output_spacing=[0.6, 0.6, 0.6], bilinear=True)
-    img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.6], bilinear=False)
 
     img = np.clip(sitk.GetArrayFromImage(img), -400, 1000)
-    img_gt = sitk.GetArrayFromImage(img_gt)
     data_path, fn = os.path.split(data_file)
-    data_path, fn_gt = os.path.split(img_gt_file)
 
     img_pad = np.concatenate((np.expand_dims(img[:, :, 0], axis=2), img, np.expand_dims(img[:, :, -1], axis=2)), axis=2)
 
     for i in xrange(0, img.shape[2]):
         img3c = img_pad[:, :, i:i + 3]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
-        cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
-        flist.write("/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n")
+        flist.write("/JPEGImages/" + fn + "_" + str(i) + ".jpg\n")
 
 
 def convert(data_dir, out_dir):
-    vols = sorted(glob.glob(os.path.join(data_dir, '*/volume*.nii')))
-    segs = sorted(glob.glob(os.path.join(data_dir, '*/segmentation*.nii')))
+    vols = sorted(glob.glob(os.path.join(data_dir, '*/test-volume*.nii')))
 
     print "converting",
     if not os.path.exists(os.path.join(out_dir, "JPEGImages")):
@@ -73,18 +66,13 @@ def convert(data_dir, out_dir):
     if not os.path.exists(os.path.join(out_dir, "dataset")):
         os.mkdir(os.path.join(out_dir, "dataset"))
 
-    ftrain = open(os.path.join(out_dir, "dataset/train.txt"), 'w')
-    fval = open(os.path.join(out_dir, "dataset/val.txt"), 'w')
+    ftest = open(os.path.join(out_dir, "dataset/test.txt"), 'w')
 
-    for vol, seg in zip(vols, segs):
-        print vol, seg
-        if '99' in vol:
-            ndarry2jpg_png(vol, seg, out_dir, fval)
-        else:
-            ndarry2jpg_png(vol, seg, out_dir, ftrain)
+    for vol in vols:
+        print vol
+        ndarry2jpg_png(vol, out_dir, ftest)
 
-    ftrain.close()
-    fval.close()
+    ftest.close()
 
     print "done."
 

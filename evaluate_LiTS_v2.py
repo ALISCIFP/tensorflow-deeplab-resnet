@@ -12,14 +12,16 @@ import os
 import re
 from multiprocessing import Process, Queue, Event
 
+import SimpleITK as sitk
 import nibabel as nib
 import numpy as np
 import scipy.ndimage
 import tensorflow as tf
-import cv2
-from deeplab_resnet import DeepLabResNetModel, ImageReader
 
+from deeplab_resnet import DeepLabResNetModel, ImageReader
 IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
+
+#IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  # LITS
 
 GPU_MASK = '0'
 DATA_DIRECTORY = None
@@ -27,7 +29,7 @@ DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 3
 BATCH_SIZE = 20
-RESTORE_FROM = './LITS4tlr2bk/'
+RESTORE_FROM = './LITS4tlr2/'
 
 
 def get_arguments():
@@ -49,7 +51,7 @@ def get_arguments():
                         help="Number of classes to predict (including background).")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
-    parser.add_argument("--post-processing", type=bool, default=False,
+    parser.add_argument("--post-processing", action="store_true",
                         help="Post processing enable or disable")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
                         help="Number of classes to predict (including background).")
@@ -71,6 +73,22 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
+def rescale(input_image, original_image, bilinear=False):
+    resampler = sitk.ResampleImageFilter()
+
+    resampler.SetOutputOrigin(original_image.GetOrigin())
+    resampler.SetOutputDirection(original_image.GetDirection())
+    resampler.SetOutputSpacing(original_image.GetSpacing())
+    resampler.SetSize(original_image.GetSize())
+
+    if bilinear:
+        resampler.SetInterpolator(sitk.sitkLinear)
+    else:
+        resampler.SetInterpolator(sitk.sitkNearestNeighbor)
+
+    return resampler.Execute(input_image)
+
+
 def saving_process(queue, event, data_dir, post_processing):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
@@ -78,31 +96,39 @@ def saving_process(queue, event, data_dir, post_processing):
     while not (event.is_set() and queue.empty()):
         key, idx, preds, num_slices = queue.get()
         if key not in dict_of_curr_processing:
-            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512), dtype=np.int16)
+            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
-        if post_processing:
-            kernel = np.ones((3,3), np.uint8)
-#            img_liver = preds.astype(np.uint8)
-#            img_liver[img_liver==2] = 1
-#            img_liver = cv2.erode(img_liver, kernel, iterations=1)
-#            img_lesion = preds.astype(np.uint8)
-#            img_lesion[img_lesion==1] = 0
-#            img_lesion[img_lesion == 2] =1
-#            img_lesion = cv2.dilate(img_lesion, kernel, iterations=3)
-#            preds = img_liver.astype(np.int16) + img_lesion.astype(np.int16)
-            preds = cv2.dilate(preds.astype(np.uint8),kernel,iterations=3)
         dict_of_curr_processing[key][idx] = preds
         dict_of_curr_processing_len[key] += 1
 
         if dict_of_curr_processing_len[key] == num_slices:
+            if post_processing:
+                preds_liver = np.copy(dict_of_curr_processing[key])
+                preds_liver[preds_liver == 2] = 1
+                #preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8), np.ones((3, 3, 3),np.uint8), iterations=1)
+
+                preds_lesion = np.copy(dict_of_curr_processing[key])
+                preds_lesion[preds_lesion == 1] = 0
+                preds_lesion[preds_lesion == 2] = 1
+                preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8), np.ones((3, 3, 3),np.uint8), iterations=3)
+                dict_of_curr_processing[key] = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
+
             fname_out = 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii'
             print("Writing: " + fname_out)
             path_to_img = glob.glob(data_dir + '/*/' + key + '.nii')
             print(path_to_img)
             assert len(path_to_img) == 1
+
+            base_img_sitk = sitk.ReadImage(path_to_img[0])
+            base_prediction_sitk = sitk.GetImageFromArray(dict_of_curr_processing[key])
+            base_prediction_sitk.SetOrigin(base_prediction_sitk.GetOrigin())
+            base_prediction_sitk.SetDirection(base_prediction_sitk.GetDirection())
+            base_prediction_sitk.SetSpacing([0.6, 0.6, 0.6])
+            prediction_rescaled = sitk.GetArrayFromImage(rescale(base_prediction_sitk, base_img_sitk))
+
             img = nib.load(path_to_img[0])
-            nii_out = nib.Nifti1Image(dict_of_curr_processing[key].transpose((1, 2, 0)), img.affine, header=img.header)
+            nii_out = nib.Nifti1Image(prediction_rescaled.transpose((1, 2, 0)), img.affine, header=img.header)
             nii_out.set_data_dtype(np.uint8)
             nib.save(nii_out, fname_out)
             del dict_of_curr_processing[key]
