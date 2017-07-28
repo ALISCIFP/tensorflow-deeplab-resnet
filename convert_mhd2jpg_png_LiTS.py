@@ -82,8 +82,9 @@ def convert(data_dir, out_dir):
 
         spacing = sitk.ReadImage(vol).GetSpacing()
         print(spacing)
-        if any([x > 1.0 for x in spacing[0:2]]):
+        if any([x >= 0.9 for x in spacing[0:2]]):
             ndarry2jpg_png(vol, seg, out_dir, ftrain_1mm)
+            print('fail!')
         else:
             if '99' in vol:
                 ndarry2jpg_png(vol, seg, out_dir, fval)
