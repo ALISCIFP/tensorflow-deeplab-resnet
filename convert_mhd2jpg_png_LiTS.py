@@ -47,8 +47,8 @@ def ndarry2jpg_png(data_file, img_gt_file, out_dir, flist):
     img = rescale(img, output_spacing=[0.6, 0.6, 0.6], bilinear=True)
     img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.6], bilinear=False)
 
-    img = np.clip(sitk.GetArrayFromImage(img), -400, 1000)
-    img_gt = sitk.GetArrayFromImage(img_gt)
+    img = np.clip(sitk.GetArrayFromImage(img).transpose(), -400, 1000)
+    img_gt = sitk.GetArrayFromImage(img_gt).transpose()
     data_path, fn = os.path.split(data_file)
     data_path, fn_gt = os.path.split(img_gt_file)
 

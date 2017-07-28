@@ -42,9 +42,9 @@ def rescale(input_image, output_spacing, bilinear=False):
 def ndarry2jpg_png(data_file, out_dir, flist):
     img = sitk.ReadImage(data_file)
 
-    img = rescale(img, output_spacing=[0.6, 0.6, 0.6], bilinear=True)
+    img = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
 
-    img = np.clip(sitk.GetArrayFromImage(img), -400, 1000)
+    img = np.clip(sitk.GetArrayFromImage(img).transpose(), -400, 1000)
     data_path, fn = os.path.split(data_file)
 
     img_pad = np.concatenate((np.expand_dims(img[:, :, 0], axis=2), img, np.expand_dims(img[:, :, -1], axis=2)), axis=2)
