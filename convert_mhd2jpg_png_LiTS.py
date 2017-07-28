@@ -65,7 +65,7 @@ def convert(data_dir, out_dir):
     vols = sorted(glob.glob(os.path.join(data_dir, '*/volume*.nii')))
     segs = sorted(glob.glob(os.path.join(data_dir, '*/segmentation*.nii')))
 
-    print "converting",
+    print "converting"
     if not os.path.exists(os.path.join(out_dir, "JPEGImages")):
         os.mkdir(os.path.join(out_dir, "JPEGImages"))
     if not os.path.exists(os.path.join(out_dir, "PNGImages")):
@@ -74,17 +74,25 @@ def convert(data_dir, out_dir):
         os.mkdir(os.path.join(out_dir, "dataset"))
 
     ftrain = open(os.path.join(out_dir, "dataset/train.txt"), 'w')
+    ftrain_1mm = open(os.path.join(out_dir, "dataset/train1mm.txt"), 'w')
     fval = open(os.path.join(out_dir, "dataset/val.txt"), 'w')
 
     for vol, seg in zip(vols, segs):
         print vol, seg
-        if '99' in vol:
-            ndarry2jpg_png(vol, seg, out_dir, fval)
+
+        spacing = sitk.ReadImage(vol).GetSpacing()
+        print(spacing)
+        if any([x > 1.0 for x in spacing]):
+            ndarry2jpg_png(vol, seg, out_dir, ftrain_1mm)
         else:
-            ndarry2jpg_png(vol, seg, out_dir, ftrain)
+            if '99' in vol:
+                ndarry2jpg_png(vol, seg, out_dir, fval)
+            else:
+                ndarry2jpg_png(vol, seg, out_dir, ftrain)
 
     ftrain.close()
     fval.close()
+    ftrain_1mm.close()
 
     print "done."
 
