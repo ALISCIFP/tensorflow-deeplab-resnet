@@ -45,6 +45,20 @@ def main():
         count+=1
         if count % 1000 == 0:
             print count
+    flist_test = args.data_list.replace('train', 'test')
+    ftlist = open(flist_test)
+
+    for ft in ftlist:
+        fjpg = args.data_dir + ft.strip('\n')
+
+        if not os.path.exists(fjpg):
+            print fjpg
+            continue
+        jpgnparray = misc.imread(fjpg)
+        im_mean += np.mean(np.mean(jpgnparray,axis=0),axis =0)
+        count+=1
+        if count % 1000 == 0:
+            print count
 
     print im_mean/count
 
