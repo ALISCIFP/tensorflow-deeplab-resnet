@@ -44,8 +44,8 @@ def ndarry2jpg_png(data_file, img_gt_file, out_dir, flist):
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
 
-    img = rescale(img, output_spacing=[0.6, 0.6, 0.6], bilinear=True)
-    img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.6], bilinear=False)
+    img = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
+    img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False)
 
     img = np.clip(sitk.GetArrayFromImage(img).transpose(), -400, 1000)
     img_gt = sitk.GetArrayFromImage(img_gt).transpose()
