@@ -12,6 +12,7 @@ import os
 import re
 from multiprocessing import Process, Queue, Event
 
+import SimpleITK as sitk
 import nibabel as nib
 import numpy as np
 import scipy.ndimage
@@ -71,6 +72,22 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
+def rescale(input_image, original_image, bilinear=False):
+    resampler = sitk.ResampleImageFilter()
+
+    resampler.SetOutputOrigin(original_image.GetOrigin())
+    resampler.SetOutputDirection(original_image.GetDirection())
+    resampler.SetOutputSpacing(original_image.GetSpacing())
+    resampler.SetSize(original_image.GetSize())
+
+    if bilinear:
+        resampler.SetInterpolator(sitk.sitkLinear)
+    else:
+        resampler.SetInterpolator(sitk.sitkNearestNeighbor)
+
+    return resampler.Execute(input_image)
+
+
 def saving_process(queue, event, data_dir, post_processing):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
@@ -101,8 +118,16 @@ def saving_process(queue, event, data_dir, post_processing):
             path_to_img = glob.glob(data_dir + '/*/' + key + '.nii')
             print(path_to_img)
             assert len(path_to_img) == 1
+
+            base_img_sitk = sitk.ReadImage(path_to_img[0])
+            base_prediction_sitk = sitk.GetImageFromArray(dict_of_curr_processing[key])
+            base_prediction_sitk.SetOrigin(base_prediction_sitk.GetOrigin())
+            base_prediction_sitk.SetDirection(base_prediction_sitk.GetDirection())
+            base_prediction_sitk.SetSpacing([0.6, 0.6, 0.6])
+            prediction_rescaled = sitk.GetArrayFromImage(rescale(base_prediction_sitk, base_img_sitk))
+
             img = nib.load(path_to_img[0])
-            nii_out = nib.Nifti1Image(dict_of_curr_processing[key].transpose((1, 2, 0)), img.affine, header=img.header)
+            nii_out = nib.Nifti1Image(prediction_rescaled.transpose((1, 2, 0)), img.affine, header=img.header)
             nii_out.set_data_dtype(np.uint8)
             nib.save(nii_out, fname_out)
             del dict_of_curr_processing[key]
