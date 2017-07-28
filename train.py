@@ -25,14 +25,14 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 #IMG_MEAN = np.array((40.9729668,   42.62135134,  40.93294311), dtype=np.float32) #ILD
 #IMG_MEAN = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 #IMG_MEAN = np.array((109.5388, 118.6897, 124.6901), dtype=np.float32)  # ImageNet2016 Scene-parsing Mean
-IMG_MEAN = np.array((70.09696377,  70.09982598,  70.05608305), dtype=np.float32) #LITS
+# IMG_MEAN = np.array((70.09696377,  70.09982598,  70.05608305), dtype=np.float32) #LITS
+IMG_MEAN = np.array((35.69959349,35.60370813,35.52218068), dtype=np.float32) #LITS resmaple 0.6mm
 #[ 69.9417258   70.08041571  69.92282781] #LITS PNG format
 
-
 #LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),dtype=np.float32)
-LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
+# LUNA16_softmax_weights = np.ones(3,dtype=np.float32)
 #LUNA16_softmax_weights = np.array((0.00120125,  0.02164801,0.97715074),dtype=np.float32) #[15020370189   332764489    18465194]
-#LUNA16_softmax_weights = np.array((0.00116335,  0.05251166,  0.946325),dtype=np.float32) #[15020370189   332764489    18465194]
+LUNA16_softmax_weights = np.array((0.2,  1.2,  2.2),dtype=np.float32) #[15020370189   332764489    18465194]
 
 
 GPU_MASK = '6'
