@@ -39,7 +39,7 @@ def rescale(input_image, output_spacing, bilinear=False):
     return resampler.Execute(input_image)
 
 
-def ndarry2jpg_png(data_file, img_gt_file, out_dir, flist):
+def ndarry2jpg_png(data_file, out_dir, flist):
     img = sitk.ReadImage(data_file)
 
     img = rescale(img, output_spacing=[0.6, 0.6, 0.6], bilinear=True)
@@ -68,7 +68,7 @@ def convert(data_dir, out_dir):
 
     ftest = open(os.path.join(out_dir, "dataset/test.txt"), 'w')
 
-    for vol, seg in vols:
+    for vol in vols:
         print vol
         ndarry2jpg_png(vol, out_dir, ftest)
 
