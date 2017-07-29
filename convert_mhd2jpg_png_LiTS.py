@@ -50,6 +50,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
     img_gt = sitk.ReadImage(img_gt_file)
 
     spacing = img.GetSpacing()
+    gt_spacing = img_gt.GetSpacing()
     if any([x == 1.0 for x in spacing[0:2]]):
         print(data_file, img_gt_file, spacing, 'fail!')
     else:
@@ -67,6 +68,9 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
     img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
     for i in xrange(0, num_slices):
+        if i >= img_gt.shape[2]:
+            print i, data_file, img_gt_file, spacing, gt_spacing, 'fail_idx!'
+            break
         img3c = img_pad[:, :, i:i + 3]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
@@ -95,7 +99,7 @@ def convert(data_dir, out_dir):
     if not os.path.exists(os.path.join(out_dir, "dataset")):
         os.mkdir(os.path.join(out_dir, "dataset"))
 
-    p = multiprocessing.Pool()
+    p = multiprocessing.Pool(6)
     retval = p.map(ndarry2jpg_png, zip(vols, segs, itertools.repeat(out_dir, len(vols))))
     list_train, list_val, list_train_1mm = retval
     p.close()
