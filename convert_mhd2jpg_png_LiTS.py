@@ -14,8 +14,8 @@ import cv2
 import numpy as np
 import scipy.misc
 
-DATA_DIRECTORY = '/mnt/data/LITS'
-OUT_DIRECTORY = "/mnt/data/newLITS"
+DATA_DIRECTORY = '/home/victor/LITS'
+OUT_DIRECTORY = "/home/victor/newLITS"
 
 
 def rescale(input_image, output_spacing, bilinear=False):
@@ -99,6 +99,10 @@ def convert(data_dir, out_dir):
     retval = p.map(ndarry2jpg_png, zip(vols, segs, itertools.repeat(out_dir, len(vols))))
     list_train, list_val, list_train_1mm = retval
     p.close()
+
+    list_train = list(itertools.chain.from_iterable(list_train))
+    list_val = list(itertools.chain.from_iterable(list_val))
+    list_train_1mm = list(itertools.chain.from_iterable(list_train_1mm))
 
     with open(os.path.join(out_dir, "dataset/train.txt"), 'w') as ftrain:
         ftrain.writelines(list_train)

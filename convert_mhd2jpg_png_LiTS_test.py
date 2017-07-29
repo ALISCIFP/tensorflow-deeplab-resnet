@@ -13,8 +13,8 @@ import SimpleITK as sitk
 import numpy as np
 import scipy.misc
 
-DATA_DIRECTORY = '/mnt/data/LITS'
-OUT_DIRECTORY = "/mnt/data/newLITS"
+DATA_DIRECTORY = '/home/victor/LITS'
+OUT_DIRECTORY = "/home/victor/newLITS"
 
 
 def rescale(input_image, output_spacing, bilinear=False):
@@ -76,6 +76,8 @@ def convert(data_dir, out_dir):
     p = multiprocessing.Pool()
     list_test = p.map(ndarry2jpg_png, zip(vols, itertools.repeat(out_dir, len(vols))))
     p.close()
+
+    list_test = list(itertools.chain.from_iterable(list_test))
 
     with open(os.path.join(out_dir, "dataset/test.txt"), 'w') as ftest:
         ftest.writelines(list_test)
