@@ -4,7 +4,9 @@
 
 import argparse
 import glob
+import itertools
 import math
+import multiprocessing
 import os
 
 import SimpleITK as sitk
@@ -40,9 +42,18 @@ def rescale(input_image, output_spacing, bilinear=False):
     return resampler.Execute(input_image)
 
 
-def ndarry2jpg_png(data_file, img_gt_file, out_dir, flist):
+def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
+    ftrain = []
+    fval = []
+    ftrain_1mm = []
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
+
+    spacing = img.GetSpacing()
+    if any([x == 1.0 for x in spacing[0:2]]):
+        print(data_file, img_gt_file, spacing, 'fail!')
+    else:
+        print data_file, img_gt_file, spacing
 
     img = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
     img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False)
@@ -58,12 +69,22 @@ def ndarry2jpg_png(data_file, img_gt_file, out_dir, flist):
         img3c = img_pad[:, :, i:i + 3]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
-        flist.write("/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n")
+        out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n"
+        if any([x == 1.0 for x in spacing[0:2]]):
+            ftrain_1mm.append(out_string)
+        elif '99' in data_file:
+            fval.append(out_string)
+        else:
+            ftrain.append(out_string)
+
+    return (ftrain, fval, ftrain_1mm)
 
 
 def convert(data_dir, out_dir):
     vols = sorted(glob.glob(os.path.join(data_dir, '*/volume*.nii')))
     segs = sorted(glob.glob(os.path.join(data_dir, '*/segmentation*.nii')))
+
+    assert len(vols) == len(segs)
 
     print "converting"
     if not os.path.exists(os.path.join(out_dir, "JPEGImages")):
@@ -73,27 +94,17 @@ def convert(data_dir, out_dir):
     if not os.path.exists(os.path.join(out_dir, "dataset")):
         os.mkdir(os.path.join(out_dir, "dataset"))
 
-    ftrain = open(os.path.join(out_dir, "dataset/train.txt"), 'w')
-    ftrain_1mm = open(os.path.join(out_dir, "dataset/train1mm.txt"), 'w')
-    fval = open(os.path.join(out_dir, "dataset/val.txt"), 'w')
+    p = multiprocessing.Pool()
+    retval = p.map(ndarry2jpg_png, zip(vols, segs, itertools.repeat(out_dir, len(vols))))
+    list_train, list_val, list_train_1mm = retval
+    p.close()
 
-    for vol, seg in zip(vols, segs):
-        print vol, seg
-
-        spacing = sitk.ReadImage(vol).GetSpacing()
-        print(spacing)
-        if any([x >= 0.9 for x in spacing[0:2]]):
-            ndarry2jpg_png(vol, seg, out_dir, ftrain_1mm)
-            print('fail!')
-        else:
-            if '99' in vol:
-                ndarry2jpg_png(vol, seg, out_dir, fval)
-            else:
-                ndarry2jpg_png(vol, seg, out_dir, ftrain)
-
-    ftrain.close()
-    fval.close()
-    ftrain_1mm.close()
+    with open(os.path.join(out_dir, "dataset/train.txt"), 'w') as ftrain:
+        ftrain.writelines(list_train)
+    with open(os.path.join(out_dir, "dataset/train1mm.txt"), 'w') as ftrain_1mm:
+        ftrain_1mm.writelines(list_train_1mm)
+    with open(os.path.join(out_dir, "dataset/val.txt"), 'w') as fval:
+        fval.writelines(list_val)
 
     print "done."
 
