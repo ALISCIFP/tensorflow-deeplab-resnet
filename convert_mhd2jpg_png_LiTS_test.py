@@ -65,7 +65,7 @@ def ndarry2jpg_png((data_file, out_dir)):
 
 
 def convert(data_dir, out_dir):
-    vols = sorted(glob.glob(os.path.join(data_dir, '*/volume*.nii')))
+    vols = sorted(glob.glob(os.path.join(data_dir, '*/test-volume*.nii')))
 
     print "converting"
     if not os.path.exists(os.path.join(out_dir, "JPEGImages")):
