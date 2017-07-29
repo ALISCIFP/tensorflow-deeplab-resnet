@@ -63,7 +63,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
     data_path, fn = os.path.split(data_file)
     data_path, fn_gt = os.path.split(img_gt_file)
 
-    img_pad = np.concatenate((np.expand_dims(img[:, :, 0], axis=2), img, np.expand_dims(img[:, :, -1], axis=2)), axis=2)
+    img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
     for i in xrange(0, img.shape[2]):
         img3c = img_pad[:, :, i:i + 3]
