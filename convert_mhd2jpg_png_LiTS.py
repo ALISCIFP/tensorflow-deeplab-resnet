@@ -51,10 +51,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
 
     spacing = img.GetSpacing()
     gt_spacing = img_gt.GetSpacing()
-    if any([x == 1.0 for x in spacing[0:2]]):
-        print(data_file, img_gt_file, spacing, 'fail!')
-    else:
-        print data_file, img_gt_file, spacing
+    print data_file, img_gt_file
 
     img = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
     img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False)
@@ -75,7 +72,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
         out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n"
-        if any([x == 1.0 for x in spacing[0:2]]):
+        if any([x == 1.0 for x in spacing[0:2]]) or any([x == 1.0 for x in gt_spacing[0:2]]):
             ftrain_1mm.append(out_string)
         elif '99' in data_file:
             fval.append(out_string)
@@ -101,7 +98,6 @@ def convert(data_dir, out_dir):
 
     p = multiprocessing.Pool(7)
     retval = p.map(ndarry2jpg_png, zip(vols, segs, itertools.repeat(out_dir, len(vols))))
-    list_train, list_val, list_train_1mm = retval
     p.close()
 
     list_train = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
