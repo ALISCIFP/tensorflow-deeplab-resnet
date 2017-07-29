@@ -59,13 +59,14 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
     img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False)
 
     img = np.clip(sitk.GetArrayFromImage(img).transpose(), -400, 1000)
+    num_slices = img.shape[2]
     img_gt = sitk.GetArrayFromImage(img_gt).transpose()
     data_path, fn = os.path.split(data_file)
     data_path, fn_gt = os.path.split(img_gt_file)
 
     img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
-    for i in xrange(0, img.shape[2]):
+    for i in xrange(0, num_slices):
         img3c = img_pad[:, :, i:i + 3]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
