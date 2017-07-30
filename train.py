@@ -9,6 +9,7 @@ from __future__ import print_function
 import argparse
 import os
 import re
+import shutil
 import time
 
 import numpy as np
@@ -215,11 +216,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    # if args.first_run:
-    #     try:
-    #         shutil.rmtree(args.snapshot_dir)
-    #     except Exception as e:
-    #         print(e)
+    if args.first_run:
+        try:
+            shutil.rmtree(args.snapshot_dir)
+        except Exception as e:
+            print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -227,7 +228,7 @@ def main():
     input_size = (h, w)
 
     with tf.Graph().as_default(), tf.device('/cpu:0'):
-        tf.set_random_seed(args.random_seed)
+        # tf.set_random_seed(args.random_seed)
 
         # Create queue coordinator.
         coord = tf.train.Coordinator()
@@ -244,7 +245,8 @@ def main():
                 args.random_mirror,
                 args.ignore_label,
                 IMG_MEAN,
-                coord)
+                coord,
+                num_threads=6)
 
         with tf.name_scope("val_inputs"):
             val_reader = ImageReader(
@@ -255,7 +257,8 @@ def main():
                 args.random_mirror,
                 args.ignore_label,
                 IMG_MEAN,
-                coord)
+                coord,
+                num_threads=2)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
@@ -272,9 +275,7 @@ def main():
         accuracy_per_class_list = []
         image_batch_list = []
         label_batch_list = []
-        grads_conv_list = []
-        grads_fc_w_list = []
-        grads_fc_b_list = []
+        grads_list = []
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             for gpu_id in args.gpu_mask.split(','):
                 with tf.name_scope(gpu_id), tf.device('/gpu:%d' % int(gpu_id)):
@@ -357,9 +358,9 @@ def main():
                         l2_losses)
                     reduced_loss_list.append(reduced_loss_list_curr)
 
-                    grads_conv_list.append(opt_conv.compute_gradients(reduced_loss_list_curr, var_list=conv_trainable))
-                    grads_fc_w_list.append(opt_fc_w.compute_gradients(reduced_loss_list_curr, var_list=fc_w_trainable))
-                    grads_fc_b_list.append(opt_fc_b.compute_gradients(reduced_loss_list_curr, var_list=fc_b_trainable))
+                    grads_list.append(
+                        zip(tf.gradients(reduced_loss_list_curr, conv_trainable + fc_w_trainable + fc_b_trainable),
+                            conv_trainable + fc_w_trainable + fc_b_trainable))
 
         reduced_loss = tf.reduce_mean(reduced_loss_list)
         accuracy = tf.reduce_mean(accuracy_list)
@@ -371,9 +372,10 @@ def main():
             class_per_gpu = [accuracy_per_class_list[int(gpu_id)][i] for gpu_id in args.gpu_mask.split(',')]
             accuracy_per_class.append(tf.reduce_mean(class_per_gpu))
 
-        grads_conv = average_gradients(grads_conv_list)
-        grads_fc_w = average_gradients(grads_fc_w_list)
-        grads_fc_b = average_gradients(grads_fc_b_list)
+        grads = average_gradients(grads_list)
+        grads_conv = grads[:len(conv_trainable)]
+        grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
+        grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
 
         train_op_conv = opt_conv.apply_gradients(grads_conv)
         train_op_fc_w = opt_fc_w.apply_gradients(grads_fc_w)
