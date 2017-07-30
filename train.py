@@ -18,7 +18,7 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
-IMG_MEAN = np.array((34.07980281, 34.03143557, 34.07695745), dtype=np.float32)  # LITS resmaple 0.6mm
+IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
 LUNA16_softmax_weights = np.array((0.2,  1.2,  2.2),dtype=np.float32) #[15020370189   332764489    18465194]
 
 GPU_MASK = '0,1'
