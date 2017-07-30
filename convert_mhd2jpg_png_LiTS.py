@@ -18,13 +18,16 @@ DATA_DIRECTORY = '/home/victor/LITS'
 OUT_DIRECTORY = "/home/victor/newLITS"
 
 
-def rescale(input_image, output_spacing, bilinear=False):
+def rescale(input_image, output_spacing, bilinear=False, input_spacing=None):
     resampler = sitk.ResampleImageFilter()
     origin = input_image.GetOrigin()
     resampler.SetOutputOrigin(origin)
 
     direction = input_image.GetDirection()
     resampler.SetOutputDirection(direction)
+
+    if input_spacing is not None:
+        input_image.SetSpacing(input_spacing)
 
     spacing = input_image.GetSpacing()
     orig_size = input_image.GetSize()
@@ -39,7 +42,7 @@ def rescale(input_image, output_spacing, bilinear=False):
             int(math.ceil(spacing[1] * (orig_size[1] - 1) / output_spacing[1]) + 1),
             int(math.ceil(spacing[2] * (orig_size[2] - 1) / output_spacing[2]) + 1)]
     resampler.SetSize(size)
-    return resampler.Execute(input_image)
+    return resampler.Execute(input_image), input_spacing
 
 
 def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
@@ -51,10 +54,17 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
 
     spacing = img.GetSpacing()
     gt_spacing = img_gt.GetSpacing()
-    print data_file, img_gt_file
+    if any([x == 1.0 for x in spacing[0:2]]):
+        print(data_file, img_gt_file, spacing, 'fail!')
+    else:
+        print data_file, img_gt_file, spacing
 
-    img = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
-    img_gt = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False)
+    img, input_spacing = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
+    if any([x == 1.0 for x in gt_spacing[0:2]]):
+        img_gt, _ = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False, input_spacing=input_spacing)
+        print data_file, img_gt_file, spacing, gt_spacing, 'fail_idx!'
+    else:
+        img_gt, _ = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False, input_spacing=None)
 
     img = np.clip(sitk.GetArrayFromImage(img).transpose(), -400, 1000)
     num_slices = img.shape[2]
@@ -65,14 +75,11 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
     img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
     for i in xrange(0, num_slices):
-        if i >= img_gt.shape[2]:
-            print i, data_file, img_gt_file, spacing, gt_spacing, 'fail_idx!'
-            break
         img3c = img_pad[:, :, i:i + 3]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
         out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n"
-        if any([x == 1.0 for x in spacing[0:2]]) or any([x == 1.0 for x in gt_spacing[0:2]]):
+        if any([x == 1.0 for x in spacing[0:2]]):
             ftrain_1mm.append(out_string)
         elif '99' in data_file:
             fval.append(out_string)

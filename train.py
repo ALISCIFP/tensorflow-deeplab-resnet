@@ -139,10 +139,6 @@ def get_arguments():
                         help="fc_w learning rate multiplier")
     parser.add_argument("--fc-b-lr-multiplier", type=float, default=20.0,
                         help="fc_b learning rate multiplier")
-    parser.add_argument("--concat-lr-multiplier", type=float, default=10.0,
-                        help="concat learning rate multiplier")
-    parser.add_argument("--per-class-train-summary-interval", type=int, default=25,
-                        help="save per class summaries every x minibatches")
     parser.add_argument("--moving-average-decay", type=float, default=0.9999,
                         help="multi-gpu moving average")
 
@@ -361,12 +357,9 @@ def main():
                         l2_losses)
                     reduced_loss_list.append(reduced_loss_list_curr)
 
-                    grads_conv_list.append(opt_conv.compute_gradients(reduced_loss_list_curr, var_list=conv_trainable,
-                                                                      colocate_gradients_with_ops=True))
-                    grads_fc_w_list.append(opt_fc_w.compute_gradients(reduced_loss_list_curr, var_list=fc_w_trainable,
-                                                                      colocate_gradients_with_ops=True))
-                    grads_fc_b_list.append(opt_fc_b.compute_gradients(reduced_loss_list_curr, var_list=fc_b_trainable,
-                                                                      colocate_gradients_with_ops=True))
+                    grads_conv_list.append(opt_conv.compute_gradients(reduced_loss_list_curr, var_list=conv_trainable))
+                    grads_fc_w_list.append(opt_fc_w.compute_gradients(reduced_loss_list_curr, var_list=fc_w_trainable))
+                    grads_fc_b_list.append(opt_fc_b.compute_gradients(reduced_loss_list_curr, var_list=fc_b_trainable))
 
         reduced_loss = tf.reduce_mean(reduced_loss_list)
         accuracy = tf.reduce_mean(accuracy_list)
@@ -547,13 +540,7 @@ def main():
                     feed_dict=feed_dict)
 
                 summary_writer_val.add_summary(summary_v, step)
-                for i, writer in enumerate(summary_writer_per_class_val):
-                    feed_dict = {step_ph: step, mode: False, class_number: i}
-                    _, _, _, summary_v_this_class = sess.run(
-                        [accuracy_per_class_output,
-                         IoU_summary_output, IoU_summary_no_reset_output, per_class_summary],
-                        feed_dict=feed_dict)
-                    writer.add_summary(summary_v_this_class, step)
+                summary_writer_per_class_val[step % args.num_classes].add_summary(summary_v_this_class, step)
 
                 duration = time.time() - start_time
                 print(
@@ -567,20 +554,13 @@ def main():
                     feed_dict=feed_dict)
 
                 summary_writer_train.add_summary(summary_t, step)
+                summary_writer_per_class_train[step % args.num_classes].add_summary(summary_t_this_class, step)
 
                 duration = time.time() - start_time
                 print(
                     'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
                         step, loss_value, acc, mI, mINR, duration))
 
-                if step % args.per_class_train_summary_interval == 0:
-                    for i, writer in enumerate(summary_writer_per_class_train):
-                        feed_dict = {step_ph: step, mode: True, class_number: i}
-                        _, _, _, summary_t_this_class = sess.run(
-                            [accuracy_per_class_output,
-                             IoU_summary_output, IoU_summary_no_reset_output, per_class_summary],
-                            feed_dict=feed_dict)
-                        writer.add_summary(summary_t_this_class, step)
         coord.request_stop()
         coord.join(threads)
 

@@ -135,7 +135,6 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     img -= img_mean
 
     def read_image(fname):
-
         image_contents = tf.read_file(fname)
         image = tf.image.decode_png(image_contents, channels=3)
         image_r, image_g, image_b = tf.split(axis=2, num_or_size_splits=3, value=image)
@@ -145,7 +144,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
         return image
 
     def fail(img, fname):
-        img = tf.Print(img, [fname])
+        # img = tf.Print(img, [fname])
         return img
 
     f0_exists_flag, = tf.py_func(os.path.exists, [f0], [tf.bool])
@@ -155,6 +154,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     img2 = tf.cond(f2_exists_flag, lambda: read_image(f2), lambda: fail(img, f2))
 
     label = tf.image.decode_png(label_contents, channels=1)
+    img = tf.concat([img2, img, img0], axis=-1)
 
     if input_size is not None:
         h, w = input_size
@@ -168,8 +168,6 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
             img, label = image_mirroring(img, label)
 
         # Randomly crops the images and labels.
-
-        img = tf.concat([img2, img, img0], axis=-1)
         img, label = random_crop_and_pad_image_and_labels(img, label, h, w, ignore_label)
 
     return img, label
@@ -226,6 +224,9 @@ class ImageReader(object):
             image_batch, label_batch = tf.train.batch_join(example_list, num_elements,
                                                            capacity=num_elements * self.num_threads)
         else:
-            image_batch, label_batch = tf.train.batch([self.image, self.label],
+            self.images, self.label = read_images_from_disk(self.queue, self.input_size, self.random_scale,
+                                                            self.random_mirror,
+                                                            self.ignore_label, self.img_mean)
+            image_batch, label_batch = tf.train.batch([self.images, self.label],
                                                       num_elements)
         return image_batch, label_batch
