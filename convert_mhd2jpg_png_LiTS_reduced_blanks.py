@@ -115,7 +115,7 @@ def convert(data_dir, out_dir):
     if not os.path.exists(os.path.join(out_dir, "dataset")):
         os.mkdir(os.path.join(out_dir, "dataset"))
 
-    p = multiprocessing.Pool(3)
+    p = multiprocessing.Pool(7)
     retval = p.map(ndarry2jpg_png, zip(vols, segs, itertools.repeat(out_dir, len(vols))))
     p.close()
 
