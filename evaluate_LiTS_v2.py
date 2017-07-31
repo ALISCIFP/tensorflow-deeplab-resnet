@@ -19,18 +19,16 @@ import scipy.ndimage
 import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader
-IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
 
-#IMG_MEAN = np.array((46.02499091, 46.00602707, 45.95747361), dtype=np.float32)  # LITS
+IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
 
 GPU_MASK = '0'
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 NUM_CLASSES = 3
-BATCH_SIZE = 20
-RESTORE_FROM = './LITS4tlr2/'
-
+BATCH_SIZE = 1
+RESTORE_FROM = None
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
