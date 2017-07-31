@@ -104,7 +104,8 @@ def saving_process(queue, event, data_dir, post_processing):
             if post_processing:
                 preds_liver = np.copy(dict_of_curr_processing[key])
                 preds_liver[preds_liver == 2] = 1
-                #preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8), np.ones((3, 3, 3),np.uint8), iterations=1)
+                preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8),
+                                                                      np.ones((3, 3, 3), np.uint8), iterations=1)
 
                 preds_lesion = np.copy(dict_of_curr_processing[key])
                 preds_lesion[preds_lesion == 1] = 0
@@ -122,7 +123,7 @@ def saving_process(queue, event, data_dir, post_processing):
             base_prediction_sitk = sitk.GetImageFromArray(dict_of_curr_processing[key])
             base_prediction_sitk.SetOrigin(base_prediction_sitk.GetOrigin())
             base_prediction_sitk.SetDirection(base_prediction_sitk.GetDirection())
-            base_prediction_sitk.SetSpacing([0.6, 0.6, 0.6])
+            base_prediction_sitk.SetSpacing([0.6, 0.6, 0.7])
             prediction_rescaled = sitk.GetArrayFromImage(rescale(base_prediction_sitk, base_img_sitk))
 
             img = nib.load(path_to_img[0])
