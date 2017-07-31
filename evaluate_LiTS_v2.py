@@ -94,7 +94,7 @@ def saving_process(queue, event, data_dir, post_processing):
     while not (event.is_set() and queue.empty()):
         key, idx, preds, num_slices = queue.get()
         if key not in dict_of_curr_processing:
-            dict_of_curr_processing[key] = np.zeros((num_slices, 512, 512), dtype=np.uint8)
+            dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[0], preds.shape[1]), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
         dict_of_curr_processing[key][idx] = preds
@@ -105,12 +105,13 @@ def saving_process(queue, event, data_dir, post_processing):
                 preds_liver = np.copy(dict_of_curr_processing[key])
                 preds_liver[preds_liver == 2] = 1
                 preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8),
-                                                                      np.ones((3, 3, 3), np.uint8), iterations=1)
+                                                                      np.ones((3, 3, 3), np.uint8), iterations=3)
 
                 preds_lesion = np.copy(dict_of_curr_processing[key])
                 preds_lesion[preds_lesion == 1] = 0
                 preds_lesion[preds_lesion == 2] = 1
-                preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8), np.ones((3, 3, 3),np.uint8), iterations=3)
+                preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8),
+                                                                        np.ones((3, 3, 3), np.uint8), iterations=3)
                 dict_of_curr_processing[key] = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
 
             fname_out = 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii'
@@ -121,8 +122,8 @@ def saving_process(queue, event, data_dir, post_processing):
 
             base_img_sitk = sitk.ReadImage(path_to_img[0])
             base_prediction_sitk = sitk.GetImageFromArray(dict_of_curr_processing[key])
-            base_prediction_sitk.SetOrigin(base_prediction_sitk.GetOrigin())
-            base_prediction_sitk.SetDirection(base_prediction_sitk.GetDirection())
+            base_prediction_sitk.SetOrigin(base_img_sitk.GetOrigin())
+            base_prediction_sitk.SetDirection(base_img_sitk.GetDirection())
             base_prediction_sitk.SetSpacing([0.6, 0.6, 0.7])
             prediction_rescaled = sitk.GetArrayFromImage(rescale(base_prediction_sitk, base_img_sitk))
 
@@ -169,14 +170,15 @@ def main():
                 reader = ImageReader(
                     args.data_dir,
                     args.data_list,
-                    (512, 512),  # No defined input size.
+                    None,  # No defined input size.
                     False,  # No random scale.
                     False,  # No random mirror.
                     args.ignore_label,
                     IMG_MEAN,
                     coord,
                     shuffle=False)
-            image_batch, _ = reader.dequeue(args.batch_size)
+                image = tf.cast(reader.image, tf.float32)
+            image_batch = tf.expand_dims(image, dim=0)  # Add one batch dimension.
 
             # Create network.
             net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)

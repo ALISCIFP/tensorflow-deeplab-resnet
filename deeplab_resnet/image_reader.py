@@ -208,6 +208,9 @@ class ImageReader(object):
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
                                                    shuffle=shuffle)  # not shuffling if it is val
+        self.image, self.label = read_images_from_disk(self.queue, self.input_size, self.random_scale,
+                                                       self.random_mirror,
+                                                       self.ignore_label, self.img_mean)
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
@@ -224,9 +227,6 @@ class ImageReader(object):
             image_batch, label_batch = tf.train.batch_join(example_list, num_elements,
                                                            capacity=num_elements * self.num_threads)
         else:
-            self.images, self.label = read_images_from_disk(self.queue, self.input_size, self.random_scale,
-                                                            self.random_mirror,
-                                                            self.ignore_label, self.img_mean)
             image_batch, label_batch = tf.train.batch([self.images, self.label],
                                                       num_elements)
         return image_batch, label_batch
