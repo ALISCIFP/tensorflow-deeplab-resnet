@@ -4,15 +4,17 @@
 
 import argparse
 import glob
+import itertools
 import math
+import multiprocessing
 import os
 
 import SimpleITK as sitk
 import numpy as np
 import scipy.misc
 
-DATA_DIRECTORY = '/mnt/data/LITS'
-OUT_DIRECTORY = "/mnt/data/newLITS"
+DATA_DIRECTORY = '/home/victor/LITS'
+OUT_DIRECTORY = "/home/victor/newLITS"
 
 
 def rescale(input_image, output_spacing, bilinear=False):
@@ -39,40 +41,46 @@ def rescale(input_image, output_spacing, bilinear=False):
     return resampler.Execute(input_image)
 
 
-def ndarry2jpg_png(data_file, out_dir, flist):
+def ndarry2jpg_png((data_file, out_dir)):
+    ftest = []
     img = sitk.ReadImage(data_file)
 
-    img = rescale(img, output_spacing=[0.6, 0.6, 0.6], bilinear=True)
+    print data_file
 
-    img = np.clip(sitk.GetArrayFromImage(img), -400, 1000)
+    img = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
+
+    img = np.clip(sitk.GetArrayFromImage(img).transpose(), -400, 1000)
+    num_slices = img.shape[2]
     data_path, fn = os.path.split(data_file)
 
-    img_pad = np.concatenate((np.expand_dims(img[:, :, 0], axis=2), img, np.expand_dims(img[:, :, -1], axis=2)), axis=2)
+    img_pad = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
-    for i in xrange(0, img.shape[2]):
+    for i in xrange(0, num_slices):
         img3c = img_pad[:, :, i:i + 3]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
-        flist.write("/JPEGImages/" + fn + "_" + str(i) + ".jpg\n")
+        out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\n"
+        ftest.append(out_string)
+
+    return ftest
 
 
 def convert(data_dir, out_dir):
     vols = sorted(glob.glob(os.path.join(data_dir, '*/test-volume*.nii')))
 
-    print "converting",
+    print "converting"
     if not os.path.exists(os.path.join(out_dir, "JPEGImages")):
         os.mkdir(os.path.join(out_dir, "JPEGImages"))
-    if not os.path.exists(os.path.join(out_dir, "PNGImages")):
-        os.mkdir(os.path.join(out_dir, "PNGImages"))
     if not os.path.exists(os.path.join(out_dir, "dataset")):
         os.mkdir(os.path.join(out_dir, "dataset"))
 
-    ftest = open(os.path.join(out_dir, "dataset/test.txt"), 'w')
+    p = multiprocessing.Pool()
+    list_test = p.map(ndarry2jpg_png, zip(vols, itertools.repeat(out_dir, len(vols))))
+    p.close()
 
-    for vol in vols:
-        print vol
-        ndarry2jpg_png(vol, out_dir, ftest)
+    list_test = list(itertools.chain.from_iterable(list_test))
 
-    ftest.close()
+    with open(os.path.join(out_dir, "dataset/test.txt"), 'w') as ftest:
+        ftest.writelines(list_test)
 
     print "done."
 
