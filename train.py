@@ -37,7 +37,7 @@ POWER = 0.9
 RANDOM_SEED = 1234
 RESTORE_FROM = None
 SAVE_NUM_IMAGES = 1
-SAVE_PRED_EVERY = 100
+SAVE_PRED_EVERY = 500
 VAL_INTERVAL = 11
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
@@ -503,7 +503,7 @@ def main():
                                       graph=tf.get_default_graph()))
 
         # Saver for storing checkpoints of the model.
-        saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=10)
+        saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=100)
 
         # Set up tf session and initialize variables.
         sess = tf.Session(config=tf.ConfigProto(
