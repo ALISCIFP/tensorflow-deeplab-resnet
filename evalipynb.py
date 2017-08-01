@@ -1,3 +1,4 @@
+import fnmatch
 import glob
 import os
 
@@ -30,13 +31,18 @@ def get_scores(pred, label, vxlspacing):
 
 
 label_path = ''
-prob_path = ''
+prob_path = '/mnt/data/trainoutput'
 
 labels = sorted(glob.glob(label_path + 'label*.nii'))
-probs = sorted(glob.glob(prob_path + 'probs*.nii'))
 
-labels = ['/mnt/data/LITS/Training Batch 2/segmentation-99.nii']
-probs = ['./eval/niiout/segmentation-99.nii']
+probs = []
+for root, dirnames, filenames in os.walk(prob_path):
+    for filename in fnmatch.filter(filenames, '*.nii'):
+        probs.append(os.path.join(root, filename))
+
+print(probs)
+
+labels = ['/mnt/data/LITS/Training Batch 2/segmentation-99.nii'] * len(probs)
 
 results = []
 outpath = './data/results.csv'

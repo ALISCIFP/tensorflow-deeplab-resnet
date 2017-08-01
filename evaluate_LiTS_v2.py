@@ -87,7 +87,7 @@ def rescale(input_image, original_image, bilinear=False):
     return resampler.Execute(input_image)
 
 
-def saving_process(queue, event, data_dir, post_processing):
+def saving_process(queue, event, data_dir, post_processing, restore_from):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
 
@@ -114,7 +114,12 @@ def saving_process(queue, event, data_dir, post_processing):
                                                                         np.ones((3, 3, 3), np.uint8), iterations=3)
                 dict_of_curr_processing[key] = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
 
-            fname_out = 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii'
+            try:
+                os.mkdir(os.path.join(restore_from, 'niiout'))
+            except:
+                pass
+
+            fname_out = os.path.join(restore_from, 'niiout/' + key.replace('volume', 'segmentation') + '.nii')
             print("Writing: " + fname_out)
             path_to_img = glob.glob(data_dir + '/*/' + key + '.nii')
             print(path_to_img)
@@ -201,7 +206,7 @@ def main():
 
             # Start queue threads.
             proc = Process(target=saving_process, args=(queue_proc, event_end,
-                                                        args.data_dir, args.post_processing))
+                                                        args.data_dir, args.post_processing, args.restore_from))
             proc.start()
             threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
