@@ -269,6 +269,15 @@ def main():
         opt_fc_w = tf.train.MomentumOptimizer(learning_rate * args.fc_w_lr_multiplier, args.momentum)
         opt_fc_b = tf.train.MomentumOptimizer(learning_rate * args.fc_b_lr_multiplier, args.momentum)
 
+        counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
+                                       name='counter_no_reset')
+        counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32, name='counter')
+
+        counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
+                                           name='counter_no_reset_val')
+        counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
+                                  name='counter_val')
+
         raw_output_list = []
         accuracy_list = []
         reduced_loss_list = []
@@ -309,16 +318,23 @@ def main():
                     scope.reuse_variables()
                     # Which variables to load. Running means and variances are not trainable,
                     # thus all_variables() should be restored.
-                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name
+                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name and 'counter' not in v.name
                                    or not args.first_run]
                     all_trainable = [v for v in tf.trainable_variables() if
                                      'beta' not in v.name and 'gamma' not in v.name]
                     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
-                    conv_trainable = [v for v in all_trainable if
-                                      'fc' not in v.name]  # lr * 1.0
+
+                    if args.first_run:
+                        conv_trainable = [v for v in all_trainable if
+                                          'conv1' in v.name]  # lr * 1.0
+                    else:
+                        conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
+
                     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
                     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
-                    assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
+
+                    if not args.first_run:
+                        assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
                     assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
                     # Predictions: ignoring all predictions with labels greater or equal than n_classes
                     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
@@ -419,12 +435,6 @@ def main():
         loss_output = tf.cond(mode, lambda: reduced_loss_train, lambda: reduced_loss_val)
         tf.summary.scalar("Loss", loss_output, collections=['all'])
         tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
-
-        counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
-        counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
-
-        counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
-        counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32)
 
         counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred_concat, axis=-1),
                                                                                   tf.squeeze(label_batch, axis=-1),
