@@ -325,8 +325,7 @@ def main():
                     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
 
                     if args.first_run:
-                        conv_trainable = [v for v in all_trainable if
-                                          'conv1' in v.name]  # lr * 1.0
+                        conv_trainable = [v for v in all_trainable if 'conv1' in v.name]  # lr * 1.0
                     else:
                         conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
 
