@@ -37,6 +37,7 @@ def compute((label, prob)):
 
     if loaded_prob.get_data().shape != loaded_label.get_data().shape:
         print "fail!", label, prob
+        return '', ''
 
     liver_scores = get_scores(loaded_prob.get_data() >= 1, loaded_label.get_data() >= 1,
                               loaded_label.header.get_zooms()[:3])

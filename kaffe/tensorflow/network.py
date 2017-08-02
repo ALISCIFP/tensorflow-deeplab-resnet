@@ -219,6 +219,14 @@ class Network(object):
                                                   name=name)
 
     @layer
+    def resize_bilinear(self, inputs, size_w, size_h, name):
+        return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor([size_w, size_h]), name=name)
+
+    @layer
+    def resize_nearest_neighbor(self, inputs, size_w, size_h, name):
+        return tf.image.resize_nearest_neighbor(images=inputs, size=tf.convert_to_tensor([size_w, size_h]), name=name)
+
+    @layer
     def concat(self, inputs, axis, name):
         return tf.concat(axis=axis, values=inputs, name=name)
 

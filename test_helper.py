@@ -4,7 +4,7 @@ import subprocess
 
 checkpoint_path = "/mnt/data/trainoutput/aug1/snapshots"
 
-ckpt_num_list = []
+ckpt_num_list = [378000, 381000, 383000, 384500, 382000, 381500, 390500, 385000, 395000, 387500]
 
 for sublist in [ckpt_num_list[i:i + 2] for i in
                 xrange(0, len(ckpt_num_list), 2)]:

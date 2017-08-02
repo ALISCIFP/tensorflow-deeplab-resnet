@@ -1,3 +1,3 @@
-from .model import DeepLabResNetModel
 from .image_reader import ImageReader
+from .model import DeepLabResNetModel, DeepLabResNetModelRefinement
 from .utils import decode_labels, inv_preprocess, prepare_label
