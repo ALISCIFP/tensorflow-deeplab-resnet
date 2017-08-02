@@ -83,7 +83,8 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
             print data_file, img_gt_file, spacing, gt_spacing, 'fail_idx!'
             continue
 
-        if np.array_equal(np.unique(img_gt[:, :, i - num_empty_to_keep:i + num_empty_to_keep + 1]), [0]):
+        if np.array_equal(
+                np.unique(img_gt[:, :, max(0, i - num_empty_to_keep):min(i + num_empty_to_keep + 1, num_slices)]), [0]):
             print i, num_empty_to_keep, data_file, img_gt_file, spacing, gt_spacing, 'fail_empty!'
             continue
 
