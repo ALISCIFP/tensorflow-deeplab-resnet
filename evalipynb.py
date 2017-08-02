@@ -35,6 +35,9 @@ def compute((label, prob)):
     loaded_label = nb.load(label)
     loaded_prob = nb.load(prob)
 
+    if loaded_prob.get_data().shape != loaded_label.get_data().shape:
+        print "fail!", label, prob
+
     liver_scores = get_scores(loaded_prob.get_data() >= 1, loaded_label.get_data() >= 1,
                               loaded_label.header.get_zooms()[:3])
     lesion_scores = get_scores(loaded_prob.get_data() == 2, loaded_label.get_data() == 2,
