@@ -103,7 +103,7 @@ def saving_process(queue, event, nii_dir, post_processing, restore_from):
             assert len(path_to_img) == 1
 
             total_len = sitk.ReadImage(path_to_img[0]).GetSize()[2]
-            print(total_len)
+            # print(total_len)
 
             dict_of_curr_processing[key] = np.zeros((total_len, preds.shape[0], preds.shape[1]), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
@@ -221,7 +221,7 @@ def main():
                 preds = sess.run([raw_output])[0]
                 for i, thing in enumerate(sublist):
                     regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
-                    print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
+                    #print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
 
                     queue_proc.put(
                         (regex_match.group(1), int(regex_match.group(2)), preds[i], len(dict[regex_match.group(1)])))
