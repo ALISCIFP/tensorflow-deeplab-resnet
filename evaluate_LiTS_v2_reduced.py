@@ -8,6 +8,7 @@ from __future__ import print_function
 
 import argparse
 import glob
+import math
 import os
 import re
 from multiprocessing import Process, Queue, Event
@@ -99,11 +100,15 @@ def saving_process(queue, event, nii_dir, post_processing, restore_from):
         key, idx, preds, num_slices = queue.get()
         if key not in dict_of_curr_processing:
             path_to_img = glob.glob(nii_dir + '/*/' + key + '.nii')
-            # print(path_to_img)
+            print(path_to_img)
             assert len(path_to_img) == 1
 
-            total_len = sitk.ReadImage(path_to_img[0]).GetSize()[2]
-            # print(total_len)
+            input_image = sitk.ReadImage(path_to_img[0])
+            spacing = input_image.GetSpacing()
+            orig_size = input_image.GetSize()
+
+            total_len = int(math.ceil(spacing[2] * (orig_size[2] - 1) / 0.7) + 1)
+            print(total_len)
 
             dict_of_curr_processing[key] = np.zeros((total_len, preds.shape[0], preds.shape[1]), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
