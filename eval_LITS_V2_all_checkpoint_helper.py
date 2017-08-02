@@ -2,10 +2,9 @@ import fnmatch
 import os
 import re
 import shlex
-import shutil
 import subprocess
 
-checkpoint_path = "/home/victor/snapshots"
+checkpoint_path = "/mnt/data/trainoutput/aug1/snapshots"
 
 if __name__ == '__main__':
     probs = []
@@ -15,28 +14,27 @@ if __name__ == '__main__':
 
     print(probs)
 
+    cmd = os.getcwd()
+
     ckpt_num_list = [int(re.findall(r'\d+', s)[1]) for s in probs]
     print(ckpt_num_list)
 
     for num in ckpt_num_list:
         if not os.path.exists(os.path.join(checkpoint_path, 'snapshots' + str(num))):
             os.mkdir(os.path.join(checkpoint_path, 'snapshots' + str(num)))
-        else:
-            shutil.rmtree(os.path.join(checkpoint_path, 'snapshots' + str(num)))
-            os.mkdir(os.path.join(checkpoint_path, 'snapshots' + str(num)))
+
 
         with open(os.path.join(checkpoint_path, 'snapshots' + str(num), 'checkpoint'), 'w') as list_file:
             list_file.write("model_checkpoint_path: \"model.ckpt-%i\"" % num)
 
+        os.chdir(os.path.join(checkpoint_path, 'snapshots' + str(num)))
         for s in probs:
             if str(num) in s:
                 print(s)
-                try:
-                    shutil.copy2(s, os.path.join(checkpoint_path, 'snapshots' + str(num)))
-                except Exception as e:
-                    print(e)
+                if not os.path.exists(os.path.join(checkpoint_path, 'snapshots' + str(num), s.split("/")[-1])):
+                    os.symlink(s, os.path.join(checkpoint_path, 'snapshots' + str(num), s.split("/")[-1]))
 
-
+    os.chdir(cmd)
     for sublist in [ckpt_num_list[i:i + 2] for i in
                     xrange(0, len(ckpt_num_list), 2)]:
         print(sublist)
