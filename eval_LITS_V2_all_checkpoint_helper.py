@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     cmd = os.getcwd()
 
-    ckpt_num_list = [int(re.findall(r'\d+', s)[1]) for s in probs]
+    ckpt_num_list = list(set([int(re.findall(r'\d+', s)[1]) for s in probs]))
     print(ckpt_num_list)
 
     for num in ckpt_num_list:
