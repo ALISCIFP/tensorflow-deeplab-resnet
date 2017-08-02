@@ -1,5 +1,6 @@
 import fnmatch
-import glob
+import itertools
+import multiprocessing
 import os
 
 import nibabel as nb
@@ -30,10 +31,38 @@ def get_scores(pred, label, vxlspacing):
     return volscores
 
 
-label_path = ''
-prob_path = '/mnt/data/trainoutput'
+def compute((label, prob)):
+    loaded_label = nb.load(label)
+    loaded_prob = nb.load(prob)
 
-labels = sorted(glob.glob(label_path + 'label*.nii'))
+    liver_scores = get_scores(loaded_prob.get_data() >= 1, loaded_label.get_data() >= 1,
+                              loaded_label.header.get_zooms()[:3])
+    lesion_scores = get_scores(loaded_prob.get_data() == 2, loaded_label.get_data() == 2,
+                               loaded_label.header.get_zooms()[:3])
+    print prob, "Liver dice", liver_scores['dice'], "Lesion dice", lesion_scores['dice']
+
+    # create line for csv file
+    outstr = str(label) + ','
+    for l in [liver_scores, lesion_scores]:
+        for k, v in l.iteritems():
+            outstr += str(v) + ','
+        outstr += '\n'
+
+    headerstr = 'Volume,'
+    for k, v in liver_scores.iteritems():
+        headerstr += 'Liver_' + k + ','
+    for k, v in liver_scores.iteritems():
+        headerstr += 'Lesion_' + k + ','
+    headerstr += '\n'
+
+    return outstr, headerstr
+
+
+label_path = ''
+prob_path = '/mnt/data/trainoutput/aug1'
+
+# labels = sorted(glob.glob(label_path + 'label*.nii'))
+
 
 probs = []
 for root, dirnames, filenames in os.walk(prob_path):
@@ -44,41 +73,21 @@ print(probs)
 
 labels = ['/mnt/data/LITS/Training Batch 2/segmentation-99.nii'] * len(probs)
 
-results = []
 outpath = './data/results.csv'
 if not os.path.exists('./data/'):
     os.mkdir('./data/')
 
-for label, prob in zip(labels, probs):
-    loaded_label = nb.load(label)
-    loaded_prob = nb.load(prob)
+p = multiprocessing.Pool()
+retval = p.map(compute, zip(labels, probs))
+p.close()
 
-    liver_scores = get_scores(loaded_prob.get_data() >= 1, loaded_label.get_data() >= 1,
-                              loaded_label.header.get_zooms()[:3])
-    lesion_scores = get_scores(loaded_prob.get_data() == 2, loaded_label.get_data() == 2,
-                               loaded_label.header.get_zooms()[:3])
-    print "Liver dice", liver_scores['dice'], "Lesion dice", lesion_scores['dice']
+list_results = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
+list_header = list(itertools.chain.from_iterable([sublist[1] for sublist in retval]))
 
-    results.append([label, liver_scores, lesion_scores])
+# create header for csv file if necessary
+if not os.path.isfile(outpath):
+    with open(outpath, 'a+') as csvout:
+        csvout.write(list_header[0])
 
-    # create line for csv file
-    outstr = str(label) + ','
-    for l in [liver_scores, lesion_scores]:
-        for k, v in l.iteritems():
-            outstr += str(v) + ','
-        outstr += '\n'
-
-    # create header for csv file if necessary
-    if not os.path.isfile(outpath):
-        headerstr = 'Volume,'
-        for k, v in liver_scores.iteritems():
-            headerstr += 'Liver_' + k + ','
-        for k, v in liver_scores.iteritems():
-            headerstr += 'Lesion_' + k + ','
-        headerstr += '\n'
-        outstr = headerstr + outstr
-
-    # write to file
-    f = open(outpath, 'a+')
-    f.write(outstr)
-    f.close()
+with open(outpath, 'a+') as csvout:
+    csvout.writelines(list_results)
