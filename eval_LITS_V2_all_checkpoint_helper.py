@@ -5,7 +5,7 @@ import shlex
 import shutil
 import subprocess
 
-checkpoint_path = "/mnt/data/trainoutput/aug1/snapshots"
+checkpoint_path = "/home/victor/snapshots"
 
 if __name__ == '__main__':
     probs = []
@@ -31,19 +31,23 @@ if __name__ == '__main__':
         for s in probs:
             if str(num) in s:
                 print(s)
-                shutil.copy2(s, os.path.join(checkpoint_path, 'snapshots' + str(num)))
+                try:
+                    shutil.copy2(s, os.path.join(checkpoint_path, 'snapshots' + str(num)))
+                except Exception as e:
+                    print(e)
+
 
     for sublist in [ckpt_num_list[i:i + 2] for i in
                     xrange(0, len(ckpt_num_list), 2)]:
         print(sublist)
 
-        gpu0_proc = subprocess.Popen(shlex.split("python evaluate_LITS_v2.py --data-dir /home/victor/newLITSreducedblanks \
+        gpu0_proc = subprocess.Popen(shlex.split("python evaluate_LiTS_v2.py --data-dir /home/victor/newLITSreducedblanks \
         --data-list /home/victor/newLITSreducedblanks/dataset/val.txt --restore-from " + os.path.join(checkpoint_path,
                                                                                                       'snapshots' + str(
                                                                                                           sublist[0])) + " \
         --gpu-mask \'0\'"))
 
-        gpu1_proc = subprocess.Popen(shlex.split("python evaluate_LITS_v2.py --data-dir /home/victor/newLITSreducedblanks \
+        gpu1_proc = subprocess.Popen(shlex.split("python evaluate_LIiS_v2.py --data-dir /home/victor/newLITSreducedblanks \
                 --data-list /home/victor/newLITSreducedblanks/dataset/val.txt --restore-from " + os.path.join(
             checkpoint_path, 'snapshots' + str(sublist[1])) + " \
                 --gpu-mask \'1\'"))
