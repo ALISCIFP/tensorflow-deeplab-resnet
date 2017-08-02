@@ -66,7 +66,7 @@ for label, prob in zip(labels, probs):
     for l in [liver_scores, lesion_scores]:
         for k, v in l.iteritems():
             outstr += str(v) + ','
-            outstr += '\n'
+        outstr += '\n'
 
     # create header for csv file if necessary
     if not os.path.isfile(outpath):
