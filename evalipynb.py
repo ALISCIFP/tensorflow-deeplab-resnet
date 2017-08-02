@@ -77,7 +77,7 @@ outpath = './data/results.csv'
 if not os.path.exists('./data/'):
     os.mkdir('./data/')
 
-p = multiprocessing.Pool()
+p = multiprocessing.Pool(4)
 retval = p.map(compute, zip(labels, probs))
 p.close()
 
