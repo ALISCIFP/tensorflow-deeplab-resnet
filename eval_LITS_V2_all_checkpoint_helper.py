@@ -47,7 +47,7 @@ if __name__ == '__main__':
                                                                                                           sublist[0])) + " \
         --gpu-mask \'0\'"))
 
-        gpu1_proc = subprocess.Popen(shlex.split("python evaluate_LIiS_v2.py --data-dir /home/victor/newLITSreducedblanks \
+        gpu1_proc = subprocess.Popen(shlex.split("python evaluate_LiTS_v2.py --data-dir /home/victor/newLITSreducedblanks \
                 --data-list /home/victor/newLITSreducedblanks/dataset/val.txt --restore-from " + os.path.join(
             checkpoint_path, 'snapshots' + str(sublist[1])) + " \
                 --gpu-mask \'1\'"))
