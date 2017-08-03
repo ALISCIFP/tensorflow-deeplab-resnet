@@ -9,12 +9,13 @@ from __future__ import print_function
 import argparse
 import os
 import re
+import shutil
 import time
 
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModelRefinement, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
@@ -215,11 +216,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    # if args.first_run:
-    #     try:
-    #         shutil.rmtree(args.snapshot_dir)
-    #     except Exception as e:
-    #         print(e)
+    if args.first_run:
+        try:
+            shutil.rmtree(args.snapshot_dir)
+        except Exception as e:
+            print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -245,7 +246,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=3)
+                num_threads=6)
 
         with tf.name_scope("val_inputs"):
             val_reader = ImageReader(
@@ -257,7 +258,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=1)
+                num_threads=2)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
@@ -297,8 +298,8 @@ def main():
                     label_batch_list.append(label_batch)
 
                     # Create network.
-                    net = DeepLabResNetModelRefinement({'data': image_batch}, is_training=args.is_training,
-                                                       num_classes=args.num_classes)
+                    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training,
+                                             num_classes=args.num_classes)
                     # For a small batch size, it is better to keep
                     # the statistics of the BN layers (running means and variances)
                     # frozen, and to not update the values provided by the pre-trained model.
@@ -307,7 +308,7 @@ def main():
                     # if they are presented in var_list of the optimiser definition.
 
                     # Predictions.
-                    raw_output = net.layers['upscale1_1_conv_branch2c']
+                    raw_output = net.layers['concat_conv8']
                     raw_output_list.append(raw_output)
 
                     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]),
@@ -318,17 +319,16 @@ def main():
                     # Which variables to load. Running means and variances are not trainable,
                     # thus all_variables() should be restored.
                     restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name
-                                   and 'counter' not in v.name and 'projected' not in v.name and 'upscale' not in v.name
-                                   or not args.first_run]
+                                   and 'concat' not in v.name or not args.first_run]
                     all_trainable = [v for v in tf.trainable_variables() if
                                      'beta' not in v.name and 'gamma' not in v.name]
-                    fc_trainable = [v for v in all_trainable if 'upscale' in v.name or 'projected' in v.name]
+                    fc_trainable = [v for v in all_trainable if 'concat' in v.name]
 
                     if args.first_run:
                         conv_trainable = [v for v in all_trainable if 'conv1' in v.name]  # lr * 1.0
                     else:
                         conv_trainable = [v for v in all_trainable if
-                                          'upscale' not in v.name and 'projected' not in v.name]  # lr * 1.0
+                                          'concat' not in v.name]  # lr * 1.0
 
                     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
                     #                fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
