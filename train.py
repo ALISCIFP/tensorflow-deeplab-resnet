@@ -9,6 +9,7 @@ from __future__ import print_function
 import argparse
 import os
 import re
+import shutil
 import time
 
 import numpy as np
@@ -215,11 +216,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    # if args.first_run:
-    #     try:
-    #         shutil.rmtree(args.snapshot_dir)
-    #     except Exception as e:
-    #         print(e)
+    if args.first_run:
+        try:
+            shutil.rmtree(args.snapshot_dir)
+        except Exception as e:
+            print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -330,7 +331,7 @@ def main():
                         conv_trainable = [v for v in all_trainable if
                                           'upscale' not in v.name and 'projected' not in v.name]  # lr * 1.0
 
-                    fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
+                    fc_w_trainable = [v for v in fc_trainable]  # lr * 10.0
                     #                fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
 
                     if not args.first_run:
