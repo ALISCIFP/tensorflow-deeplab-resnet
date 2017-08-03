@@ -308,7 +308,7 @@ def main():
                     # if they are presented in var_list of the optimiser definition.
 
                     # Predictions.
-                    raw_output = net.layers['concat_conv8']
+                    raw_output = net.layers['concat_conv_8']
                     raw_output_list.append(raw_output)
 
                     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]),
@@ -318,7 +318,7 @@ def main():
                     scope.reuse_variables()
                     # Which variables to load. Running means and variances are not trainable,
                     # thus all_variables() should be restored.
-                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name
+                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name and 'counter' not in v.name
                                    and 'concat' not in v.name or not args.first_run]
                     all_trainable = [v for v in tf.trainable_variables() if
                                      'beta' not in v.name and 'gamma' not in v.name]
@@ -330,7 +330,7 @@ def main():
                         conv_trainable = [v for v in all_trainable if
                                           'concat' not in v.name]  # lr * 1.0
 
-                    fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
+                    fc_w_trainable = [v for v in fc_trainable]  # lr * 10.0
                     #                fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
 
                     if not args.first_run:
