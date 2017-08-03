@@ -1,10 +1,11 @@
 import os
 import shlex
 import subprocess
+import time
 
 checkpoint_path = "/mnt/data/trainoutput/aug1/snapshots"
 
-ckpt_num_list = [378000, 381000, 383000, 384500, 382000, 381500, 390500, 385000, 395000, 387500]
+ckpt_num_list = [378000, 381000, 383000, 384500, 382000]  # , 381500, 390500, 385000, 395000, 387500
 
 for sublist in [ckpt_num_list[i:i + 2] for i in
                 xrange(0, len(ckpt_num_list), 2)]:
@@ -26,3 +27,5 @@ for sublist in [ckpt_num_list[i:i + 2] for i in
     gpu0_proc.wait()
     if len(sublist) > 1:
         gpu1_proc.wait()
+
+    time.sleep(10)
