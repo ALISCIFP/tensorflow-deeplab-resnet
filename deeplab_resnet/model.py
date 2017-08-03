@@ -818,23 +818,26 @@ class DeepLabResNetModelRefinement(Network):
          .conv(1, 1, num_classes, 1, 1, biased=False, relu=False, name='data_projected'))
 
         (self.feed('data')
-         .resize_nearest_neighbor(size_h=64, size_w=64, name='data_64x64')
+         .resize_bilinear(size_h=64, size_w=64, name='data_64x64')
          .conv(1, 1, 2048, 1, 1, biased=False, relu=False, name='data_64x64_projected_2048'))
 
         (self.feed('data')
-         .resize_nearest_neighbor(size_h=128, size_w=128, name='data_128x128')
+         .resize_bilinear(size_h=128, size_w=128, name='data_128x128')
          .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='data_128x128_projected_1024'))
+
+        (self.feed('data_128x128')
+         .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='data_128x128_projected_512'))
 
         (self.feed('data_64x64')
          .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='data_64x64_projected_1024'))
 
         (self.feed('data')
-         .resize_nearest_neighbor(size_h=256, size_w=256, name='data_256x256')
+         .resize_bilinear(size_h=256, size_w=256, name='data_256x256')
          .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='data_256x256_projected_256'))
 
         with tf.name_scope('upscale_5_1'):
             (self.feed('res5c_relu',
-                       'data_64x64_projected')
+                       'data_64x64_projected_2048')
              .concat(axis=-1, name='upscale5_1_concat')
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='upscale5_1_conv_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='upscale5_1_bn_branch2a')
@@ -849,8 +852,7 @@ class DeepLabResNetModelRefinement(Network):
              .relu(name='upscale5_2_relu'))
 
         with tf.name_scope('upscale_5_2'):
-            (self.feed('data_64x64_projected',
-                       'res5b_relu',
+            (self.feed('res5b_relu',
                        'upscale5_2_relu')
              .concat(axis=-1, name='upscale5_2_concat')
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='upscale5_2_conv_branch2a')
@@ -866,8 +868,7 @@ class DeepLabResNetModelRefinement(Network):
              .relu(name='upscale5_3_relu'))
 
         with tf.name_scope('upscale_5_3'):
-            (self.feed('data_64x64_projected',
-                       'res5a_relu',
+            (self.feed('res5a_relu',
                        'upscale5_3_relu')
              .concat(axis=-1, name='upscale5_3_concat')
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='upscale5_3_conv_branch2a')
@@ -880,11 +881,11 @@ class DeepLabResNetModelRefinement(Network):
             (self.feed('upscale5_3_relu',
                        'upscale5_3_bn_branch2c')
              .add(name='upscale4_1_add')
-             .relu(name='upscale4_1_relu'))
+             .relu(name='upscale4_1_relu')
+             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='upscale4_1_relu_projected'))
 
         with tf.name_scope('upscale_4_1'):
-            (self.feed('data_64x64_projected_2048',
-                       'res4b22_relu',
+            (self.feed('res4b22_relu',
                        'upscale4_1_relu')
              .concat(axis=-1, name='upscale4_1_concat')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale4_1_conv_branch2a')
@@ -894,7 +895,7 @@ class DeepLabResNetModelRefinement(Network):
              .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='upscale4_1_conv_branch2c')
              .batch_normalization(is_training=is_training, activation_fn=None, name='upscale4_1_bn_branch2c'))
 
-            (self.feed('upscale4_1_relu',
+            (self.feed('upscale4_1_relu_projected',
                        'upscale4_1_bn_branch2c')
              .add(name='upscale4_2_add')
              .relu(name='upscale4_2_relu'))
@@ -917,8 +918,7 @@ class DeepLabResNetModelRefinement(Network):
              .relu(name='upscale4_3_relu'))
 
         with tf.name_scope('upscale_4_3'):
-            (self.feed('data_64x64_projected_1024',
-                       'res4b14_relu',
+            (self.feed('res4b14_relu',
                        'upscale4_3_relu')
              .concat(axis=-1, name='upscale4_3_concat')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale4_3_conv_branch2a')
@@ -934,8 +934,7 @@ class DeepLabResNetModelRefinement(Network):
              .relu(name='upscale4_4_relu'))
 
         with tf.name_scope('upscale_4_4'):
-            (self.feed('data_64x64_projected_1024',
-                       'res4b10_relu',
+            (self.feed('res4b10_relu',
                        'upscale4_4_relu')
              .concat(axis=-1, name='upscale4_4_concat')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale4_4_conv_branch2a')
@@ -951,8 +950,7 @@ class DeepLabResNetModelRefinement(Network):
              .relu(name='upscale4_5_relu'))
 
         with tf.name_scope('upscale_4_5'):
-            (self.feed('data_64x64_projected_1024',
-                       'res4b6_relu',
+            (self.feed('res4b6_relu',
                        'upscale4_5_relu')
              .concat(axis=-1, name='upscale4_5_concat')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale4_5_conv_branch2a')
@@ -968,8 +966,7 @@ class DeepLabResNetModelRefinement(Network):
              .relu(name='upscale4_6_relu'))
 
         with tf.name_scope('upscale_4_6'):
-            (self.feed('data_64x64_projected_1024',
-                       'res4b2_relu',
+            (self.feed('res4b2_relu',
                        'upscale4_6_relu')
              .concat(axis=-1, name='upscale4_6_concat')
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale4_6_conv_branch2a')
@@ -982,12 +979,12 @@ class DeepLabResNetModelRefinement(Network):
             (self.feed('upscale4_6_relu',
                        'upscale4_6_bn_branch2c')
              .add(name='upscale3_1_add')
-             .relu(name='upscale3_1_relu'))
+             .relu(name='upscale3_1_relu')
+             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='upscale3_1_relu_projected'))
 
         with tf.name_scope('upscale_3_1'):
-            (self.feed('data_128x128_projected_1024',
-                       'upscale3_1_relu',
-                       'res3c_relu')
+            (self.feed('upscale3_1_relu',
+                       'res3b3_relu')
              .concat(axis=-1, name='upscale3_1_concat')
              .conv(1, 1, 128, 1, 1, biased=False, relu=False, name='upscale3_1_conv_branch2a')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='upscale3_1_bn_branch2a')
@@ -996,11 +993,12 @@ class DeepLabResNetModelRefinement(Network):
              .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='upscale3_1_conv_branch2c')
              .batch_normalization(is_training=is_training, activation_fn=None, name='upscale3_1_bn_branch2c'))
 
-            (self.feed('upscale3_1_relu',
+            (self.feed('upscale3_1_relu_projected',
                        'upscale3_1_bn_branch2c')
              .add(name='upscale2_1_add')
              .relu(name='upscale2_1_relu')
-             .resize_nearest_neighbor(size_h=128, size_w=128, name='upscale2_1_relu_128x128'))
+             .resize_bilinear(size_h=128, size_w=128, name='upscale2_1_relu_128x128')
+             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale2_1_relu_128x128_projected'))
 
         with tf.name_scope('upscale_2_1'):
             (self.feed('data_128x128_projected_512',
@@ -1014,11 +1012,11 @@ class DeepLabResNetModelRefinement(Network):
              .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='upscale2_1_conv_branch2c')
              .batch_normalization(is_training=is_training, activation_fn=None, name='upscale2_1_bn_branch2c'))
 
-            (self.feed('upscale2_1_relu',
+            (self.feed('upscale2_1_relu_128x128_projected',
                        'upscale2_1_bn_branch2c')
              .add(name='upscale1_1_add')
              .relu(name='upscale1_1_relu')
-             .resize_nearest_neighbor(size_h=256, size_w=256, name='upscale1_1_relu_256x256'))
+             .resize_bilinear(size_h=256, size_w=256, name='upscale1_1_relu_256x256'))
 
         with tf.name_scope('upscale_1_1'):
             (self.feed('data_256x256_projected_256',

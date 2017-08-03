@@ -9,7 +9,6 @@ from __future__ import print_function
 import argparse
 import os
 import re
-import shutil
 import time
 
 import numpy as np
@@ -23,7 +22,7 @@ IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  
 LUNA16_softmax_weights = np.array((0.2,  1.2,  2.2),dtype=np.float32) #[15020370189   332764489    18465194]
 
 GPU_MASK = '0,1'
-BATCH_SIZE = 3
+BATCH_SIZE = 2
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
@@ -216,11 +215,11 @@ def main():
     args = get_arguments()
     print(args)
 
-    if args.first_run:
-        try:
-            shutil.rmtree(args.snapshot_dir)
-        except Exception as e:
-            print(e)
+    # if args.first_run:
+    #     try:
+    #         shutil.rmtree(args.snapshot_dir)
+    #     except Exception as e:
+    #         print(e)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
@@ -246,7 +245,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=6)
+                num_threads=3)
 
         with tf.name_scope("val_inputs"):
             val_reader = ImageReader(
@@ -258,7 +257,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=2)
+                num_threads=1)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
@@ -267,7 +266,7 @@ def main():
         tf.summary.scalar("Learning Rate", learning_rate, collections=['all'])
         opt_conv = tf.train.MomentumOptimizer(learning_rate * args.conv_lr_multiplier, args.momentum)
         opt_fc_w = tf.train.MomentumOptimizer(learning_rate * args.fc_w_lr_multiplier, args.momentum)
-        opt_fc_b = tf.train.MomentumOptimizer(learning_rate * args.fc_b_lr_multiplier, args.momentum)
+        # opt_fc_b = tf.train.MomentumOptimizer(learning_rate * args.fc_b_lr_multiplier, args.momentum)
 
         counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
                                        name='counter_no_reset')
@@ -332,11 +331,11 @@ def main():
                                           'upscale' not in v.name and 'projected' not in v.name]  # lr * 1.0
 
                     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
-                    fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
+                    #                fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
 
                     if not args.first_run:
                         assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
-                    assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
+                    #                    assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
                     # Predictions: ignoring all predictions with labels greater or equal than n_classes
                     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
 
@@ -376,8 +375,8 @@ def main():
                     reduced_loss_list.append(reduced_loss_list_curr)
 
                     grads_list.append(
-                        zip(tf.gradients(reduced_loss_list_curr, conv_trainable + fc_w_trainable + fc_b_trainable),
-                            conv_trainable + fc_w_trainable + fc_b_trainable))
+                        zip(tf.gradients(reduced_loss_list_curr, conv_trainable + fc_w_trainable),
+                            conv_trainable + fc_w_trainable))
 
         reduced_loss = tf.reduce_mean(reduced_loss_list)
         accuracy = tf.reduce_mean(accuracy_list)
@@ -392,18 +391,18 @@ def main():
         grads = average_gradients(grads_list)
         grads_conv = grads[:len(conv_trainable)]
         grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
-        grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
+        #   grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
 
         train_op_conv = opt_conv.apply_gradients(grads_conv)
         train_op_fc_w = opt_fc_w.apply_gradients(grads_fc_w)
-        train_op_fc_b = opt_fc_b.apply_gradients(grads_fc_b)
+        #     train_op_fc_b = opt_fc_b.apply_gradients(grads_fc_b)
 
         # Track the moving averages of all trainable variables.
         variable_averages_gen = tf.train.ExponentialMovingAverage(
             args.moving_average_decay, step_ph)
-        variables_averages_gen_op = variable_averages_gen.apply(conv_trainable + fc_w_trainable + fc_b_trainable)
+        variables_averages_gen_op = variable_averages_gen.apply(conv_trainable + fc_w_trainable)
 
-        train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b, variables_averages_gen_op)
+        train_op = tf.group(train_op_conv, train_op_fc_w, variables_averages_gen_op)
 
         # Processed predictions: for visualisation.
         raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
