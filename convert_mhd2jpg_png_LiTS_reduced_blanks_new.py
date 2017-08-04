@@ -113,7 +113,7 @@ def convert(data_dir, out_dir):
     retval = p.map(ndarry2jpg_png, zip(vols, segs, itertools.repeat(out_dir, len(vols))))
     p.close()
 
-    list_test = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
+    list_test = list(itertools.chain.from_iterable(retval))
 
     with open(os.path.join(out_dir, "dataset/test.txt"), 'w') as ftest:
         ftest.writelines(list_test)
