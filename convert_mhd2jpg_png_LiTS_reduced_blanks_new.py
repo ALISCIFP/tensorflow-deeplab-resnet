@@ -98,8 +98,8 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
 
 
 def convert(data_dir, out_dir):
-    vols = sorted(glob.glob(os.path.join(data_dir, '*/volume*.nii')))
-    segs = sorted(glob.glob(os.path.join(data_dir, '*/segmentation*.nii')))
+    vols = sorted(glob.glob(os.path.join(data_dir, '*/test-volume*.nii')))
+    segs = sorted(glob.glob(os.path.join(data_dir, '*/test-segmentation*.nii')))
 
     assert len(vols) == len(segs)
 
