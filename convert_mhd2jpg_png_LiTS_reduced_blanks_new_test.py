@@ -15,8 +15,9 @@ import numpy as np
 import scipy.misc
 import scipy.ndimage
 
-DATA_DIRECTORY = '/mnt/data/rbLITS'
+DATA_DIRECTORY = '/mnt/data/LITS'
 OUT_DIRECTORY = "/home/victor/newLITS_reduced_blanks_new"
+lmkPath = "/mnt/data/LITS/LMK_json/train"
 
 
 def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, output_size=None):
@@ -78,6 +79,24 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir)):
 
     num_empty_to_keep = int(math.ceil(((spacing[0] + spacing[1]) / 2.0) / 0.7 * 10))
     assert num_empty_to_keep >= 0
+
+    # # readin the landmark information
+    # lmkFile = os.path.join(lmkPath, data_file.split("/")[-1].split(".")[0] + '.json')
+    # with open(lmkFile) as lmkFile_instream:
+    #     lmkFileContent = json.load(lmkFile_instream)
+    #
+    # for j in range(len(lmkFileContent)):
+    #     if lmkFileContent[j]['name'] == 'Liver Center':
+    #         liverCenter = lmkFileContent[j]['value']
+    #         # if len(liverCenter) == 0:
+    #         #     failedCase.write(case_name)
+    #         #     continue
+    #         # print 'liverCenter='+str(liverCenter)
+    #         liverCenter_vox = np.zeros([3], dtype='int16')
+    #
+    #         for k in range(3):
+    #             liverCenter_vox[k] = int(round(liverCenter[k] / spacing[k]))
+    #         print 'liverCenter=' + str(liverCenter_vox)
 
     connected, num_features = scipy.ndimage.measurements.label(img_gt,
                                                                structure=scipy.ndimage.morphology.generate_binary_structure(
