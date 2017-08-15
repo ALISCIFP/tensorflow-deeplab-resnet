@@ -19,19 +19,22 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
-IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
-LUNA16_softmax_weights = np.array((0.2,  1.2,  2.2),dtype=np.float32) #[15020370189   332764489    18465194]
+IMG_MEAN_LUNA16 = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
+IMG_MEAN_LITS = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
+LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
+                                  dtype=np.float32)
+LITS_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
+
+softmax_weights = np.array((5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
+                            0.0123730652, 0.9870702051), dtype=np.float32)
 
 GPU_MASK = '0,1'
 BATCH_SIZE = 3
-DATA_DIRECTORY = None
-DATA_LIST_PATH = None
-VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = 3
+NUM_CLASSES = len(softmax_weights)
 NUM_STEPS = 1000000
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -90,12 +93,18 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLab-ResNet Network")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step per GPU")
-    parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
-                        help="Path to the file listing the images in the dataset.")
-    parser.add_argument("--val-data-list", type=str, default=VAL_DATA_LIST_PATH,
-                        help="Path to the file listing the images in the dataset.")
+    parser.add_argument("--data-dir-lits", type=str, default=None,
+                        help="Path to the directory containing the LITS dataset.")
+    parser.add_argument("--data-dir-luna", type=str, default=None,
+                        help="Path to the directory containing the LUNA16 dataset.")
+    parser.add_argument("--data-list-lits", type=str, default=None,
+                        help="Path to the file listing the images in the dataset LITS")
+    parser.add_argument("--val-data-list-lits", type=str, default=None,
+                        help="Path to the val file listing the images in the dataset LITS")
+    parser.add_argument("--data-list-luna", type=str, default=None,
+                        help="Path to the file listing the images in the dataset LUNA")
+    parser.add_argument("--val-data-list-luna", type=str, default=None,
+                        help="Path to the val file listing the images in the dataset LUNA")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
     parser.add_argument("--input-size", type=str, default=INPUT_SIZE,
@@ -227,7 +236,7 @@ def main():
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
 
-    with tf.Graph().as_default(), tf.device('/cpu:0'):
+    with tf.device('/cpu:0'):
         # tf.set_random_seed(args.random_seed)
 
         # Create queue coordinator.
@@ -236,29 +245,53 @@ def main():
         mode = tf.placeholder(tf.bool, shape=())
         step_ph = tf.placeholder(dtype=tf.float32, shape=())
 
-        with tf.name_scope("create_inputs"):
-            train_reader = ImageReader(
-                args.data_dir,
-                args.data_list,
+        with tf.name_scope("create_inputs_LUNA"):
+            train_reader_LUNA = ImageReader(
+                args.data_dir_luna,
+                args.data_list_luna,
                 input_size,
                 args.random_scale,
                 args.random_mirror,
                 args.ignore_label,
-                IMG_MEAN,
+                IMG_MEAN_LUNA16,
                 coord,
-                num_threads=6)
+                num_threads=3)
 
-        with tf.name_scope("val_inputs"):
-            val_reader = ImageReader(
-                args.data_dir,
-                args.val_data_list,
+        with tf.name_scope("val_inputs_LUNA"):
+            val_reader_LUNA = ImageReader(
+                args.data_dir_luna,
+                args.val_data_list_luna,
                 input_size,
                 args.random_scale,
                 args.random_mirror,
                 args.ignore_label,
-                IMG_MEAN,
+                IMG_MEAN_LUNA16,
                 coord,
-                num_threads=2)
+                num_threads=1)
+
+        with tf.name_scope("create_inputs_LITS"):
+            train_reader_LITS = ImageReader(
+                args.data_dir_lits,
+                args.data_list_lits,
+                input_size,
+                args.random_scale,
+                args.random_mirror,
+                args.ignore_label,
+                IMG_MEAN_LITS,
+                coord,
+                num_threads=3)
+
+        with tf.name_scope("val_inputs_LITS"):
+            val_reader_LITS = ImageReader(
+                args.data_dir_lits,
+                args.val_data_list_lits,
+                input_size,
+                args.random_scale,
+                args.random_mirror,
+                args.ignore_label,
+                IMG_MEAN_LITS,
+                coord,
+                num_threads=1)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
@@ -288,8 +321,21 @@ def main():
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             for gpu_id in filter(None, args.gpu_mask.split(',')):
                 with tf.name_scope(gpu_id), tf.device('/gpu:%d' % int(gpu_id)):
-                    image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
-                    image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
+                    if int(gpu_id) == 0:
+                        image_batch_train, label_batch_train = train_reader_LITS.dequeue(args.batch_size)
+                        image_batch_val, label_batch_val = train_reader_LITS.dequeue(args.batch_size)
+                    else:
+                        image_batch_train, label_batch_train = train_reader_LUNA.dequeue(args.batch_size)
+                        image_batch_val, label_batch_val = train_reader_LUNA.dequeue(args.batch_size)
+
+                        label_batch_train = tf.cast(
+                            tf.where(tf.equal(label_batch_train, tf.zeros_like(label_batch_train)),
+                                     tf.zeros_like(tf.cast(label_batch_train, tf.int32)),
+                                     tf.cast(label_batch_train, tf.int32) + len(LITS_softmax_weights) - 1), tf.uint8)
+                        label_batch_val = tf.cast(
+                            tf.where(tf.equal(label_batch_val, tf.zeros_like(label_batch_val)),
+                                     tf.zeros_like(tf.cast(label_batch_val, tf.int32)),
+                                     tf.cast(label_batch_val, tf.int32) + len(LITS_softmax_weights) - 1), tf.uint8)
 
                     image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
                     label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
@@ -309,6 +355,16 @@ def main():
 
                     # Predictions.
                     raw_output = net.layers['fc1_voc12']
+
+                    for idx in xrange(args.batch_size):
+                        tf.cond(tf.reduce_any(tf.equal(label_batch[idx], tf.ones_like(label_batch[idx]))),
+                                lambda: tf.where(
+                                    tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
+                                    raw_output[idx], tf.zeros_like(raw_output[idx])),
+                                lambda: tf.where(
+                                    tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
+                                    tf.zeros_like(raw_output[idx]), raw_output[idx]))
+
                     raw_output_list.append(raw_output)
 
                     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]),
@@ -318,16 +374,17 @@ def main():
                     scope.reuse_variables()
                     # Which variables to load. Running means and variances are not trainable,
                     # thus all_variables() should be restored.
-                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name and 'counter' not in v.name
+                    restore_var = [v for v in tf.global_variables() if
+                                   'fc' not in v.name and 'conv1' not in v.name and 'counter' not in v.name
                                    or not args.first_run]
                     all_trainable = [v for v in tf.trainable_variables() if
                                      'beta' not in v.name and 'gamma' not in v.name]
                     fc_trainable = [v for v in all_trainable if 'fc' in v.name]
 
-                    if args.first_run:
-                        conv_trainable = [v for v in all_trainable if 'conv1' in v.name]  # lr * 1.0
-                    else:
-                        conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
+                    # if args.first_run:
+                    #     conv_trainable = [v for v in all_trainable if 'conv1' in v.name]  # lr * 1.0
+                    # else:
+                    conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
 
                     fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
                     fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
@@ -351,7 +408,7 @@ def main():
                     # Pixel-wise softmax loss.
                     loss_this_gpu = []
                     accuracy_per_class_this_gpu = []
-                    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+                    softmax_weights_per_class = tf.constant(softmax_weights, dtype=tf.float32)
                     for i in xrange(0, args.num_classes):
                         curr_class = tf.constant(i, tf.int32)
                         loss_this_gpu.append(
@@ -485,7 +542,8 @@ def main():
         tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
         tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-        images_summary_concat = tf.py_func(inv_preprocess, [image_batch[:, :, :, 3:6], args.save_num_images, IMG_MEAN],
+        images_summary_concat = tf.py_func(inv_preprocess,
+                                           [image_batch[:, :, :, 3:6], args.save_num_images, IMG_MEAN_LITS],
                                            tf.uint8)
         labels_summary_concat = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes],
                                            tf.uint8)
