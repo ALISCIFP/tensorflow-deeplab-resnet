@@ -27,7 +27,7 @@ from PIL import Image
 # #for ILD
 label_colours = [(0,0,0)
                  #                 # 0=background
-    , (128, 0, 0), (0, 128, 0), (0, 0, 0)
+    , (128, 0, 0), (0, 128, 0), (255, 255, 255)
                  # 0=background
     , (128, 0, 128), (0, 128, 128), (128, 128, 0), (0, 0, 128)]
 #                 # 1= lungs, 2=nodules,
