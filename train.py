@@ -418,8 +418,10 @@ def main():
 
                         for j in xrange(args.batch_size):
                             if j == 0 or j >= (args.batch_size - args.batch_size / 2):
-                                weight = tf.cond(tf.reduce_all(
-                                    tf.stack([tf.equal(label_proc[j], 0), tf.greater_equal(label_proc[j], 3)])),
+                                weight = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
+                                                                tf.reduce_any(tf.stack(
+                                                                    [tf.equal(tf.argmax(raw_output[j], axis=-1), 1),
+                                                                     tf.equal(tf.argmax(raw_output[j], axis=-1), 2)]))),
                                                  lambda: LUNA_softmax_weights_per_class_ignore[i],
                                                  lambda: LUNA_softmax_weights_per_class[i])
                                 loss_this_gpu.append(
@@ -434,8 +436,10 @@ def main():
                                             tf.zeros_like(
                                                 label_proc[j]))))
                             else:
-                                weight = tf.cond(tf.reduce_all(
-                                    tf.stack([tf.equal(label_proc[j], 0), tf.less_equal(label_proc[j], 2)])),
+                                weight = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
+                                                                tf.reduce_any(
+                                                                    tf.greater_equal(tf.argmax(raw_output[j], axis=-1),
+                                                                                     3))),
                                                  lambda: LITS_softmax_weights_per_class_ignore[i],
                                                  lambda: LITS_softmax_weights_per_class[i])
                                 loss_this_gpu.append(
