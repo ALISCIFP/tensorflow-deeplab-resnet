@@ -21,16 +21,18 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 IMG_MEAN_LUNA16 = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 IMG_MEAN_LITS = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
-LUNA16_softmax_weights = np.array((0, 0, 0, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
-                                  dtype=np.float32)
-LITS_softmax_weights = np.array((0, 1.2, 2.2, 0, 0, 0, 0), dtype=np.float32)  # [15020370189   332764489    18465194]
+LUNA16_softmax_weights_ignore = np.array((0, 0, 0, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
+                                         dtype=np.float32)
+LITS_softmax_weights_ignore = np.array((0, 1.2, 2.2, 0, 0, 0, 0),
+                                       dtype=np.float32)  # [15020370189   332764489    18465194]
 
-# softmax_weights = np.array((5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
-#                             0.0123730652, 0.9870702051), dtype=np.float32)
+LUNA16_softmax_weights = LITS_softmax_weights = np.array(
+    (5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
+     0.0123730652, 0.9870702051), dtype=np.float32)
 
 GPU_MASK = '0,1'
 BATCH_SIZE = 6
-IGNORE_LABEL = 255
+IGNORE_LABEL = 0
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 5e-4
 MOMENTUM = 0.9
@@ -409,14 +411,19 @@ def main():
                     accuracy_per_class_this_gpu = []
                     LITS_softmax_weights_per_class = tf.constant(LITS_softmax_weights, dtype=tf.float32)
                     LUNA_softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+                    LITS_softmax_weights_per_class_ignore = tf.constant(LITS_softmax_weights_ignore, dtype=tf.float32)
+                    LUNA_softmax_weights_per_class_ignore = tf.constant(LUNA16_softmax_weights_ignore, dtype=tf.float32)
                     label_proc = tf.cast(label_proc, tf.int32)
                     for i in xrange(0, args.num_classes):
                         curr_class = tf.constant(i, tf.int32)
 
                         for j in xrange(args.batch_size):
                             if j == 0 or j >= (args.batch_size - args.batch_size / 2):
+                                weight = tf.cond(tf.reduce_all(tf.equal(label_proc[j], 0)),
+                                                 lambda: LUNA_softmax_weights_per_class_ignore[i],
+                                                 lambda: LUNA_softmax_weights_per_class[i])
                                 loss_this_gpu.append(
-                                    LUNA_softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(
+                                    weight * tf.losses.sparse_softmax_cross_entropy(
                                         logits=raw_output[j],
                                         labels=label_proc[j],
                                         weights=tf.where(
@@ -427,8 +434,11 @@ def main():
                                             tf.zeros_like(
                                                 label_proc[j]))))
                             else:
+                                weight = tf.cond(tf.reduce_all(tf.equal(label_proc[j], 0)),
+                                                 lambda: LITS_softmax_weights_per_class_ignore[i],
+                                                 lambda: LITS_softmax_weights_per_class[i])
                                 loss_this_gpu.append(
-                                    LITS_softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(
+                                    weight * tf.losses.sparse_softmax_cross_entropy(
                                         logits=raw_output[j],
                                         labels=label_proc[j],
                                         weights=tf.where(
