@@ -21,14 +21,12 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 IMG_MEAN_LUNA16 = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 IMG_MEAN_LITS = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
-LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
+LUNA16_softmax_weights = np.array((0, 0, 0, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
                                   dtype=np.float32)
-LITS_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
+LITS_softmax_weights = np.array((0, 1.2, 2.2, 0, 0, 0, 0), dtype=np.float32)  # [15020370189   332764489    18465194]
 
 # softmax_weights = np.array((5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
 #                             0.0123730652, 0.9870702051), dtype=np.float32)
-softmax_weights = np.array((0, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
-                            0.0123730652, 0.9870702051), dtype=np.float32)
 
 GPU_MASK = '0,1'
 BATCH_SIZE = 6
@@ -36,7 +34,7 @@ IGNORE_LABEL = 255
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 5e-4
 MOMENTUM = 0.9
-NUM_CLASSES = len(softmax_weights)
+NUM_CLASSES = len(LITS_softmax_weights)
 NUM_STEPS = 1000000
 POWER = 0.9
 RANDOM_SEED = 1234
@@ -327,7 +325,7 @@ def main():
                     label_batch_train_LUNA = tf.cast(
                         tf.where(tf.equal(label_batch_train_LUNA, tf.zeros_like(label_batch_train_LUNA)),
                                  tf.zeros_like(tf.cast(label_batch_train_LUNA, tf.int32)),
-                                 tf.cast(label_batch_train_LUNA, tf.int32) + len(LITS_softmax_weights) - 1), tf.uint8)
+                                 tf.cast(label_batch_train_LUNA, tf.int32) + 2), tf.uint8)
                     image_batch_train_LITS, label_batch_train_LITS = train_reader_LITS.dequeue(
                         (args.batch_size - args.batch_size / 2))
                     image_batch_train = tf.concat(
@@ -339,7 +337,7 @@ def main():
                     label_batch_val_LUNA = tf.cast(
                         tf.where(tf.equal(label_batch_val_LUNA, tf.zeros_like(label_batch_val_LUNA)),
                                  tf.zeros_like(tf.cast(label_batch_val_LUNA, tf.int32)),
-                                 tf.cast(label_batch_val_LUNA, tf.int32) + len(LITS_softmax_weights) - 1), tf.uint8)
+                                 tf.cast(label_batch_val_LUNA, tf.int32) + 2), tf.uint8)
 
                     image_batch_val_LITS, label_batch_val_LITS = val_reader_LITS.dequeue(
                         (args.batch_size - args.batch_size / 2))
@@ -366,16 +364,6 @@ def main():
 
                     # Predictions.
                     raw_output = net.layers['fc1_voc12']
-
-                    # for idx in xrange(args.batch_size):
-                    #     tf.cond(tf.reduce_any(tf.equal(label_batch[idx], tf.ones_like(label_batch[idx]))),
-                    #             lambda: tf.where(
-                    #                 tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
-                    #                 raw_output[idx], tf.zeros_like(raw_output[idx])),
-                    #             lambda: tf.where(
-                    #                 tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
-                    #                 tf.zeros_like(raw_output[idx]), raw_output[idx]))
-
                     raw_output_list.append(raw_output)
 
                     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]),
@@ -419,18 +407,38 @@ def main():
                     # Pixel-wise softmax loss.
                     loss_this_gpu = []
                     accuracy_per_class_this_gpu = []
-                    softmax_weights_per_class = tf.constant(softmax_weights, dtype=tf.float32)
+                    LITS_softmax_weights_per_class = tf.constant(LITS_softmax_weights, dtype=tf.float32)
+                    LUNA_softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+                    label_proc = tf.cast(label_proc, tf.int32)
                     for i in xrange(0, args.num_classes):
                         curr_class = tf.constant(i, tf.int32)
-                        loss_this_gpu.append(
-                            softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(logits=prediction,
-                                                                                                  labels=gt,
-                                                                                                  weights=tf.where(
-                                                                                                      tf.equal(gt,
-                                                                                                               curr_class),
-                                                                                                      tf.zeros_like(gt),
-                                                                                                      tf.ones_like(
-                                                                                                          gt))))
+
+                        for j in xrange(args.batch_size):
+                            if j == 0 or j >= (args.batch_size - args.batch_size / 2):
+                                loss_this_gpu.append(
+                                    LUNA_softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(
+                                        logits=raw_output[j],
+                                        labels=label_proc[j],
+                                        weights=tf.where(
+                                            tf.equal(label_proc[j],
+                                                     curr_class),
+                                            tf.ones_like(
+                                                label_proc[j]),
+                                            tf.zeros_like(
+                                                label_proc[j]))))
+                            else:
+                                loss_this_gpu.append(
+                                    LITS_softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(
+                                        logits=raw_output[j],
+                                        labels=label_proc[j],
+                                        weights=tf.where(
+                                            tf.equal(label_proc[j],
+                                                     curr_class),
+                                            tf.ones_like(
+                                                label_proc[j]),
+                                            tf.zeros_like(
+                                                label_proc[j]))))
+
                         accuracy_per_class_this_gpu.append(
                             tf.reduce_mean(
                                 tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
