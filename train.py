@@ -25,7 +25,9 @@ LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0.0002845522, 0.0002506
                                   dtype=np.float32)
 LITS_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
 
-softmax_weights = np.array((5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
+# softmax_weights = np.array((5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
+#                             0.0123730652, 0.9870702051), dtype=np.float32)
+softmax_weights = np.array((0, 0.3333333333, 0.6111111111, 0.0002845522, 0.0002506645,
                             0.0123730652, 0.9870702051), dtype=np.float32)
 
 GPU_MASK = '0,1'
@@ -359,14 +361,14 @@ def main():
                     # Predictions.
                     raw_output = net.layers['fc1_voc12']
 
-                    for idx in xrange(args.batch_size):
-                        tf.cond(tf.reduce_any(tf.equal(label_batch[idx], tf.ones_like(label_batch[idx]))),
-                                lambda: tf.where(
-                                    tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
-                                    raw_output[idx], tf.zeros_like(raw_output[idx])),
-                                lambda: tf.where(
-                                    tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
-                                    tf.zeros_like(raw_output[idx]), raw_output[idx]))
+                    # for idx in xrange(args.batch_size):
+                    #     tf.cond(tf.reduce_any(tf.equal(label_batch[idx], tf.ones_like(label_batch[idx]))),
+                    #             lambda: tf.where(
+                    #                 tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
+                    #                 raw_output[idx], tf.zeros_like(raw_output[idx])),
+                    #             lambda: tf.where(
+                    #                 tf.less(raw_output[idx], len(LITS_softmax_weights) * tf.ones_like(raw_output[idx])),
+                    #                 tf.zeros_like(raw_output[idx]), raw_output[idx]))
 
                     raw_output_list.append(raw_output)
 
