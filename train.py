@@ -331,9 +331,9 @@ def main():
                     image_batch_train_LITS, label_batch_train_LITS = train_reader_LITS.dequeue(
                         (args.batch_size - args.batch_size / 2))
                     image_batch_train = tf.concat(
-                        [image_batch_train_LUNA[0], image_batch_train_LITS, image_batch_train_LUNA[0:]], axis=0)
+                        [image_batch_train_LUNA[0:1], image_batch_train_LITS, image_batch_train_LUNA[1:]], axis=0)
                     label_batch_train = tf.concat(
-                        [label_batch_train_LUNA[0], label_batch_train_LITS, image_batch_train_LUNA[0:]], axis=0)
+                        [label_batch_train_LUNA[0:1], label_batch_train_LITS, label_batch_train_LUNA[1:]], axis=0)
 
                     image_batch_val_LUNA, label_batch_val_LUNA = val_reader_LUNA.dequeue(args.batch_size / 2)
                     label_batch_val_LUNA = tf.cast(
@@ -344,9 +344,9 @@ def main():
                     image_batch_val_LITS, label_batch_val_LITS = val_reader_LITS.dequeue(
                         (args.batch_size - args.batch_size / 2))
                     image_batch_val = tf.concat(
-                        [image_batch_val_LUNA[0], image_batch_val_LITS, image_batch_val_LUNA[0:]], axis=0)
+                        [image_batch_val_LUNA[0:1], image_batch_val_LITS, image_batch_val_LUNA[1:]], axis=0)
                     label_batch_val = tf.concat(
-                        [label_batch_val_LUNA[0], label_batch_val_LITS, image_batch_val_LUNA[0:]], axis=0)
+                        [label_batch_val_LUNA[0:1], label_batch_val_LITS, label_batch_val_LUNA[1:]], axis=0)
 
                     image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
                     label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
