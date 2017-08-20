@@ -21,11 +21,8 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 IMG_MEAN_LUNA16 = np.array((88.89328702, 89.36887475, 88.8973059), dtype=np.float32)  # LUNA16
 IMG_MEAN_LITS = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
-LUNA16_softmax_weights = np.array((2.15129033634559E-05, 0, 0, 0.0002845522, 0.0002506645, 0.0123730652, 0.9870702051),
-                                  dtype=np.float32)
-LITS_softmax_weights = np.array((0.2, 1.2, 2.2, 0, 0, 0, 0),
-                                dtype=np.float32)  # [15020370189   332764489    18465194]
-
+LUNA16_softmax_weights = LITS_softmax_weights = np.array((5.557706846E-02, 0.3333333333, 0.6111111111, 0.0002845522,
+                                                          0.0002506645, 0.0123730652, 0.9870702051), dtype=np.float32)
 LUNA16_softmax_weights_ignore = LITS_softmax_weights_ignore = np.array(
     (0, 0, 0, 0, 0, 0, 0), dtype=np.float32)
 
@@ -418,14 +415,13 @@ def main():
 
                         for j in xrange(args.batch_size):
                             if j == 0 or j >= (args.batch_size - args.batch_size / 2):
-                                weight = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
-                                                                tf.reduce_any(tf.stack(
+                                loss = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
+                                                              tf.reduce_any(tf.stack(
                                                                     [tf.equal(tf.argmax(raw_output[j], axis=-1), 1),
                                                                      tf.equal(tf.argmax(raw_output[j], axis=-1), 2)]))),
-                                                 lambda: LUNA_softmax_weights_per_class_ignore[i],
-                                                 lambda: LUNA_softmax_weights_per_class[i])
-                                loss_this_gpu.append(
-                                    weight * tf.losses.sparse_softmax_cross_entropy(
+                                               lambda: LUNA_softmax_weights_per_class_ignore[i],
+                                               lambda: LUNA_softmax_weights_per_class[
+                                                           i] * tf.losses.sparse_softmax_cross_entropy(
                                         logits=raw_output[j],
                                         labels=label_proc[j],
                                         weights=tf.where(
@@ -435,15 +431,15 @@ def main():
                                                 label_proc[j]),
                                             tf.zeros_like(
                                                 label_proc[j]))))
+                                loss_this_gpu.append(loss)
                             else:
-                                weight = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
-                                                                tf.reduce_any(
+                                loss = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
+                                                              tf.reduce_any(
                                                                     tf.greater_equal(tf.argmax(raw_output[j], axis=-1),
                                                                                      3))),
-                                                 lambda: LITS_softmax_weights_per_class_ignore[i],
-                                                 lambda: LITS_softmax_weights_per_class[i])
-                                loss_this_gpu.append(
-                                    weight * tf.losses.sparse_softmax_cross_entropy(
+                                               lambda: LITS_softmax_weights_per_class_ignore[i],
+                                               lambda: LITS_softmax_weights_per_class[
+                                                           i] * tf.losses.sparse_softmax_cross_entropy(
                                         logits=raw_output[j],
                                         labels=label_proc[j],
                                         weights=tf.where(
@@ -453,6 +449,7 @@ def main():
                                                 label_proc[j]),
                                             tf.zeros_like(
                                                 label_proc[j]))))
+                                loss_this_gpu.append(loss)
 
                         accuracy_per_class_this_gpu.append(
                             tf.reduce_mean(
