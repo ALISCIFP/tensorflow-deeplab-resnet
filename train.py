@@ -39,7 +39,7 @@ RANDOM_SEED = 1234
 RESTORE_FROM = None
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 500
-VAL_INTERVAL = 11
+VAL_INTERVAL = 10
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
 
@@ -319,30 +319,29 @@ def main():
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             for gpu_id in filter(None, args.gpu_mask.split(',')):
                 with tf.name_scope(gpu_id), tf.device('/gpu:%d' % int(gpu_id)):
-                    image_batch_train_LUNA, label_batch_train_LUNA = train_reader_LUNA.dequeue(args.batch_size / 2)
+                    image_batch_train_LUNA, label_batch_train_LUNA = train_reader_LUNA.dequeue(args.batch_size)
                     label_batch_train_LUNA = tf.cast(
                         tf.where(tf.equal(label_batch_train_LUNA, tf.zeros_like(label_batch_train_LUNA)),
                                  tf.zeros_like(tf.cast(label_batch_train_LUNA, tf.int32)),
                                  tf.cast(label_batch_train_LUNA, tf.int32) + 2), tf.uint8)
-                    image_batch_train_LITS, label_batch_train_LITS = train_reader_LITS.dequeue(
-                        (args.batch_size - args.batch_size / 2))
-                    image_batch_train = tf.concat(
-                        [image_batch_train_LUNA[0:1], image_batch_train_LITS, image_batch_train_LUNA[1:]], axis=0)
-                    label_batch_train = tf.concat(
-                        [label_batch_train_LUNA[0:1], label_batch_train_LITS, label_batch_train_LUNA[1:]], axis=0)
 
-                    image_batch_val_LUNA, label_batch_val_LUNA = val_reader_LUNA.dequeue(args.batch_size / 2)
+                    image_batch_train_LITS, label_batch_train_LITS = train_reader_LITS.dequeue(args.batch_size)
+                    image_batch_train = tf.cond(tf.equal(tf.floormod(step_ph, 2), 0), lambda: image_batch_train_LITS,
+                                                lambda: image_batch_train_LUNA)
+                    label_batch_train = tf.cond(tf.equal(tf.floormod(step_ph, 2), 0), lambda: label_batch_train_LITS,
+                                                lambda: label_batch_train_LUNA)
+
+                    image_batch_val_LUNA, label_batch_val_LUNA = val_reader_LUNA.dequeue(args.batch_size)
                     label_batch_val_LUNA = tf.cast(
                         tf.where(tf.equal(label_batch_val_LUNA, tf.zeros_like(label_batch_val_LUNA)),
                                  tf.zeros_like(tf.cast(label_batch_val_LUNA, tf.int32)),
                                  tf.cast(label_batch_val_LUNA, tf.int32) + 2), tf.uint8)
 
-                    image_batch_val_LITS, label_batch_val_LITS = val_reader_LITS.dequeue(
-                        (args.batch_size - args.batch_size / 2))
-                    image_batch_val = tf.concat(
-                        [image_batch_val_LUNA[0:1], image_batch_val_LITS, image_batch_val_LUNA[1:]], axis=0)
-                    label_batch_val = tf.concat(
-                        [label_batch_val_LUNA[0:1], label_batch_val_LITS, label_batch_val_LUNA[1:]], axis=0)
+                    image_batch_val_LITS, label_batch_val_LITS = val_reader_LITS.dequeue(args.batch_size)
+                    image_batch_val = tf.cond(tf.equal(tf.floormod(step_ph / 10, 2), 0), lambda: image_batch_val_LITS,
+                                              lambda: image_batch_val_LUNA)
+                    label_batch_val = tf.cond(tf.equal(tf.floormod(step_ph / 10, 2), 0), lambda: label_batch_val_LITS,
+                                              lambda: label_batch_val_LUNA)
 
                     image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
                     label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
@@ -413,43 +412,49 @@ def main():
                     for i in xrange(0, args.num_classes):
                         curr_class = tf.constant(i, tf.int32)
 
-                        for j in xrange(args.batch_size):
-                            if j == 0 or j >= (args.batch_size - args.batch_size / 2):
-                                loss = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
-                                                              tf.reduce_any(tf.stack(
-                                                                    [tf.equal(tf.argmax(raw_output[j], axis=-1), 1),
-                                                                     tf.equal(tf.argmax(raw_output[j], axis=-1), 2)]))),
-                                               lambda: LUNA_softmax_weights_per_class_ignore[i],
-                                               lambda: LUNA_softmax_weights_per_class[
-                                                           i] * tf.losses.sparse_softmax_cross_entropy(
-                                        logits=raw_output[j],
-                                        labels=label_proc[j],
-                                        weights=tf.where(
-                                            tf.equal(label_proc[j],
-                                                     curr_class),
-                                            tf.ones_like(
-                                                label_proc[j]),
-                                            tf.zeros_like(
-                                                label_proc[j]))))
-                                loss_this_gpu.append(loss)
-                            else:
-                                loss = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc[j], 0)),
-                                                              tf.reduce_any(
-                                                                    tf.greater_equal(tf.argmax(raw_output[j], axis=-1),
-                                                                                     3))),
-                                               lambda: LITS_softmax_weights_per_class_ignore[i],
-                                               lambda: LITS_softmax_weights_per_class[
-                                                           i] * tf.losses.sparse_softmax_cross_entropy(
-                                        logits=raw_output[j],
-                                        labels=label_proc[j],
-                                        weights=tf.where(
-                                            tf.equal(label_proc[j],
-                                                     curr_class),
-                                            tf.ones_like(
-                                                label_proc[j]),
-                                            tf.zeros_like(
-                                                label_proc[j]))))
-                                loss_this_gpu.append(loss)
+                        LUNA_loss = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc, 0)),
+                                                           tf.reduce_any(tf.stack(
+                                                               [tf.equal(tf.argmax(raw_output, axis=-1), 1),
+                                                                tf.equal(tf.argmax(raw_output, axis=-1), 2)]))),
+                                            lambda: LUNA_softmax_weights_per_class_ignore[i],
+                                            lambda: LUNA_softmax_weights_per_class[
+                                                        i] * tf.losses.sparse_softmax_cross_entropy(
+                                                logits=raw_output,
+                                                labels=label_proc,
+                                                weights=tf.where(
+                                                    tf.equal(label_proc,
+                                                             curr_class),
+                                                    tf.ones_like(
+                                                        label_proc),
+                                                    tf.zeros_like(
+                                                        label_proc))))
+
+                        LITS_loss = tf.cond(tf.logical_and(tf.reduce_all(tf.equal(label_proc, 0)),
+                                                           tf.reduce_any(tf.stack(
+                                                               [tf.equal(tf.argmax(raw_output, axis=-1), 1),
+                                                                tf.equal(tf.argmax(raw_output, axis=-1), 2)]))),
+                                            lambda: LITS_softmax_weights_per_class_ignore[i],
+                                            lambda: LITS_softmax_weights_per_class[
+                                                        i] * tf.losses.sparse_softmax_cross_entropy(
+                                                logits=raw_output,
+                                                labels=label_proc,
+                                                weights=tf.where(
+                                                    tf.equal(label_proc,
+                                                             curr_class),
+                                                    tf.ones_like(
+                                                        label_proc),
+                                                    tf.zeros_like(
+                                                        label_proc))))
+
+                        train_loss = tf.cond(tf.equal(tf.floormod(step_ph, 2), 0),
+                                             lambda: LITS_loss, lambda: LUNA_loss)
+
+                        val_loss = tf.cond(tf.equal(tf.floormod(step_ph / 10, 2), 0),
+                                           lambda: LITS_loss, lambda: LUNA_loss)
+
+                        loss = tf.cond(mode, lambda: train_loss, lambda: val_loss)
+
+                        loss_this_gpu.append(loss)
 
                         accuracy_per_class_this_gpu.append(
                             tf.reduce_mean(
