@@ -27,7 +27,7 @@ LUNA16_softmax_weights_ignore = LITS_softmax_weights_ignore = np.array(
     (0, 0, 0, 0, 0, 0, 0), dtype=np.float32)
 
 GPU_MASK = '0,1'
-BATCH_SIZE = 6
+BATCH_SIZE = 5
 IGNORE_LABEL = 0
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 5e-4
