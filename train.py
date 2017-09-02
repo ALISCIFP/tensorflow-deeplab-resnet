@@ -275,7 +275,7 @@ def main():
         label_batch_list = []
         grads_list = []
         with tf.variable_scope(tf.get_variable_scope()) as scope:
-            for gpu_id in args.gpu_mask.split(','):
+            for gpu_id in filter(None, args.gpu_mask.split(',')):
                 with tf.name_scope(gpu_id), tf.device('/gpu:%d' % int(gpu_id)):
                     image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
                     image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
@@ -359,7 +359,8 @@ def main():
         image_batch = tf.concat(image_batch_list, axis=0)
         accuracy_per_class = []
         for i in xrange(args.num_classes):
-            class_per_gpu = [accuracy_per_class_list[int(gpu_id)][i] for gpu_id in args.gpu_mask.split(',')]
+            class_per_gpu = [accuracy_per_class_list[int(gpu_id)][i] for gpu_id in
+                             filter(None, args.gpu_mask.split(','))]
             accuracy_per_class.append(tf.reduce_mean(class_per_gpu))
 
         grads = average_gradients(grads_list)
