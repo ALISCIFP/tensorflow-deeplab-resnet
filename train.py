@@ -20,24 +20,24 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
 IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
-LUNA16_softmax_weights = np.array((0.2,  1.2,  2.2),dtype=np.float32) #[15020370189   332764489    18465194]
+LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
 
 GPU_MASK = '0,1'
-BATCH_SIZE = 4
+BATCH_SIZE = 6
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
 IGNORE_LABEL = 0
 INPUT_SIZE = '320,320'
-LEARNING_RATE = 5e-4
+LEARNING_RATE = 1e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 3
 NUM_STEPS = 1000000
 POWER = 0.9
 RESTORE_FROM = None
-SAVE_NUM_IMAGES = 1
+SAVE_NUM_IMAGES = 3
 SAVE_PRED_EVERY = 500
-VAL_INTERVAL = 11
+VAL_INTERVAL = 101
 SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
 
