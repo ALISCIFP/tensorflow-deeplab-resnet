@@ -23,18 +23,17 @@ IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  
 LUNA16_softmax_weights = np.array((0.2,  1.2,  2.2),dtype=np.float32) #[15020370189   332764489    18465194]
 
 GPU_MASK = '0,1'
-BATCH_SIZE = 3
+BATCH_SIZE = 4
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
-IGNORE_LABEL = 255
-INPUT_SIZE = '512,512'
+IGNORE_LABEL = 0
+INPUT_SIZE = '320,320'
 LEARNING_RATE = 5e-4
 MOMENTUM = 0.9
 NUM_CLASSES = 3
 NUM_STEPS = 1000000
 POWER = 0.9
-RANDOM_SEED = 1234
 RESTORE_FROM = None
 SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 500
@@ -120,8 +119,6 @@ def get_arguments():
                         help="Whether to randomly mirror the inputs during the training.")
     parser.add_argument("--random-scale", action="store_true",
                         help="Whether to randomly scale the inputs during the training.")
-    parser.add_argument("--random-seed", type=int, default=RANDOM_SEED,
-                        help="Random seed to have reproducible results.")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
     parser.add_argument("--save-num-images", type=int, default=SAVE_NUM_IMAGES,
@@ -134,13 +131,7 @@ def get_arguments():
                         help="Where to save snapshots of the model.")
     parser.add_argument("--weight-decay", type=float, default=WEIGHT_DECAY,
                         help="Regularisation parameter for L2-loss.")
-    parser.add_argument("--conv-lr-multiplier", type=float, default=1.0,
-                        help="conv learning rate multiplier")
-    parser.add_argument("--fc-w-lr-multiplier", type=float, default=10.0,
-                        help="fc_w learning rate multiplier")
-    parser.add_argument("--fc-b-lr-multiplier", type=float, default=20.0,
-                        help="fc_b learning rate multiplier")
-    parser.add_argument("--moving-average-decay", type=float, default=0.9999,
+    parser.add_argument("--moving-average-decay", type=float, default=0.99,
                         help="multi-gpu moving average")
 
     return parser.parse_args()
@@ -265,9 +256,7 @@ def main():
 
         learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - step_ph / args.num_steps), args.power))
         tf.summary.scalar("Learning Rate", learning_rate, collections=['all'])
-        opt_conv = tf.train.MomentumOptimizer(learning_rate * args.conv_lr_multiplier, args.momentum)
-        opt_fc_w = tf.train.MomentumOptimizer(learning_rate * args.fc_w_lr_multiplier, args.momentum)
-        opt_fc_b = tf.train.MomentumOptimizer(learning_rate * args.fc_b_lr_multiplier, args.momentum)
+        opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
 
         counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
                                        name='counter_no_reset')
@@ -308,7 +297,7 @@ def main():
                     # if they are presented in var_list of the optimiser definition.
 
                     # Predictions.
-                    raw_output = net.layers['fc1_voc12']
+                    raw_output = net.layers['conv24']
                     raw_output_list.append(raw_output)
 
                     label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]),
@@ -318,23 +307,9 @@ def main():
                     scope.reuse_variables()
                     # Which variables to load. Running means and variances are not trainable,
                     # thus all_variables() should be restored.
-                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name and 'counter' not in v.name
-                                   or not args.first_run]
                     all_trainable = [v for v in tf.trainable_variables() if
                                      'beta' not in v.name and 'gamma' not in v.name]
-                    fc_trainable = [v for v in all_trainable if 'fc' in v.name]
 
-                    if args.first_run:
-                        conv_trainable = [v for v in all_trainable if 'conv1' in v.name]  # lr * 1.0
-                    else:
-                        conv_trainable = [v for v in all_trainable if 'fc' not in v.name]  # lr * 1.0
-
-                    fc_w_trainable = [v for v in fc_trainable if 'weights' in v.name]  # lr * 10.0
-                    fc_b_trainable = [v for v in fc_trainable if 'biases' in v.name]  # lr * 20.0
-
-                    if not args.first_run:
-                        assert (len(all_trainable) == len(fc_trainable) + len(conv_trainable))
-                    assert (len(fc_trainable) == len(fc_w_trainable) + len(fc_b_trainable))
                     # Predictions: ignoring all predictions with labels greater or equal than n_classes
                     raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
 
@@ -374,8 +349,8 @@ def main():
                     reduced_loss_list.append(reduced_loss_list_curr)
 
                     grads_list.append(
-                        zip(tf.gradients(reduced_loss_list_curr, conv_trainable + fc_w_trainable + fc_b_trainable),
-                            conv_trainable + fc_w_trainable + fc_b_trainable))
+                        zip(tf.gradients(reduced_loss_list_curr, all_trainable),
+                            all_trainable))
 
         reduced_loss = tf.reduce_mean(reduced_loss_list)
         accuracy = tf.reduce_mean(accuracy_list)
@@ -388,20 +363,14 @@ def main():
             accuracy_per_class.append(tf.reduce_mean(class_per_gpu))
 
         grads = average_gradients(grads_list)
-        grads_conv = grads[:len(conv_trainable)]
-        grads_fc_w = grads[len(conv_trainable): (len(conv_trainable) + len(fc_w_trainable))]
-        grads_fc_b = grads[(len(conv_trainable) + len(fc_w_trainable)):]
-
-        train_op_conv = opt_conv.apply_gradients(grads_conv)
-        train_op_fc_w = opt_fc_w.apply_gradients(grads_fc_w)
-        train_op_fc_b = opt_fc_b.apply_gradients(grads_fc_b)
+        train_op_conv = opt_conv.apply_gradients(grads)
 
         # Track the moving averages of all trainable variables.
         variable_averages_gen = tf.train.ExponentialMovingAverage(
             args.moving_average_decay, step_ph)
-        variables_averages_gen_op = variable_averages_gen.apply(conv_trainable + fc_w_trainable + fc_b_trainable)
+        variables_averages_gen_op = variable_averages_gen.apply(all_trainable)
 
-        train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b, variables_averages_gen_op)
+        train_op = tf.group(train_op_conv, variables_averages_gen_op)
 
         # Processed predictions: for visualisation.
         raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
@@ -512,7 +481,7 @@ def main():
                                       graph=tf.get_default_graph()))
 
         # Saver for storing checkpoints of the model.
-        saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=100)
+        saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=50)
 
         # Set up tf session and initialize variables.
         sess = tf.Session(config=tf.ConfigProto(
@@ -524,7 +493,7 @@ def main():
         # Load variables if the checkpoint is provided.
         inital_step_value = 1
         if args.restore_from is not None:
-            loader = tf.train.Saver(var_list=restore_var)
+            loader = tf.train.Saver()
             if '.ckpt' in args.restore_from:
                 load(loader, sess, args.restore_from)
             else:

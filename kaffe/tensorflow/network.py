@@ -192,7 +192,17 @@ class Network(object):
         return tf.nn.relu(input, name=name)
 
     @layer
-    def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
+    def prelu(self, input, leak=0.1, name="prelu"):
+        alpha = tf.get_variable(name, shape=input.get_shape()[1:],
+                                dtype=input.dtype, initializer=tf.constant_initializer(leak))
+        return tf.maximum(0.0, input) + alpha * tf.minimum(0.0, input)
+
+    @layer
+    def resize(self, inputs, size_w, size_h, name):
+        return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor([size_w, size_h]), name=name)
+
+    @layer
+    def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding='VALID'):
         self.validate_padding(padding)
         return tf.nn.max_pool(input,
                               ksize=[1, k_h, k_w, 1],
@@ -201,7 +211,7 @@ class Network(object):
                               name=name)
 
     @layer
-    def avg_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
+    def avg_pool(self, input, k_h, k_w, s_h, s_w, name, padding='VALID'):
         self.validate_padding(padding)
         return tf.nn.avg_pool(input,
                               ksize=[1, k_h, k_w, 1],
