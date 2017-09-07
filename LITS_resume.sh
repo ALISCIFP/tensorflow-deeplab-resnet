@@ -1,14 +1,14 @@
 python train.py  \
---data-dir /home/zack/Data/LITS \
---data-list  /home/zack/Data/LITS/dataset/train.txt  \
---val-data-list /home/zack/Data/LITS/dataset/val.txt  \
+--data-dir /home/zack/Data/LITS_resample_667mm \
+--data-list  /home/zack/Data/LITS_resample_667mm/dataset/train.txt  \
+--val-data-list /home/zack/Data/LITS_resample_667mm/dataset/val.txt  \
 --batch-size 5 \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from './snapshots/LITS4_mm' \
---snapshot-dir './snapshots/LITS4-rmm' \
+--restore-from './deeplab_resnet.ckpt' \
+--snapshot-dir './snapshots/LITS667mm' \
 --gpu-mask '0' \
---learning-rate 2.0e-4 \
+--learning-rate 2.5e-4 \
 --random-scale \
 --random-mirror \
---num-steps 300000 \
+--num-steps 1691820 \ # 20epoch
