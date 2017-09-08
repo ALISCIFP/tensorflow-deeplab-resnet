@@ -6,9 +6,9 @@ python train.py  \
 --first-run \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from './deeplab_resnet.ckpt' \
+--restore-from '/home/victor/deeplab/LITS4t2_refine_v2_r1'  \
 --snapshot-dir './snapshots/LITS667mm' \
---gpu-mask '0,1' \
+--gpu-mask 0 \
 --learning-rate 2.5e-4 \
 --random-scale \
 --random-mirror \
