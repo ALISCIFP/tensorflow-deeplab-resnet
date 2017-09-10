@@ -20,16 +20,16 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, prepa
 
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
-GPU_MASK = '7'
+GPU_MASK = '0'
 
 
-DATA_DIRECTORY = '/home/VOCdevkit/VOC2012'
+DATA_DIRECTORY = '/home/zack/Data/VOC2012/VOCdevkit/VOC2012'
 DATA_LIST_PATH = './dataset/test.txt' #Note, in test.txt each line is /test.jpg /t space
 IGNORE_LABEL = 255
 NUM_CLASSES = 21
 NUM_STEPS = 1449 # Number of images in the validation set.
 RESTORE_FROM = './deeplab_resnet.ckpt'
-SAVE_DIR = './output/'
+SAVE_DIR = './test_VOC2012/'
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
