@@ -1,14 +1,14 @@
 python train.py  \
 --data-dir /home/zack/Data/LITS_resample_667mm \
---data-list  /home/zack/Data/LITS_resample_667mm/dataset/train.txt  \
+--data-list /home/zack/Data/LITS_resample_667mm/dataset/train.txt  \
 --val-data-list /home/zack/Data/LITS_resample_667mm/dataset/val.txt  \
---batch-size 3 \
+--batch-size 5 \
 --first-run \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from '/home/victor/deeplab/LITS4t2_refine_v2_r1'  \
+--restore-from '/home/victor/deeplab/LITS4t2_refine_v2_r1' \
 --snapshot-dir './snapshots/LITS667mm' \
---gpu-mask 0 \
+--gpu-mask '0,1' \
 --learning-rate 2.5e-4 \
 --random-scale \
 --random-mirror \

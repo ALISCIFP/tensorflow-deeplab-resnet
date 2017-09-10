@@ -128,7 +128,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     # f2 = tf.Print(f2, [f2])
     label_contents = tf.read_file(input_queue[1])
 
-    img = tf.image.decode_png(img_contents, channels=3)
+    img = tf.image.decode_jpeg(img_contents, channels=3)
     img_r, img_g, img_b = tf.split(axis=2, num_or_size_splits=3, value=img)
     img = tf.cast(tf.concat(axis=2, values=[img_b, img_g, img_r]), dtype=tf.float32)
     # Extract mean.
@@ -136,7 +136,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
     def read_image(fname):
         image_contents = tf.read_file(fname)
-        image = tf.image.decode_png(image_contents, channels=3)
+        image = tf.image.decode_jpeg(image_contents, channels=3)
         image_r, image_g, image_b = tf.split(axis=2, num_or_size_splits=3, value=image)
         image = tf.cast(tf.concat(axis=2, values=[image_b, image_g, image_r]), dtype=tf.float32)
         # Extract mean.
