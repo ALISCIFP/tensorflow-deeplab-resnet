@@ -318,7 +318,8 @@ def main():
                     scope.reuse_variables()
                     # Which variables to load. Running means and variances are not trainable,
                     # thus all_variables() should be restored.
-                    restore_var = [v for v in tf.global_variables() if 'conv1' not in v.name and 'counter' not in v.name
+                    restore_var = [v for v in tf.global_variables() if
+                                   'conv1' not in v.name and 'counter' not in v.name and 'fc' not in v.name
                                    or not args.first_run]
                     all_trainable = [v for v in tf.trainable_variables() if
                                      'beta' not in v.name and 'gamma' not in v.name]
