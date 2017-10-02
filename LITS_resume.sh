@@ -6,7 +6,7 @@ python train.py  \
 --first-run \
 --num-classes 3 \
 --input-size '512,512'  \
---restore-from '/home/victor/deeplab/LITS4t2_refine_v2_r1' \
+--restore-from './deeplab_resnet.ckpt' \
 --snapshot-dir './snapshots/LITSresample667mm' \
 --gpu-mask 0 \
 --learning-rate 2.5e-4 \
