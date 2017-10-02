@@ -9,7 +9,7 @@ python train.py  \
 --restore-from './deeplab_resnet.ckpt' \
 --snapshot-dir './snapshots/LITSresample667mm' \
 --gpu-mask 0 \
---learning-rate 2.5e-4 \
+--learning-rate 2.5e-5 \
 --random-scale \
 --random-mirror \
 --num-steps 563940 
