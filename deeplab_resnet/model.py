@@ -11,443 +11,1750 @@ from kaffe.tensorflow import Network
 class DeepLabResNetModel(Network):
     def setup(self, is_training, num_classes):
         '''Network definition.
-        
+
         Args:
           is_training: whether to update the running mean and variance of the batch normalisation layer.
-                       If the batch size is small, it is better to keep the running mean and variance of 
+                       If the batch size is small, it is better to keep the running mean and variance of
                        the-pretrained model frozen.
           num_classes: number of classes to predict (including background).
         '''
         (self.feed('data')
-             .conv(7, 7, 64, 2, 2, biased=False, relu=False, name='conv1')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1')
-             .max_pool(3, 3, 2, 2, name='pool1')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res2a_branch1')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn2a_branch1'))
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1')
+            .conv(7, 7, 96, 2, 2, biased=False, relu=False, name='conv1')
+            .max_pool(3, 3, 2, 2, name='pool1')
+            )
 
         (self.feed('pool1')
-             .conv(1, 1, 64, 1, 1, biased=False, relu=False, name='res2a_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2a_branch2a')
-             .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='res2a_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2a_branch2b')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res2a_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn2a_branch2c'))
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1a_dense1')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv1a_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1b_dense1')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv1b_dense1')
+            )
 
-        (self.feed('bn2a_branch1', 
-                   'bn2a_branch2c')
-             .add(name='res2a')
-             .relu(name='res2a_relu')
-             .conv(1, 1, 64, 1, 1, biased=False, relu=False, name='res2b_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2b_branch2a')
-             .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='res2b_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2b_branch2b')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res2b_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn2b_branch2c'))
+        (self.feed('pool1',
+                   'conv1b_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2a_dense1')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv2a_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2b_dense1')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv2b_dense1')
+            )
 
-        (self.feed('res2a_relu', 
-                   'bn2b_branch2c')
-             .add(name='res2b')
-             .relu(name='res2b_relu')
-             .conv(1, 1, 64, 1, 1, biased=False, relu=False, name='res2c_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2c_branch2a')
-             .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='res2c_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn2c_branch2b')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res2c_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn2c_branch2c'))
+        (self.feed('pool1',
+                   'conv1b_dense1',
+                   'conv2b_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3a_dense1')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv3a_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3b_dense1')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv3b_dense1')
+            )
 
-        (self.feed('res2b_relu', 
-                   'bn2c_branch2c')
-             .add(name='res2c')
-             .relu(name='res2c_relu')
-             .conv(1, 1, 512, 2, 2, biased=False, relu=False, name='res3a_branch1')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn3a_branch1'))
+        (self.feed('pool1',
+                   'conv1b_dense1',
+                   'conv2b_dense1',
+                   'conv3b_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4a_dense1')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv4a_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4b_dense1')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv4b_dense1')
+            )
 
-        (self.feed('res2c_relu')
-             .conv(1, 1, 128, 2, 2, biased=False, relu=False, name='res3a_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3a_branch2a')
-             .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='res3a_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3a_branch2b')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res3a_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn3a_branch2c'))
+        (self.feed('pool1',
+                   'conv1b_dense1',
+                   'conv2b_dense1',
+                   'conv3b_dense1',
+                   'conv4b_dense1'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5a_dense1')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv5a_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5b_dense1')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv5b_dense1')
+            )
 
-        (self.feed('bn3a_branch1', 
-                   'bn3a_branch2c')
-             .add(name='res3a')
-             .relu(name='res3a_relu')
-             .conv(1, 1, 128, 1, 1, biased=False, relu=False, name='res3b1_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b1_branch2a')
-             .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='res3b1_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b1_branch2b')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res3b1_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn3b1_branch2c'))
+        (self.feed('pool1',
+                   'conv1b_dense1',
+                   'conv2b_dense1',
+                   'conv3b_dense1',
+                   'conv4b_dense1',
+                   'conv5b_dense1'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6a_dense1')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv6a_dense1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6b_dense1')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv6b_dense1')
+            )
 
-        (self.feed('res3a_relu', 
-                   'bn3b1_branch2c')
-             .add(name='res3b1')
-             .relu(name='res3b1_relu')
-             .conv(1, 1, 128, 1, 1, biased=False, relu=False, name='res3b2_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b2_branch2a')
-             .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='res3b2_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b2_branch2b')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res3b2_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn3b2_branch2c'))
+        (self.feed('pool1',
+                   'conv1b_dense1',
+                   'conv2b_dense1',
+                   'conv3b_dense1',
+                   'conv4b_dense1',
+                   'conv5b_dense1',
+                   'conv6b_dense1'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_transition1')
+            .conv(1, 1, (96 + 48 * 6) / 2, 1, 1, biased=False, relu=False, name='conv_transition1')
+            .avg_pool(2, 2, 2, 2, name='pool_transition1')
+            )
 
-        (self.feed('res3b1_relu', 
-                   'bn3b2_branch2c')
-             .add(name='res3b2')
-             .relu(name='res3b2_relu')
-             .conv(1, 1, 128, 1, 1, biased=False, relu=False, name='res3b3_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b3_branch2a')
-             .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='res3b3_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn3b3_branch2b')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res3b3_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn3b3_branch2c'))
+        (self.feed('pool_transition1')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv1a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv1b_dense2')
+            )
 
-        (self.feed('res3b2_relu', 
-                   'bn3b3_branch2c')
-             .add(name='res3b3')
-             .relu(name='res3b3_relu')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4a_branch1')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4a_branch1'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv2a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv2b_dense2')
+            )
 
-        (self.feed('res3b3_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4a_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4a_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4a_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4a_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4a_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4a_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv3a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv3b_dense2')
+            )
 
-        (self.feed('bn4a_branch1', 
-                   'bn4a_branch2c')
-             .add(name='res4a')
-             .relu(name='res4a_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b1_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b1_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b1_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b1_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b1_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b1_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv4a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv4b_dense2')
+            )
 
-        (self.feed('res4a_relu', 
-                   'bn4b1_branch2c')
-             .add(name='res4b1')
-             .relu(name='res4b1_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b2_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b2_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b2_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b2_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b2_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b2_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv5a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv5b_dense2')
+            )
 
-        (self.feed('res4b1_relu', 
-                   'bn4b2_branch2c')
-             .add(name='res4b2')
-             .relu(name='res4b2_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b3_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b3_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b3_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b3_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b3_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b3_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv6a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv6b_dense2')
+            )
 
-        (self.feed('res4b2_relu', 
-                   'bn4b3_branch2c')
-             .add(name='res4b3')
-             .relu(name='res4b3_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b4_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b4_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b4_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b4_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b4_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b4_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv7a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv7a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv7b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv7b_dense2')
+            )
 
-        (self.feed('res4b3_relu', 
-                   'bn4b4_branch2c')
-             .add(name='res4b4')
-             .relu(name='res4b4_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b5_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b5_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b5_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b5_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b5_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b5_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2',
+                   'conv7b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv8a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv8a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv8b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv8b_dense2')
+            )
 
-        (self.feed('res4b4_relu', 
-                   'bn4b5_branch2c')
-             .add(name='res4b5')
-             .relu(name='res4b5_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b6_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b6_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b6_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b6_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b6_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b6_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2',
+                   'conv7b_dense2',
+                   'conv8b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv9a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv9a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv9b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv9b_dense2')
+            )
 
-        (self.feed('res4b5_relu', 
-                   'bn4b6_branch2c')
-             .add(name='res4b6')
-             .relu(name='res4b6_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b7_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b7_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b7_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b7_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b7_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b7_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2',
+                   'conv7b_dense2',
+                   'conv8b_dense2',
+                   'conv9b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv10a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv10a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv10b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv10b_dense2')
+            )
 
-        (self.feed('res4b6_relu', 
-                   'bn4b7_branch2c')
-             .add(name='res4b7')
-             .relu(name='res4b7_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b8_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b8_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b8_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b8_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b8_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b8_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2',
+                   'conv7b_dense2',
+                   'conv8b_dense2',
+                   'conv9b_dense2',
+                   'conv10b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv11a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv11a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv11b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv11b_dense2')
+            )
 
-        (self.feed('res4b7_relu', 
-                   'bn4b8_branch2c')
-             .add(name='res4b8')
-             .relu(name='res4b8_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b9_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b9_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b9_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b9_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b9_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b9_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2',
+                   'conv7b_dense2',
+                   'conv8b_dense2',
+                   'conv9b_dense2',
+                   'conv10b_dense2',
+                   'conv11b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv12a_dense2')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv12a_dense2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv12b_dense2')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv12b_dense2')
+            )
 
-        (self.feed('res4b8_relu', 
-                   'bn4b9_branch2c')
-             .add(name='res4b9')
-             .relu(name='res4b9_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b10_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b10_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b10_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b10_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b10_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b10_branch2c'))
+        (self.feed('pool_transition1',
+                   'conv1b_dense2',
+                   'conv2b_dense2',
+                   'conv3b_dense2',
+                   'conv4b_dense2',
+                   'conv5b_dense2',
+                   'conv6b_dense2',
+                   'conv7b_dense2',
+                   'conv8b_dense2',
+                   'conv9b_dense2',
+                   'conv10b_dense2',
+                   'conv11b_dense2',
+                   'conv12b_dense2'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_transition2')
+            .conv(1, 1, (96 + 48 * 12) / 2, 1, 1, biased=False, relu=False, name='conv_transition2')
+            .avg_pool(2, 2, 2, 2, name='pool_transition2')
+            )
 
-        (self.feed('res4b9_relu', 
-                   'bn4b10_branch2c')
-             .add(name='res4b10')
-             .relu(name='res4b10_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b11_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b11_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b11_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b11_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b11_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b11_branch2c'))
+        (self.feed('pool_transition2')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv1a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv1b_dense3')
+            )
 
-        (self.feed('res4b10_relu', 
-                   'bn4b11_branch2c')
-             .add(name='res4b11')
-             .relu(name='res4b11_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b12_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b12_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b12_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b12_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b12_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b12_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv2a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv2b_dense3')
+            )
 
-        (self.feed('res4b11_relu', 
-                   'bn4b12_branch2c')
-             .add(name='res4b12')
-             .relu(name='res4b12_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b13_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b13_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b13_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b13_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b13_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b13_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv3a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv3b_dense3')
+            )
 
-        (self.feed('res4b12_relu', 
-                   'bn4b13_branch2c')
-             .add(name='res4b13')
-             .relu(name='res4b13_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b14_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b14_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b14_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b14_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b14_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b14_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv4a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv4b_dense3')
+            )
 
-        (self.feed('res4b13_relu', 
-                   'bn4b14_branch2c')
-             .add(name='res4b14')
-             .relu(name='res4b14_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b15_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b15_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b15_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b15_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b15_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b15_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv5a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv5b_dense3')
+            )
 
-        (self.feed('res4b14_relu', 
-                   'bn4b15_branch2c')
-             .add(name='res4b15')
-             .relu(name='res4b15_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b16_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b16_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b16_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b16_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b16_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b16_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv6a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv6b_dense3')
+            )
 
-        (self.feed('res4b15_relu', 
-                   'bn4b16_branch2c')
-             .add(name='res4b16')
-             .relu(name='res4b16_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b17_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b17_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b17_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b17_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b17_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b17_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv7a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv7a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv7b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv7b_dense3')
+            )
 
-        (self.feed('res4b16_relu', 
-                   'bn4b17_branch2c')
-             .add(name='res4b17')
-             .relu(name='res4b17_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b18_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b18_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b18_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b18_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b18_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b18_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv8a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv8a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv8b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv8b_dense3')
+            )
 
-        (self.feed('res4b17_relu', 
-                   'bn4b18_branch2c')
-             .add(name='res4b18')
-             .relu(name='res4b18_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b19_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b19_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b19_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b19_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b19_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b19_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv9a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv9a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv9b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv9b_dense3')
+            )
 
-        (self.feed('res4b18_relu', 
-                   'bn4b19_branch2c')
-             .add(name='res4b19')
-             .relu(name='res4b19_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b20_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b20_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b20_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b20_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b20_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b20_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv10a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv10a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv10b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv10b_dense3')
+            )
 
-        (self.feed('res4b19_relu', 
-                   'bn4b20_branch2c')
-             .add(name='res4b20')
-             .relu(name='res4b20_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b21_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b21_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b21_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b21_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b21_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b21_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv11a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv11a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv11b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv11b_dense3')
+            )
 
-        (self.feed('res4b20_relu', 
-                   'bn4b21_branch2c')
-             .add(name='res4b21')
-             .relu(name='res4b21_relu')
-             .conv(1, 1, 256, 1, 1, biased=False, relu=False, name='res4b22_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b22_branch2a')
-             .atrous_conv(3, 3, 256, 2, padding='SAME', biased=False, relu=False, name='res4b22_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn4b22_branch2b')
-             .conv(1, 1, 1024, 1, 1, biased=False, relu=False, name='res4b22_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn4b22_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv12a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv12a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv12b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv12b_dense3')
+            )
 
-        (self.feed('res4b21_relu', 
-                   'bn4b22_branch2c')
-             .add(name='res4b22')
-             .relu(name='res4b22_relu')
-             .conv(1, 1, 2048, 1, 1, biased=False, relu=False, name='res5a_branch1')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn5a_branch1'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv13a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv13a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv13b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv13b_dense3')
+            )
 
-        (self.feed('res4b22_relu')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res5a_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5a_branch2a')
-             .atrous_conv(3, 3, 512, 4, padding='SAME', biased=False, relu=False, name='res5a_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5a_branch2b')
-             .conv(1, 1, 2048, 1, 1, biased=False, relu=False, name='res5a_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn5a_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv14a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv14a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv14b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv14b_dense3')
+            )
 
-        (self.feed('bn5a_branch1', 
-                   'bn5a_branch2c')
-             .add(name='res5a')
-             .relu(name='res5a_relu')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res5b_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5b_branch2a')
-             .atrous_conv(3, 3, 512, 4, padding='SAME', biased=False, relu=False, name='res5b_branch2b')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5b_branch2b')
-             .conv(1, 1, 2048, 1, 1, biased=False, relu=False, name='res5b_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn5b_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv15a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv15a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv15b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv15b_dense3')
+            )
 
-        (self.feed('res5a_relu', 
-                   'bn5b_branch2c')
-             .add(name='res5b')
-             .relu(name='res5b_relu')
-             .conv(1, 1, 512, 1, 1, biased=False, relu=False, name='res5c_branch2a')
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn5c_branch2a')
-             .atrous_conv(3, 3, 512, 4, padding='SAME', biased=False, relu=False, name='res5c_branch2b')
-             .batch_normalization(activation_fn=tf.nn.relu, name='bn5c_branch2b', is_training=is_training)
-             .conv(1, 1, 2048, 1, 1, biased=False, relu=False, name='res5c_branch2c')
-             .batch_normalization(is_training=is_training, activation_fn=None, name='bn5c_branch2c'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv16a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv16a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv16b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv16b_dense3')
+            )
 
-        (self.feed('res5b_relu', 
-                   'bn5c_branch2c')
-             .add(name='res5c')
-             .relu(name='res5c_relu')
-             .atrous_conv(3, 3, num_classes, 6, padding='SAME', relu=False, name='fc1_voc12_c0'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv17a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv17a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv17b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv17b_dense3')
+            )
 
-        (self.feed('res5c_relu')
-             .atrous_conv(3, 3, num_classes, 12, padding='SAME', relu=False, name='fc1_voc12_c1'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv18a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv18a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv18b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv18b_dense3')
+            )
 
-        (self.feed('res5c_relu')
-             .atrous_conv(3, 3, num_classes, 18, padding='SAME', relu=False, name='fc1_voc12_c2'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv19a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv19a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv19b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv19b_dense3')
+            )
 
-        (self.feed('res5c_relu')
-             .atrous_conv(3, 3, num_classes, 24, padding='SAME', relu=False, name='fc1_voc12_c3'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv20a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv20a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv20b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv20b_dense3')
+            )
 
-        (self.feed('fc1_voc12_c0', 
-                   'fc1_voc12_c1', 
-                   'fc1_voc12_c2', 
-                   'fc1_voc12_c3')
-             .add(name='fc1_voc12'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv21a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv21a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv21b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv21b_dense3')
+            )
 
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv22a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv22a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv22b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv22b_dense3')
+            )
 
-        (self.feed('fc1_voc12')
-         .resize(size_h=512, size_w=512, name='fc1_voc12_resized'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv23a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv23a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv23b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv23b_dense3')
+            )
 
-        (self.feed('fc1_voc12_resized',
-                   'data')
-         .concat(axis=-1, name='concat_input'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv24a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv24a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv24b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv24b_dense3')
+            )
 
-        (self.feed('concat_input')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv_bn')
-         .relu(name='concat_conv_relu')
-         .conv(1, 1, 3, 1, 1, biased=True, relu=False, name='concat_conv1', padding='SAME')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv1_bn'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv25a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv25a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv25b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv25b_dense3')
+            )
 
-        (self.feed('concat_conv1_bn')
-         .relu(name='concat_conv2_relu')
-         .conv(2, 2, 3, 1, 1, biased=True, relu=False, name='concat_conv2', padding='SAME')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv2_bn'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv26a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv26a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv26b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv26b_dense3')
+            )
 
-        (self.feed('concat_conv2_bn')
-         .relu(name='concat_conv3_relu')
-         .conv(3, 3, 3, 1, 1, biased=True, relu=False, name='concat_conv3')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv3_bn'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv27a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv27a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv27b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv27b_dense3')
+            )
 
-        (self.feed('concat_conv3_bn')
-         .relu(name='concat_conv4_relu')
-         .conv(3, 3, 3, 1, 1, biased=True, relu=False, name='concat_conv4')
-         .batch_normalization(is_training=is_training, activation_fn=None, name='concat_conv4_bn'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv28a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv28a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv28b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv28b_dense3')
+            )
 
-        (self.feed('concat_conv4_bn')
-         .relu(name='concat_conv5_relu')
-         .conv(3, 3, 3, 1, 1, biased=True, relu=False, name='concat_conv5'))
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3'
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv29a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv29a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv29b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv29b_dense3')
+            )
 
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv30a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv30a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv30b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv30b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv31a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv31a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv31b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv31b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv32a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv32a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv32b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv32b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3',
+                   'conv32b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv33a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv33a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv33b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv33b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3',
+                   'conv32b_dense3',
+                   'conv33b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv34a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv34a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv34b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv34b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3',
+                   'conv32b_dense3',
+                   'conv33b_dense3',
+                   'conv34b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv35a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv35a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv35b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv35b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3',
+                   'conv32b_dense3',
+                   'conv33b_dense3',
+                   'conv34b_dense3',
+                   'conv35b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv36a_dense3')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv36a_dense3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv36b_dense3')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv36b_dense3')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3',
+                   'conv32b_dense3',
+                   'conv33b_dense3',
+                   'conv34b_dense3',
+                   'conv35b_dense3',
+                   'conv36b_dense3'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_transition3')
+            .conv(1, 1, (96 + 48 * 36) / 2, 1, 1, biased=False, relu=False, name='conv_transition3')
+            .avg_pool(2, 2, 2, 2, name='pool_transition3')
+            )
+
+        (self.feed('pool_transition3')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv1a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv1b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv1b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv2a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv2b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv3a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv3b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv3b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv4a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv4b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv4b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv5a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv5b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv5b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv6a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv6b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv6b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv7a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv7a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv7b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv7b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv8a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv8a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv8b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv8b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv9a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv9a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv9b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv9b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv10a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv10a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv10b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv10b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv11a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv11a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv11b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv11b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv12a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv12a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv12b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv12b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv13a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv13a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv13b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv13b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv14a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv14a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv14b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv14b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv15a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv15a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv15b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv15b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv16a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv16a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv16b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv16b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv17a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv17a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv17b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv17b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv18a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv18a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv18b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv18b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4',
+                   'conv18b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv19a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv19a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv19b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv19b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4',
+                   'conv18b_dense4',
+                   'conv19b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv20a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv20a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv20b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv20b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4',
+                   'conv18b_dense4',
+                   'conv19b_dense4',
+                   'conv20b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv21a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv21a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv21b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv21b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4',
+                   'conv18b_dense4',
+                   'conv19b_dense4',
+                   'conv20b_dense4',
+                   'conv21b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv22a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv22a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv22b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv22b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4',
+                   'conv18b_dense4',
+                   'conv19b_dense4',
+                   'conv20b_dense4',
+                   'conv21b_dense4',
+                   'conv22b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv23a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv23a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv23b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv23b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense4',
+                   'conv2b_dense4',
+                   'conv3b_dense4',
+                   'conv4b_dense4',
+                   'conv5b_dense4',
+                   'conv6b_dense4',
+                   'conv7b_dense4',
+                   'conv8b_dense4',
+                   'conv9b_dense4',
+                   'conv10b_dense4',
+                   'conv11b_dense4',
+                   'conv12b_dense4',
+                   'conv13b_dense4',
+                   'conv14b_dense4',
+                   'conv15b_dense4',
+                   'conv16b_dense4',
+                   'conv17b_dense4',
+                   'conv18b_dense4',
+                   'conv19b_dense4',
+                   'conv20b_dense4',
+                   'conv21b_dense4',
+                   'conv22b_dense4',
+                   'conv23b_dense4'
+                   )
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv24a_dense4')
+            .conv(1, 1, 192, 1, 1, biased=False, relu=False, name='conv24a_dense4')
+            .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv24b_dense4')
+            .conv(3, 3, 48, 1, 1, biased=False, relu=False, name='conv24b_dense4')
+            )
+
+        (self.feed('pool_transition3',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3')
+            .concat(axis=-1)
+            .resize(14, 14, name='bilinear_upsample1')
+            )
+
+        (self.feed('pool_transition2',
+                   'conv1b_dense3',
+                   'conv2b_dense3',
+                   'conv3b_dense3',
+                   'conv4b_dense3',
+                   'conv5b_dense3',
+                   'conv6b_dense3',
+                   'conv7b_dense3',
+                   'conv8b_dense3',
+                   'conv9b_dense3',
+                   'conv10b_dense3',
+                   'conv11b_dense3',
+                   'conv12b_dense3',
+                   'conv13b_dense3',
+                   'conv14b_dense3',
+                   'conv15b_dense3',
+                   'conv16b_dense3',
+                   'conv17b_dense3',
+                   'conv18b_dense3',
+                   'conv19b_dense3',
+                   'conv20b_dense3',
+                   'conv21b_dense3',
+                   'conv22b_dense3',
+                   'conv23b_dense3',
+                   'conv24b_dense3',
+                   'conv25b_dense3',
+                   'conv26b_dense3',
+                   'conv27b_dense3',
+                   'conv28b_dense3',
+                   'conv29b_dense3',
+                   'conv30b_dense3',
+                   'conv31b_dense3',
+                   'conv32b_dense3',
+                   'conv33b_dense3',
+                   'conv34b_dense3',
+                   'conv35b_dense3',
+                   'conv36b_dense3',
+                   'bilinear_upsample1')
+            .concat(axis=-1)
+            .resize(14, 14, name='bilinear_upsample1')
+            )
+
+        .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_upsample1')
+        .conv(2, 2, 768, 2, 2, biased=False, relu=False, name='conv_upsample1')
+        )
