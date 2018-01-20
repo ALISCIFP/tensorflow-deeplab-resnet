@@ -1830,9 +1830,9 @@ class DeepLabResNetModel(Network):
                    'conv36b_dense3',
                    'bilinear_upsample1')
          .concat(axis=-1)
-         .resize(28, 28, name='upsample1')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_upsample1')
          .conv(3, 3, 768, 1, 1, biased=False, relu=False, name='conv_upsample1')
+         .resize(28, 28, name='bilinear_upsample2')
          )
 
         (self.feed('pool_transition1',
@@ -1847,17 +1847,12 @@ class DeepLabResNetModel(Network):
                    'conv9b_dense2',
                    'conv10b_dense2',
                    'conv11b_dense2',
-                   'conv12b_dense2')
-         .concat(axis=-1)
-         .resize(28, 28, name='bilinear_upsample2')
-         )
-
-        (self.feed('conv_upsample1',
+                   'conv12b_dense2',
                    'bilinear_upsample2')
          .concat(axis=-1)
-         .resize(56, 56, name='upsample2')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_upsample2')
          .conv(3, 3, 384, 1, 1, biased=False, relu=False, name='conv_upsample2')
+         .resize(56, 56, name='bilinear_upsample3')
          )
 
         (self.feed('pool1',
@@ -1866,31 +1861,24 @@ class DeepLabResNetModel(Network):
                    'conv3b_dense1',
                    'conv4b_dense1',
                    'conv5b_dense1',
-                   'conv6b_dense1')
-         .concat(axis=-1)
-         .resize(56, 56, name='bilinear_upsample3')
-         )
-
-        (self.feed('conv_upsample2',
+                   'conv6b_dense1',
                    'bilinear_upsample3')
          .concat(axis=-1)
-         .resize(112, 112, name='upsample3')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_upsample3')
          .conv(3, 3, 96, 1, 1, biased=False, relu=False, name='conv_upsample3')
-         )
-
-        (self.feed('conv1')
          .resize(112, 112, name='bilinear_upsample4')
          )
 
-        (self.feed('conv_upsample3',
+        (self.feed('conv1',
                    'bilinear_upsample4')
          .concat(axis=-1)
-         .resize(224, 224, name="upsample4")
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_upsample4')
          .conv(3, 3, 96, 1, 1, biased=False, relu=False, name='conv_upsample4')
+         .resize(224, 224, name='bilinear_upsample5')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv_upsample5')
          .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='conv_upsample5')
          .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2')
          .conv(1, 1, 3, 1, 1, biased=False, relu=False, name='conv2')
          )
+
+        pass
