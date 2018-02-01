@@ -107,9 +107,11 @@ class Network(object):
              input,
              k_h,
              k_w,
+             k_z,
              c_o,
              s_h,
              s_w,
+             s_z,
              name,
              relu=True,
              padding=DEFAULT_PADDING,
@@ -123,9 +125,9 @@ class Network(object):
         assert c_i % group == 0
         assert c_o % group == 0
         # Convolution for a given input and kernel
-        convolve = lambda i, k: tf.nn.conv2d(i, k, [1, s_h, s_w, 1], padding=padding)
+        convolve = lambda i, k: tf.nn.conv3d(i, k, [1, s_z, s_h, s_w, 1], padding=padding)
         with tf.variable_scope(name) as scope:
-            kernel = self.make_var('weights', shape=[k_h, k_w, c_i / group, c_o])
+            kernel = self.make_var('weights', shape=[k_z, k_h, k_w, c_i / group, c_o])
             if group == 1:
                 # This is the common-case. Convolve the input without any further complications.
                 output = convolve(input, kernel)
@@ -150,11 +152,14 @@ class Network(object):
                input,
                k_h,
                k_w,
+               k_z,
                c_o,
                s_h,
                s_w,
+               s_z,
                osize_h,
                osize_w,
+               osize_z,
                name,
                relu=True,
                padding=DEFAULT_PADDING,
@@ -168,10 +173,11 @@ class Network(object):
         assert c_i % group == 0
         assert c_o % group == 0
         # Convolution for a given input and kernel
-        convolve = lambda i, k: tf.nn.conv2d_transpose(i, k, [tf.shape(i)[0], osize_h, osize_w, c_o], [1, s_h, s_w, 1],
+        convolve = lambda i, k: tf.nn.conv3d_transpose(i, k, [tf.shape(i)[0], osize_z, osize_h, osize_w, c_o],
+                                                       [1, s_z, s_h, s_w, 1],
                                                        padding=padding)
         with tf.variable_scope(name) as scope:
-            kernel = self.make_var('weights', shape=[k_h, k_w, c_o, c_i / group])
+            kernel = self.make_var('weights', shape=[k_z, k_h, k_w, c_o, c_i / group])
             if group == 1:
                 # This is the common-case. Convolve the input without any further complications.
                 output = convolve(input, kernel)
@@ -238,13 +244,13 @@ class Network(object):
         return tf.nn.relu(input, name=name)
 
     @layer
-    def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
+    def max_pool(self, input, k_h, k_w, k_z, s_h, s_w, s_z, name, padding=DEFAULT_PADDING):
         self.validate_padding(padding)
-        return tf.nn.max_pool(input,
-                              ksize=[1, k_h, k_w, 1],
-                              strides=[1, s_h, s_w, 1],
-                              padding=padding,
-                              name=name)
+        return tf.nn.max_pool3d(input,
+                                ksize=[1, k_z, k_h, k_w, 1],
+                                strides=[1, s_z, s_h, s_w, 1],
+                                padding=padding,
+                                name=name)
 
     @layer
     def avg_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
