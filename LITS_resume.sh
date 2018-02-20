@@ -1,13 +1,10 @@
 python train.py  \
---data-dir /home/zack/Data/LITS \
---data-list  /home/zack/Data/LITS/dataset/train.txt  \
---val-data-list /home/zack/Data/LITS/dataset/val.txt  \
---batch-size 5 \
---num-classes 3 \
---input-size '512,512'  \
---restore-from './snapshots/LITS4_mm' \
---snapshot-dir './snapshots/LITS4-rmm' \
---gpu-mask '0' \
+--data-dir /home/zack/Data/paperrescaledLITS/ \
+--data-list /home/zack/Data/paperrescaledLITS/dataset/train.txt \
+--val-data-list /home/zack/Data/paperrescaledLITS/dataset/val.txt \
+--restore-from './snapshots/HanResNet' \
+--snapshot-dir './snapshots/HanResNet' \
+--gpu-mask '0,1' \
 --learning-rate 2.0e-4 \
 --random-scale \
 --random-mirror \
