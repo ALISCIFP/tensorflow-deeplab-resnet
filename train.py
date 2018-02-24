@@ -460,7 +460,8 @@ def main():
         tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
         tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-        images_summary = tf.py_func(inv_preprocess, [image_batch[0:1, 5:8], args.save_num_images, IMG_MEAN],
+        images_summary = tf.py_func(inv_preprocess, [tf.transpose(image_batch, perm=(0, 2, 3, 1, 4))[:, :, :, 5:8, 0],
+                                                     args.save_num_images, IMG_MEAN],
                                     tf.uint8)
         labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes],
                                     tf.uint8)
