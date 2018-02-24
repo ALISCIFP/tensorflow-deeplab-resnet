@@ -20,8 +20,8 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_p
 IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
 LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
 
-GPU_MASK = '0,1'
-BATCH_SIZE = 12
+GPU_MASK = '0'
+BATCH_SIZE = 1
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
 VAL_DATA_LIST_PATH = None
@@ -282,6 +282,9 @@ def main():
                     image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
                     image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
 
+                    image_batch_train = tf.expand_dims(tf.transpose(image_batch_train, perm=(0, 3, 1, 2)), axis=-1)
+                    image_batch_val = tf.expand_dims(tf.transpose(image_batch_val, perm=(0, 3, 1, 2)), axis=-1)
+
                     image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
                     label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
 
@@ -377,7 +380,7 @@ def main():
         train_op = tf.group(train_op_opt, variables_averages_gen_op)
 
         # Processed predictions: for visualisation.
-        raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
+        raw_output_up = tf.image.resize_bilinear(raw_output[0], tf.shape(image_batch)[2:4])
         raw_output_up = tf.argmax(raw_output_up, axis=3)
         pred = tf.expand_dims(raw_output_up, dim=3)
 
@@ -457,7 +460,7 @@ def main():
         tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
         tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-        images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN],
+        images_summary = tf.py_func(inv_preprocess, [image_batch[0:1, 5:8], args.save_num_images, IMG_MEAN],
                                     tf.uint8)
         labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes],
                                     tf.uint8)

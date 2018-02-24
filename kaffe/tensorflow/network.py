@@ -333,13 +333,13 @@ class Network(object):
         return tf.nn.relu(input, name=name)
 
     @layer
-    def max_pool(self, input, k_h, k_w, k_z, s_h, s_w, s_z, name, padding=DEFAULT_PADDING):
+    def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
         self.validate_padding(padding)
-        return tf.nn.max_pool3d(input,
-                                ksize=[1, k_z, k_h, k_w, 1],
-                                strides=[1, s_z, s_h, s_w, 1],
-                                padding=padding,
-                                name=name)
+        return tf.nn.max_pool(input,
+                              ksize=[1, k_h, k_w, 1],
+                              strides=[1, s_h, s_w, 1],
+                              padding=padding,
+                              name=name)
 
     @layer
     def avg_pool(self, input, k_h, k_w, s_h, s_w, name, padding=DEFAULT_PADDING):
@@ -349,6 +349,24 @@ class Network(object):
                               strides=[1, s_h, s_w, 1],
                               padding=padding,
                               name=name)
+
+    @layer
+    def max_pool3D(self, input, k_h, k_w, k_z, s_h, s_w, s_z, name, padding=DEFAULT_PADDING):
+        self.validate_padding(padding)
+        return tf.nn.max_pool3d(input,
+                                ksize=[1, k_z, k_h, k_w, 1],
+                                strides=[1, s_z, s_h, s_w, 1],
+                                padding=padding,
+                                name=name)
+
+    @layer
+    def avg_pool3D(self, input, k_h, k_w, k_z, s_h, s_w, s_z, name, padding=DEFAULT_PADDING):
+        self.validate_padding(padding)
+        return tf.nn.avg_pool3d(input,
+                                ksize=[1, k_z, k_h, k_w, 1],
+                                strides=[1, s_z, s_h, s_w, 1],
+                                padding=padding,
+                                name=name)
 
     @layer
     def lrn(self, input, radius, alpha, beta, name, bias=1.0):
