@@ -15,7 +15,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
 LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
@@ -292,8 +292,8 @@ def main():
                     label_batch_list.append(label_batch)
 
                     # Create network.
-                    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training,
-                                             num_classes=args.num_classes)
+                    net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training,
+                                        num_classes=args.num_classes)
                     # For a small batch size, it is better to keep
                     # the statistics of the BN layers (running means and variances)
                     # frozen, and to not update the values provided by the pre-trained model.

@@ -8,15 +8,13 @@ which contains approximately 10000 images for training and 1500 images for valid
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
 import os
-import sys
 import time
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel,ImageReader_LUNA16, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader_LUNA16, decode_labels, inv_preprocess, prepare_label
 
 IMG_MEAN = np.array((121.0,121.0,121.0), dtype=np.float32)
 
@@ -144,7 +142,7 @@ def main():
         image_batch, label_batch = reader.dequeue(args.batch_size)
 
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
+    net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep 
     # the statistics of the BN layers (running means and variances)
     # frozen, and to not update the values provided by the pre-trained model. 

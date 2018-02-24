@@ -8,7 +8,7 @@ import tensorflow as tf
 from kaffe.tensorflow import Network
 
 
-class DeepLabResNetModel(Network):
+class ThreeDNetwork(Network):
     def setup(self, is_training, num_classes):
         '''Network definition.
 

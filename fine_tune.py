@@ -8,16 +8,7 @@ Only the last 'fc1_voc12' layers are being trained.
 
 from __future__ import print_function
 
-import argparse
-from datetime import datetime
-import os
-import sys
-import time
-
-import tensorflow as tf
 import numpy as np
-
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
@@ -125,7 +116,7 @@ def main():
         image_batch, label_batch = reader.dequeue(args.batch_size)
     
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
+    net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep 
     # the statistics of the BN layers (running means and variances)
     # frozen, and to not update the values provided by the pre-trained model. 
@@ -216,15 +207,13 @@ Only the last 'fc1_voc12' layers are being trained.
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
 import os
-import sys
 import time
 
 import tensorflow as tf
 import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
@@ -332,7 +321,7 @@ def main():
         image_batch, label_batch = reader.dequeue(args.batch_size)
 
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
+    net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep
     # the statistics of the BN layers (running means and variances)
     # frozen, and to not update the values provided by the pre-trained model.

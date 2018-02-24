@@ -7,15 +7,11 @@ This script evaluates the model on 1449 validation images.
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
-import os
-import sys
-import time
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
@@ -85,11 +81,11 @@ def main():
     
     # Create network.
     with tf.variable_scope('', reuse=False):
-        net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+        net = ThreeDNetwork({'data': image_batch}, is_training=False, num_classes=args.num_classes)
     with tf.variable_scope('', reuse=True):
-        net075 = DeepLabResNetModel({'data': image_batch075}, is_training=False, num_classes=args.num_classes)
+        net075 = ThreeDNetwork({'data': image_batch075}, is_training=False, num_classes=args.num_classes)
     with tf.variable_scope('', reuse=True):
-        net05 = DeepLabResNetModel({'data': image_batch05}, is_training=False, num_classes=args.num_classes)
+        net05 = ThreeDNetwork({'data': image_batch05}, is_training=False, num_classes=args.num_classes)
 
     # Which variables to load.
     restore_var = tf.global_variables()

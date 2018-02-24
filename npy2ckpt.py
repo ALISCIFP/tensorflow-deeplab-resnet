@@ -10,9 +10,8 @@ import argparse
 import os
 
 import tensorflow as tf
-import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel
+from deeplab_resnet import ThreeDNetwork
 
 SAVE_DIR = './'
 
@@ -47,7 +46,7 @@ def main():
     # Default image.
     image_batch = tf.constant(0, tf.float32, shape=[1, 321, 321, 3]) 
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch})
+    net = ThreeDNetwork({'data': image_batch})
     var_list = tf.global_variables()
           
     # Set up tf session and initialize variables. 

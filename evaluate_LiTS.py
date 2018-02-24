@@ -17,7 +17,7 @@ import numpy as np
 import scipy.ndimage
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader
+from deeplab_resnet import ThreeDNetwork, ImageReader
 
 IMG_MEAN = np.array((70.09696377, 70.09982598, 70.05608305), dtype=np.float32)  # LITS
 
@@ -147,7 +147,7 @@ def main():
             image_batch, _ = reader.dequeue(args.batch_size)
 
             # Create network.
-            net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+            net = ThreeDNetwork({'data': image_batch}, is_training=False, num_classes=args.num_classes)
 
             # Which variables to load.
             restore_var = tf.global_variables()

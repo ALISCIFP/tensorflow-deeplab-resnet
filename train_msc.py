@@ -8,15 +8,13 @@ which contains approximately 10000 images for training and 1500 images for valid
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
 import os
-import sys
 import time
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
@@ -147,11 +145,11 @@ def main():
     
     # Create network.
     with tf.variable_scope('', reuse=False):
-        net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
+        net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     with tf.variable_scope('', reuse=True):
-        net075 = DeepLabResNetModel({'data': image_batch075}, is_training=args.is_training, num_classes=args.num_classes)
+        net075 = ThreeDNetwork({'data': image_batch075}, is_training=args.is_training, num_classes=args.num_classes)
     with tf.variable_scope('', reuse=True):
-        net05 = DeepLabResNetModel({'data': image_batch05}, is_training=args.is_training, num_classes=args.num_classes)
+        net05 = ThreeDNetwork({'data': image_batch05}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep 
     # the statistics of the BN layers (running means and variances)
     # frozen, and to not update the values provided by the pre-trained model. 

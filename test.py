@@ -17,7 +17,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess, prepare_label
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 
@@ -237,7 +237,7 @@ def main():
     label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
 
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
+    net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training, num_classes=args.num_classes)
     # For a small batch size, it is better to keep
     # the statistics of the BN layers (running means and variances)
     # frozen, and to not update the values provided by the pre-trained model.
