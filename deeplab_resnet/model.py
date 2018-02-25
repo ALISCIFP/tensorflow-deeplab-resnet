@@ -2314,7 +2314,8 @@ class ThreeDNetwork(Network):
                        'conv33b_dense3',
                        'conv34b_dense3',
                        'conv35b_dense3',
-                       'conv36b_dense3')
+                       'conv36b_dense3'
+                       )
              .concat(axis=-1)
              .expand_dims(axis=0)
              .reshape([1, 3, 14, 14, -1], name='2d_dense3')
@@ -2334,10 +2335,10 @@ class ThreeDNetwork(Network):
                        '3d_conv11b_dense3',
                        '3d_conv12b_dense3',
                        '3d_bilinear_upsample1',
-                       '2d_dense3')
+                       '2d_dense3'
+                       )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample1')
-             .conv3D(3, 3, 3, 504, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample1')
              .deconv3D(2, 2, 1, 504, 2, 2, 1, 28, 28, 3, relu=False, name='3d_bilinear_upsample2')
              )
 
@@ -2353,7 +2354,8 @@ class ThreeDNetwork(Network):
                        'conv9b_dense2',
                        'conv10b_dense2',
                        'conv11b_dense2',
-                       'conv12b_dense2')
+                       'conv12b_dense2'
+                       )
              .concat(axis=-1)
              .expand_dims(axis=0)
              .reshape([1, 3, 28, 28, -1], name='2d_dense2')
@@ -2365,10 +2367,10 @@ class ThreeDNetwork(Network):
                        '3d_conv3b_dense2',
                        '3d_conv4b_dense2',
                        '3d_bilinear_upsample2',
-                       '2d_dense2')
+                       '2d_dense2'
+                       )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample2')
-             .conv3D(3, 3, 3, 224, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample2')
              .deconv3D(2, 2, 1, 224, 2, 2, 1, 56, 56, 3, name='3d_bilinear_upsample3')
              )
 
@@ -2378,7 +2380,8 @@ class ThreeDNetwork(Network):
                        'conv3b_dense1',
                        'conv4b_dense1',
                        'conv5b_dense1',
-                       'conv6b_dense1')
+                       'conv6b_dense1'
+                       )
              .concat(axis=-1)
              .expand_dims(axis=0)
              .reshape([1, 3, 56, 56, -1], name='2d_dense1')
@@ -2389,10 +2392,10 @@ class ThreeDNetwork(Network):
                        '3d_conv2b_dense1',
                        '3d_conv3b_dense1',
                        '3d_bilinear_upsample3',
-                       '2d_dense1')
+                       '2d_dense1'
+                       )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample3')
-             .conv3D(3, 3, 3, 192, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample3')
              .deconv3D(2, 2, 2, 192, 2, 2, 2, 112, 112, 6, name='3d_bilinear_upsample4')
              )
 
@@ -2403,10 +2406,10 @@ class ThreeDNetwork(Network):
 
             (self.feed('2d_conv1',
                        '3d_conv1',
-                       '3d_bilinear_upsample4')
+                       '3d_bilinear_upsample4'
+                       )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample4')
-             .conv3D(3, 3, 3, 96, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample4')
              .deconv3D(2, 2, 2, 96, 2, 2, 2, 224, 224, 12, name='3d_bilinear_upsample5')
              )
 
@@ -2416,7 +2419,8 @@ class ThreeDNetwork(Network):
              )
 
             (self.feed('2d_bilinear_upsample5',
-                       '3d_bilinear_upsample5')
+                       '3d_bilinear_upsample5'
+                       )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample5')
              .conv3D(3, 3, 3, 64, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample5')

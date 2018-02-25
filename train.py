@@ -195,7 +195,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=1)
+                num_threads=6)
 
         with tf.name_scope("val_inputs"):
             val_reader = ImageReader(
@@ -207,7 +207,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=1)
+                num_threads=2)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
@@ -307,9 +307,9 @@ def main():
             #                                                                                                 gt_old))))
 
             l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
-            reduced_loss = 0.2 * tf.reduce_mean(
+            reduced_loss = tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
-                           + 0.8 * tf.reduce_mean(
+                           + tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                            + tf.add_n(l2_losses)
 
