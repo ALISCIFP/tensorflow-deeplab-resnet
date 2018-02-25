@@ -195,7 +195,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=6)
+                num_threads=1)
 
         with tf.name_scope("val_inputs"):
             val_reader = ImageReader(
@@ -207,7 +207,7 @@ def main():
                 args.ignore_label,
                 IMG_MEAN,
                 coord,
-                num_threads=2)
+                num_threads=1)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
