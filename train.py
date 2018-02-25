@@ -229,9 +229,9 @@ def main():
             image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
             image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
 
-            image_batch = tf.transpose(tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val),
-                                       perm=(3, 1, 2, 0))
+            image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
             label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
+            image_batch = tf.concat(tf.split(image_batch, 12, axis=-1), axis=0)
 
             # Create network.
             net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training,

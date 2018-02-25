@@ -11,7 +11,7 @@ def image_scaling(img, label):
       img: Training image to scale.
       label: Segmentation mask to scale.
     """
-    
+
     scale = tf.random_uniform([1], minval=0.5, maxval=1.5, dtype=tf.float32, seed=None)
     h_new = tf.to_int32(tf.multiply(tf.to_float(tf.shape(img)[0]), scale))
     w_new = tf.to_int32(tf.multiply(tf.to_float(tf.shape(img)[1]), scale))
@@ -19,8 +19,9 @@ def image_scaling(img, label):
     img = tf.image.resize_images(img, new_shape)
     label = tf.image.resize_nearest_neighbor(tf.expand_dims(label, 0), new_shape)
     label = tf.squeeze(label, squeeze_dims=[0])
-   
+
     return img, label
+
 
 def image_mirroring(img, label):
     """
@@ -30,13 +31,14 @@ def image_mirroring(img, label):
       img: Training image to mirror.
       label: Segmentation mask to mirror.
     """
-    
+
     distort_left_right_random = tf.random_uniform([1], 0, 1.0, dtype=tf.float32)[0]
     mirror = tf.less(tf.stack([1.0, distort_left_right_random, 1.0]), 0.5)
     mirror = tf.boolean_mask([0, 1, 2], mirror)
     img = tf.reverse(img, mirror)
     label = tf.reverse(label, mirror)
     return img, label
+
 
 def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_label=255):
     """
@@ -51,31 +53,33 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     """
 
     label = tf.cast(label, dtype=tf.float32)
-    label = label - ignore_label # Needs to be subtracted and later added due to 0 padding.
-    combined = tf.concat(axis=2, values=[image, label]) 
+    label = label - ignore_label  # Needs to be subtracted and later added due to 0 padding.
+    combined = tf.concat(axis=2, values=[image, label])
     image_shape = tf.shape(image)
-    combined_pad = tf.image.pad_to_bounding_box(combined, 0, 0, tf.maximum(crop_h, image_shape[0]), tf.maximum(crop_w, image_shape[1]))
-    
+    combined_pad = tf.image.pad_to_bounding_box(combined, 0, 0, tf.maximum(crop_h, image_shape[0]),
+                                                tf.maximum(crop_w, image_shape[1]))
+
     last_image_dim = tf.shape(image)[-1]
     last_label_dim = tf.shape(label)[-1]
-    combined_crop = tf.random_crop(combined_pad, [crop_h, crop_w, 24])
+    combined_crop = tf.random_crop(combined_pad, [crop_h, crop_w, 48])
     img_crop = combined_crop[:, :, :last_image_dim]
     label_crop = combined_crop[:, :, last_image_dim:]
     label_crop = label_crop + ignore_label
     label_crop = tf.cast(label_crop, dtype=tf.uint8)
-    
-    # Set static shape so that tensorflow knows shape at compile time. 
-    img_crop.set_shape((crop_h, crop_w, 12))
+
+    # Set static shape so that tensorflow knows shape at compile time.
+    img_crop.set_shape((crop_h, crop_w, 36))
     label_crop.set_shape((crop_h, crop_w, 12))
-    return img_crop, label_crop  
+    return img_crop, label_crop
+
 
 def read_labeled_image_list(data_dir, data_list):
     """Reads txt file containing paths to images and ground truth masks.
-    
+
     Args:
       data_dir: path to the directory with images and masks.
       data_list: path to the file with lines of the form '/path/to/image /path/to/mask'.
-       
+
     Returns:
       Two lists with all file names for images and masks, respectively.
     """
@@ -91,9 +95,11 @@ def read_labeled_image_list(data_dir, data_list):
         masks.append(data_dir + mask)
     return images, masks
 
-def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, ignore_label, img_mean): # optional pre-processing arguments
+
+def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, ignore_label,
+                          img_mean):  # optional pre-processing arguments
     """Read one image and its corresponding mask with optional pre-processing.
-    
+
     Args:
       input_queue: tf queue with paths to the image and its mask.
       input_size: a tuple with (height, width) values.
@@ -104,7 +110,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
                     to random crop.
       ignore_label: index of label to ignore during the training.
       img_mean: vector of mean colour values.
-      
+
     Returns:
       Two tensors: the decoded image and its mask.
     """
@@ -112,16 +118,6 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     str_split1_data = tf.string_split([input_queue[0]], delimiter="_")
     str_split2_data = tf.string_split([str_split1_data.values[1]], delimiter=".")
     str_tail_num_data = tf.string_to_number(str_split2_data.values[0], tf.int32)
-
-    fname_2_below_data = tf.string_join(
-        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data - 3 * 2), '.', str_split2_data.values[1]])
-    fname_1_below_data = tf.string_join(
-        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data - 3), '.', str_split2_data.values[1]])
-
-    fname_1_above_data = tf.string_join(
-        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data + 3), '.', str_split2_data.values[1]])
-    fname_2_above_data = tf.string_join(
-        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data + 3 * 2), '.', str_split2_data.values[1]])
 
     def read_image(fname):
         image_contents = tf.read_file(fname)
@@ -136,23 +132,17 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
         # img = tf.Print(img, [fname])
         return tf.zeros_like(img)
 
-    img = read_image(input_queue[0])
+    image_ctr = read_image(input_queue[0])
 
-    fname_2_below_exists_flag_data, = tf.py_func(os.path.exists, [fname_2_below_data], [tf.bool])
-    img_2_below = tf.cond(fname_2_below_exists_flag_data, lambda: read_image(fname_2_below_data),
-                          lambda: fail_image(img, fname_2_below_data))
-
-    fname_1_below_exists_flag_data, = tf.py_func(os.path.exists, [fname_1_below_data], [tf.bool])
-    img_1_below = tf.cond(fname_1_below_exists_flag_data, lambda: read_image(fname_1_below_data),
-                          lambda: fail_image(img, fname_1_below_data))
-
-    fname_1_above_exists_flag_data, = tf.py_func(os.path.exists, [fname_1_above_data], [tf.bool])
-    img_1_above = tf.cond(fname_1_above_exists_flag_data, lambda: read_image(fname_1_above_data),
-                          lambda: fail_image(img, fname_1_above_data))
-
-    fname_2_above_exists_flag_data, = tf.py_func(os.path.exists, [fname_2_above_data], [tf.bool])
-    img_2_above = tf.cond(fname_2_above_exists_flag_data, lambda: read_image(fname_2_above_data),
-                          lambda: fail_image(img, fname_2_above_data))
+    image_list = []
+    for i in range(12):
+        fname_image_curr = tf.string_join(
+            [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data - 5 + i), '.',
+             str_split2_data.values[1]])
+        fname_image_curr_exist_flag, = tf.py_func(os.path.exists, [fname_image_curr], [tf.bool])
+        image_curr = tf.cond(fname_image_curr_exist_flag, lambda: read_image(fname_image_curr),
+                             lambda: fail_image(image_ctr, fname_image_curr))
+        image_list.append(image_curr)
 
     str_split1_label = tf.string_split([input_queue[1]], delimiter="_")
     str_split2_label = tf.string_split([str_split1_label.values[1]], delimiter=".")
@@ -178,11 +168,11 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
                              lambda: fail_label(label_ctr, fname_label_curr))
         label_list.append(label_curr)
 
+    img = tf.concat(image_list, axis=-1)
+    label = tf.concat(label_list, axis=-1)
+
     if input_size is not None:
         h, w = input_size
-
-        img = tf.concat([img_2_below, img_1_below, img, img_1_above, img_2_above], axis=-1)[:, :, 1:13]
-        label = tf.concat(label_list, axis=-1)
 
         # Randomly scale the images and labels.
         if random_scale:
@@ -197,6 +187,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
     return img, label
 
+
 class ImageReader(object):
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk, and enqueues them into a TensorFlow queue.
@@ -205,7 +196,7 @@ class ImageReader(object):
     def __init__(self, data_dir, data_list, input_size,
                  random_scale, random_mirror, ignore_label, img_mean, coord, shuffle=True, num_threads=4):
         '''Initialise an ImageReader.
-        
+
         Args:
           data_dir: path to the directory with images and masks.
           data_list: path to the file with lines of the form '/path/to/image /path/to/mask'.
@@ -228,14 +219,15 @@ class ImageReader(object):
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
                                                    shuffle=shuffle)  # not shuffling if it is val
-        self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror, ignore_label, img_mean) 
+        self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, random_mirror,
+                                                       ignore_label, img_mean)
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
-        
+
         Args:
           num_elements: the batch size.
-          
+
         Returns:
           Two tensors of size (batch_size, h, w, {3, 1}) for images and masks.'''
 
@@ -245,5 +237,5 @@ class ImageReader(object):
         #                                                    capacity=num_elements * self.num_threads)
         # else:
         image_batch, label_batch = tf.train.batch([self.image, self.label],
-                                                      num_elements)
+                                                  num_elements)
         return image_batch, label_batch
