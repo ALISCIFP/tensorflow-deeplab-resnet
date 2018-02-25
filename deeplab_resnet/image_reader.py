@@ -58,7 +58,7 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     
     last_image_dim = tf.shape(image)[-1]
     last_label_dim = tf.shape(label)[-1]
-    combined_crop = tf.random_crop(combined_pad, [crop_h, crop_w, 13])
+    combined_crop = tf.random_crop(combined_pad, [crop_h, crop_w, 24])
     img_crop = combined_crop[:, :, :last_image_dim]
     label_crop = combined_crop[:, :, last_image_dim:]
     label_crop = label_crop + ignore_label
@@ -66,7 +66,7 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     
     # Set static shape so that tensorflow knows shape at compile time. 
     img_crop.set_shape((crop_h, crop_w, 12))
-    label_crop.set_shape((crop_h,crop_w, 1))
+    label_crop.set_shape((crop_h, crop_w, 12))
     return img_crop, label_crop  
 
 def read_labeled_image_list(data_dir, data_list):
@@ -109,30 +109,19 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
       Two tensors: the decoded image and its mask.
     """
 
-    img_contents = tf.read_file(input_queue[0])
-    str_split1 = tf.string_split([input_queue[0]], delimiter="_")
+    str_split1_data = tf.string_split([input_queue[0]], delimiter="_")
+    str_split2_data = tf.string_split([str_split1_data.values[1]], delimiter=".")
+    str_tail_num_data = tf.string_to_number(str_split2_data.values[0], tf.int32)
 
-    str_split2 = tf.string_split([str_split1.values[1]], delimiter=".")
+    fname_2_below_data = tf.string_join(
+        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data - 3 * 2), '.', str_split2_data.values[1]])
+    fname_1_below_data = tf.string_join(
+        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data - 3), '.', str_split2_data.values[1]])
 
-    str_tail_num = tf.string_to_number(str_split2.values[0], tf.int32)
-
-    fname_2_below = tf.string_join(
-        [str_split1.values[0], '_', tf.as_string(str_tail_num - 3 * 2), '.', str_split2.values[1]])
-    fname_1_below = tf.string_join(
-        [str_split1.values[0], '_', tf.as_string(str_tail_num - 3), '.', str_split2.values[1]])
-
-    fname_1_above = tf.string_join(
-        [str_split1.values[0], '_', tf.as_string(str_tail_num + 3), '.', str_split2.values[1]])
-    fname_2_above = tf.string_join(
-        [str_split1.values[0], '_', tf.as_string(str_tail_num + 3 * 2), '.', str_split2.values[1]])
-
-    label_contents = tf.read_file(input_queue[1])
-
-    img = tf.image.decode_jpeg(img_contents, channels=3)
-    img_r, img_g, img_b = tf.split(axis=2, num_or_size_splits=3, value=img)
-    img = tf.cast(tf.concat(axis=2, values=[img_b, img_g, img_r]), dtype=tf.float32)
-    # Extract mean.
-    img -= img_mean
+    fname_1_above_data = tf.string_join(
+        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data + 3), '.', str_split2_data.values[1]])
+    fname_2_above_data = tf.string_join(
+        [str_split1_data.values[0], '_', tf.as_string(str_tail_num_data + 3 * 2), '.', str_split2_data.values[1]])
 
     def read_image(fname):
         image_contents = tf.read_file(fname)
@@ -143,32 +132,57 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
         image -= img_mean
         return image
 
-    def fail(img, fname):
+    def fail_image(img, fname):
         # img = tf.Print(img, [fname])
         return tf.zeros_like(img)
 
-    fname_2_below_exists_flag, = tf.py_func(os.path.exists, [fname_2_below], [tf.bool])
-    img_2_below = tf.cond(fname_2_below_exists_flag, lambda: read_image(fname_2_below),
-                          lambda: fail(img, fname_2_below))
+    img = read_image(input_queue[0])
 
-    fname_1_below_exists_flag, = tf.py_func(os.path.exists, [fname_1_below], [tf.bool])
-    img_1_below = tf.cond(fname_1_below_exists_flag, lambda: read_image(fname_1_below),
-                          lambda: fail(img, fname_1_below))
+    fname_2_below_exists_flag_data, = tf.py_func(os.path.exists, [fname_2_below_data], [tf.bool])
+    img_2_below = tf.cond(fname_2_below_exists_flag_data, lambda: read_image(fname_2_below_data),
+                          lambda: fail_image(img, fname_2_below_data))
 
-    fname_1_above_exists_flag, = tf.py_func(os.path.exists, [fname_1_above], [tf.bool])
-    img_1_above = tf.cond(fname_1_above_exists_flag, lambda: read_image(fname_1_above),
-                          lambda: fail(img, fname_1_above))
+    fname_1_below_exists_flag_data, = tf.py_func(os.path.exists, [fname_1_below_data], [tf.bool])
+    img_1_below = tf.cond(fname_1_below_exists_flag_data, lambda: read_image(fname_1_below_data),
+                          lambda: fail_image(img, fname_1_below_data))
 
-    fname_2_above_exists_flag, = tf.py_func(os.path.exists, [fname_2_above], [tf.bool])
-    img_2_above = tf.cond(fname_2_above_exists_flag, lambda: read_image(fname_2_above),
-                          lambda: fail(img, fname_2_above))
+    fname_1_above_exists_flag_data, = tf.py_func(os.path.exists, [fname_1_above_data], [tf.bool])
+    img_1_above = tf.cond(fname_1_above_exists_flag_data, lambda: read_image(fname_1_above_data),
+                          lambda: fail_image(img, fname_1_above_data))
 
-    label = tf.image.decode_png(label_contents, channels=1)
+    fname_2_above_exists_flag_data, = tf.py_func(os.path.exists, [fname_2_above_data], [tf.bool])
+    img_2_above = tf.cond(fname_2_above_exists_flag_data, lambda: read_image(fname_2_above_data),
+                          lambda: fail_image(img, fname_2_above_data))
+
+    str_split1_label = tf.string_split([input_queue[1]], delimiter="_")
+    str_split2_label = tf.string_split([str_split1_label.values[1]], delimiter=".")
+    str_tail_num_label = tf.string_to_number(str_split2_label.values[0], tf.int32)
+
+    def read_label(fname):
+        label_contents = tf.read_file(fname)
+        return tf.image.decode_png(label_contents, channels=1)
+
+    def fail_label(label, fname):
+        # label = tf.Print(label, [fname])
+        return tf.zeros_like(label)
+
+    label_ctr = read_label(input_queue[1])
+
+    label_list = []
+    for i in range(12):
+        fname_label_curr = tf.string_join(
+            [str_split1_label.values[0], '_', tf.as_string(str_tail_num_label - 5 + i), '.',
+             str_split2_label.values[1]])
+        fname_label_curr_exist_flag, = tf.py_func(os.path.exists, [fname_label_curr], [tf.bool])
+        label_curr = tf.cond(fname_label_curr_exist_flag, lambda: read_label(fname_label_curr),
+                             lambda: fail_label(label_ctr, fname_label_curr))
+        label_list.append(label_curr)
 
     if input_size is not None:
         h, w = input_size
 
         img = tf.concat([img_2_below, img_1_below, img, img_1_above, img_2_above], axis=-1)[:, :, 1:13]
+        label = tf.concat(label_list, axis=-1)
 
         # Randomly scale the images and labels.
         if random_scale:

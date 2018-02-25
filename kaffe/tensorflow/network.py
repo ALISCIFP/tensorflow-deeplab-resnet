@@ -382,6 +382,18 @@ class Network(object):
         return tf.concat(axis=axis, values=inputs, name=name)
 
     @layer
+    def expand_dims(self, inputs, axis, name):
+        return tf.expand_dims(inputs, axis=axis, name=name)
+
+    @layer
+    def transpose(self, inputs, perm, name):
+        return tf.transpose(inputs, perm=perm, name=name)
+
+    @layer
+    def reshape(self, inputs, shape, name):
+        return tf.reshape(inputs, shape=shape, name=name)
+
+    @layer
     def resize(self, inputs, size_w, size_h, name):
         return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor([size_w, size_h]), name=name)
 

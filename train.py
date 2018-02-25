@@ -15,12 +15,11 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess, prepare_label
+from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess
 
 IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
 LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
 
-GPU_MASK = '0'
 BATCH_SIZE = 1
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
@@ -98,8 +97,6 @@ def get_arguments():
                         help="The index of the label to ignore during the training.")
     parser.add_argument("--input-size", type=str, default=INPUT_SIZE,
                         help="Comma-separated string with height and width of images.")
-    parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
-                        help="Comma-separated string for GPU mask.")
     parser.add_argument("--is-training", action="store_true",
                         help="Whether to updates the running means and variances during the training.")
     parser.add_argument("--learning-rate", type=float, default=LEARNING_RATE,
@@ -132,46 +129,8 @@ def get_arguments():
                         help="Where to save snapshots of the model.")
     parser.add_argument("--weight-decay", type=float, default=WEIGHT_DECAY,
                         help="Regularisation parameter for L2-loss.")
-    parser.add_argument("--moving-average-decay", type=float, default=0.9999,
-                        help="multi-gpu moving average")
 
     return parser.parse_args()
-
-
-def average_gradients(tower_grads):
-    """Calculate the average gradient for each shared variable across all towers.
-    Note that this function provides a synchronization point across all towers.
-    Args:
-      tower_grads: List of lists of (gradient, variable) tuples. The outer list
-        is over individual gradients. The inner list is over the gradient
-        calculation for each tower.
-    Returns:
-       List of pairs of (gradient, variable) where the gradient has been averaged
-       across all towers.
-    """
-    average_grads = []
-    for grad_and_vars in zip(*tower_grads):
-        # Note that each grad_and_vars looks like the following:
-        #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
-        grads = []
-        for g, _ in grad_and_vars:
-            # Add 0 dimension to the gradients to represent the tower.
-            expanded_g = tf.expand_dims(g, 0)
-
-            # Append on a 'tower' dimension which we will average over below.
-            grads.append(expanded_g)
-
-        # Average over the 'tower' dimension.
-        grad = tf.concat(axis=0, values=grads)
-        grad = tf.reduce_mean(grad, 0)
-
-        # Keep in mind that the Variables are redundant because they are shared
-        # across towers. So .. we will just return the first tower's pointer to
-        # the Variable.
-        v = grad_and_vars[0][1]
-        grad_and_var = (grad, v)
-        average_grads.append(grad_and_var)
-    return average_grads
 
 
 def save(saver, sess, logdir, step):
@@ -213,9 +172,6 @@ def main():
             shutil.rmtree(args.snapshot_dir)
         except Exception as e:
             print(e)
-
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
@@ -269,120 +225,103 @@ def main():
         counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
                                   name='counter_val')
 
-        raw_output_list = []
-        accuracy_list = []
-        reduced_loss_list = []
-        accuracy_per_class_list = []
-        image_batch_list = []
-        label_batch_list = []
-        grads_list = []
         with tf.variable_scope(tf.get_variable_scope()) as scope:
-            for gpu_id in filter(None, args.gpu_mask.split(',')):
-                with tf.name_scope(gpu_id), tf.device('/gpu:%d' % int(gpu_id)):
-                    image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
-                    image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
+            image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
+            image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
 
-                    image_batch_train = tf.expand_dims(tf.transpose(image_batch_train, perm=(0, 3, 1, 2)), axis=-1)
-                    image_batch_val = tf.expand_dims(tf.transpose(image_batch_val, perm=(0, 3, 1, 2)), axis=-1)
+            image_batch = tf.transpose(tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val),
+                                       perm=(3, 1, 2, 0))
+            label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
 
-                    image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
-                    label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
+            # Create network.
+            net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training,
+                                num_classes=args.num_classes)
+            # For a small batch size, it is better to keep
+            # the statistics of the BN layers (running means and variances)
+            # frozen, and to not update the values provided by the pre-trained model.
+            # If is_training=True, the statistics will be updated during the training.
+            # Note that is_training=False still updates BN parameters gamma (scale) and beta (offset)
+            # if they are presented in var_list of the optimiser definition.
 
-                    image_batch_list.append(image_batch)
-                    label_batch_list.append(label_batch)
+            # Predictions.
+            raw_output = tf.squeeze(net.layers['3d_conv2'], axis=0)
+            raw_output_old = net.layers['conv2']
 
-                    # Create network.
-                    net = ThreeDNetwork({'data': image_batch}, is_training=args.is_training,
-                                        num_classes=args.num_classes)
-                    # For a small batch size, it is better to keep
-                    # the statistics of the BN layers (running means and variances)
-                    # frozen, and to not update the values provided by the pre-trained model.
-                    # If is_training=True, the statistics will be updated during the training.
-                    # Note that is_training=False still updates BN parameters gamma (scale) and beta (offset)
-                    # if they are presented in var_list of the optimiser definition.
+            scope.reuse_variables()
+            # Which variables to load. Running means and variances are not trainable,
+            # thus all_variables() should be restored.
+            restore_var = [v for v in tf.global_variables() or not args.first_run]
+            all_trainable = [v for v in tf.trainable_variables() if
+                             'beta' not in v.name and 'gamma' not in v.name]
 
-                    # Predictions.
-                    raw_output = net.layers['conv2']
-                    raw_output_list.append(raw_output)
+            # Predictions: ignoring all predictions with labels greater or equal than n_classes
+            raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
 
-                    label_proc = prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]),
-                                               num_classes=args.num_classes,
-                                               one_hot=False)  # [batch_size, h, w]
+            raw_gt = tf.reshape(label_batch, [-1, ])
+            indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.num_classes - 1)), 1)
+            gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
+            prediction = tf.gather(raw_prediction, indices)
 
-                    scope.reuse_variables()
-                    # Which variables to load. Running means and variances are not trainable,
-                    # thus all_variables() should be restored.
-                    restore_var = [v for v in tf.global_variables() or not args.first_run]
-                    all_trainable = [v for v in tf.trainable_variables() if
-                                     'beta' not in v.name and 'gamma' not in v.name]
+            output_op = tf.cast(tf.argmax(prediction, axis=-1), tf.int32)
 
-                    # Predictions: ignoring all predictions with labels greater or equal than n_classes
-                    raw_prediction = tf.reshape(raw_output, [-1, args.num_classes])
+            correct_pred = tf.equal(output_op, gt)
+            accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-                    raw_gt = tf.reshape(label_proc, [-1, ])
-                    indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.num_classes - 1)), 1)
-                    gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
-                    prediction = tf.gather(raw_prediction, indices)
+            # Pixel-wise softmax loss.
+            # loss = []
+            accuracy_per_class = []
+            # softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+            for i in xrange(0, args.num_classes):
+                curr_class = tf.constant(i, tf.int32)
+                # loss.append(
+                #     softmax_weights_per_class[i] * 0.8 * tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt,
+                #                                                                                 weights=tf.where(
+                #                                                                                     tf.equal(gt, curr_class),
+                #                                                                                     tf.zeros_like(gt),
+                #                                                                                     tf.ones_like(gt))))
+                accuracy_per_class.append(
+                    tf.reduce_mean(tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
 
-                    output_op = tf.cast(tf.argmax(prediction, axis=-1), tf.int32)
+            # Predictions: ignoring all predictions with labels greater or equal than n_classes
+            raw_prediction_old = tf.reshape(raw_output_old, [-1, args.num_classes])
+            # label_proc_old = prepare_label(label_batch, tf.stack(raw_output_old.get_shape()[1:3]),
+            #                                num_classes=args.num_classes,
+            #                                one_hot=False)  # [batch_size, h, w]
+            raw_gt_old = tf.reshape(label_batch, [-1, ])
+            indices_old = tf.squeeze(tf.where(tf.less_equal(raw_gt_old, args.num_classes - 1)), 1)
+            gt_old = tf.cast(tf.gather(raw_gt_old, indices_old), tf.int32)
+            prediction_old = tf.gather(raw_prediction_old, indices_old)
 
-                    correct_pred = tf.equal(output_op, gt)
-                    accuracy_list.append(tf.reduce_mean(tf.cast(correct_pred, tf.float32)))
+            # Pixel-wise softmax loss.
+            # softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
+            # for i in xrange(0, args.num_classes):
+            #     curr_class = tf.constant(i, tf.int32)
+            #     loss.append(softmax_weights_per_class[i] * 0.2 * tf.losses.sparse_softmax_cross_entropy(logits=prediction_old,
+            #                                                                                         labels=gt_old,
+            #                                                                                         weights=tf.where(
+            #                                                                                             tf.equal(gt_old,
+            #                                                                                                      curr_class),
+            #                                                                                             tf.zeros_like(
+            #                                                                                                 gt_old),
+            #                                                                                             tf.ones_like(
+            #                                                                                                 gt_old))))
 
-                    # Pixel-wise softmax loss.
-                    loss_this_gpu = []
-                    accuracy_per_class_this_gpu = []
-                    softmax_weights_per_class = tf.constant(LUNA16_softmax_weights, dtype=tf.float32)
-                    for i in xrange(0, args.num_classes):
-                        curr_class = tf.constant(i, tf.int32)
-                        loss_this_gpu.append(
-                            softmax_weights_per_class[i] * tf.losses.sparse_softmax_cross_entropy(logits=prediction,
-                                                                                                  labels=gt,
-                                                                                                  weights=tf.where(
-                                                                                                      tf.equal(gt,
-                                                                                                               curr_class),
-                                                                                                      tf.zeros_like(gt),
-                                                                                                      tf.ones_like(
-                                                                                                          gt))))
-                        accuracy_per_class_this_gpu.append(
-                            tf.reduce_mean(
-                                tf.cast(tf.gather(correct_pred, tf.where(tf.equal(gt, curr_class))), tf.float32)))
-                    accuracy_per_class_list.append(accuracy_per_class_this_gpu)
-                    l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if
-                                 'weights' in v.name]
-                    reduced_loss_list_curr = tf.reduce_mean(tf.stack(loss_this_gpu)) + tf.add_n(
-                        l2_losses)
-                    reduced_loss_list.append(reduced_loss_list_curr)
+            l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
+            reduced_loss = 0.2 * tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
+                           + 0.8 * tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
+                           + tf.add_n(l2_losses)
 
-                    grads_list.append(
-                        zip(tf.gradients(reduced_loss_list_curr, all_trainable),
-                            all_trainable))
-
-        reduced_loss = tf.reduce_mean(reduced_loss_list)
-        accuracy = tf.reduce_mean(accuracy_list)
-        raw_output = tf.concat(raw_output_list, axis=0)
-        label_batch = tf.concat(label_batch_list, axis=0)
-        image_batch = tf.concat(image_batch_list, axis=0)
-        accuracy_per_class = []
-        for i in xrange(args.num_classes):
-            class_per_gpu = [accuracy_per_class_list[int(gpu_id)][i] for gpu_id in
-                             filter(None, args.gpu_mask.split(','))]
-            accuracy_per_class.append(tf.reduce_mean(class_per_gpu))
-
-        grads = average_gradients(grads_list)
-        train_op_opt = opt.apply_gradients(grads)
-
-        # Track the moving averages of all trainable variables.
-        variable_averages_gen = tf.train.ExponentialMovingAverage(
-            args.moving_average_decay, step_ph)
-        variables_averages_gen_op = variable_averages_gen.apply(all_trainable)
-
-        train_op = tf.group(train_op_opt, variables_averages_gen_op)
+        grads = tf.gradients(reduced_loss, all_trainable)
+        train_op = opt.apply_gradients(zip(grads, all_trainable))
 
         # Processed predictions: for visualisation.
-        raw_output_up = tf.image.resize_bilinear(raw_output[0], tf.shape(image_batch)[2:4])
-        raw_output_up = tf.argmax(raw_output_up, axis=3)
+        # raw_output_up = tf.image.resize_bilinear(raw_output[0], tf.shape(image_batch)[2:4])
+        raw_output_up = tf.argmax(raw_output, axis=3)
         pred = tf.expand_dims(raw_output_up, dim=3)
+
+        image_batch = tf.transpose(image_batch, perm=(3, 1, 2, 0))
 
         # Image summary.
         reduced_loss_train = tf.Variable(0, trainable=False, dtype=tf.float32)
@@ -412,7 +351,7 @@ def main():
         tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
 
         counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
-                                                                                  tf.squeeze(label_batch, axis=-1),
+                                                                                  label_batch,
                                                                                   counter,
                                                                                   counter_no_reset, args.num_classes,
                                                                                   args.batch_size, step_ph,
@@ -422,7 +361,7 @@ def main():
         counter_val, counter_no_reset_val = tf.cond(mode,
                                                     lambda: [counter_val, counter_no_reset_val],
                                                     lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
-                                                                                    tf.squeeze(label_batch, axis=-1),
+                                                                                    label_batch,
                                                                                     counter_val, counter_no_reset_val,
                                                                                     args.num_classes, args.batch_size,
                                                                                     step_ph, args.save_pred_every],
@@ -460,10 +399,10 @@ def main():
         tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
         tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
-        images_summary = tf.py_func(inv_preprocess, [tf.transpose(image_batch, perm=(0, 2, 3, 1, 4))[:, :, :, 5:8, 0],
+        images_summary = tf.py_func(inv_preprocess, [image_batch[:, :, :, 5:8],
                                                      args.save_num_images, IMG_MEAN],
                                     tf.uint8)
-        labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes],
+        labels_summary = tf.py_func(decode_labels, [label_batch[:, :, :, 6:7], args.save_num_images, args.num_classes],
                                     tf.uint8)
         preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes],
                                    tf.uint8)
