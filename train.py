@@ -176,7 +176,7 @@ def main():
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
 
-    with tf.Graph().as_default(), tf.device('/cpu:0'):
+    with tf.Graph().as_default():
         # tf.set_random_seed(args.random_seed)
 
         # Create queue coordinator.
