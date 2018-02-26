@@ -2,7 +2,7 @@ python train.py  \
 --data-dir /home/zack/Data/paperrescaledLITS/ \
 --data-list /home/zack/Data/paperrescaledLITS/dataset/train.txt \
 --val-data-list /home/zack/Data/paperrescaledLITS/dataset/val.txt \
---restore-from './snapshots/HanResNet9Slices' \
+--restore-from './snapshots/HanResNet' \
 --snapshot-dir './snapshots/HanResNet9Slices' \
 --gpu-mask '0,1' \
 --learning-rate 1e-3 \
