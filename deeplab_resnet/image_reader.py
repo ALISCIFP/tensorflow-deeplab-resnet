@@ -179,7 +179,7 @@ class ImageReader(object):
     '''
 
     def __init__(self, data_dir, data_list, input_size,
-                 random_scale, random_mirror, ignore_label, img_mean, shuffle=True, num_threads=4):
+                 random_scale, random_mirror, ignore_label, img_mean, shuffle=False, num_threads=4):
         '''Initialise an ImageReader.
 
         Args:
