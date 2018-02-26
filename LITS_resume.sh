@@ -2,10 +2,10 @@ python train.py  \
 --data-dir /home/zack/Data/paperrescaledLITS/ \
 --data-list /home/zack/Data/paperrescaledLITS/dataset/train.txt \
 --val-data-list /home/zack/Data/paperrescaledLITS/dataset/val.txt \
---restore-from './snapshots/HanResNet' \
---snapshot-dir './snapshots/HanResNet' \
+--restore-from './snapshots/HanResNet9Slices' \
+--snapshot-dir './snapshots/HanResNet9Slices' \
 --gpu-mask '0,1' \
---learning-rate 2.0e-4 \
+--learning-rate 1e-3 \
 --random-scale \
 --random-mirror \
---num-steps 300000 \
+--num-steps 237910 \
