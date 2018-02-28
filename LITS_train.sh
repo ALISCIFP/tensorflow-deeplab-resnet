@@ -1,11 +1,11 @@
 python train.py  \
---data-dir /home/zack/Data/LITS/ \
---data-list /home/zack/Data/LITS/dataset/train.txt \
---val-data-list /home/zack/Data/LITS/dataset/val.txt \
+--data-dir /mnt/data/LITS/newLITS \
+--data-list /mnt/data/LITS/newLITS/dataset/train.txt \
+--val-data-list /mnt/data/LITS/newLITS/dataset/val.txt \
 --snapshot-dir './snapshots/HanResNet5Slices' \
 --gpu-mask '0,1' \
 --learning-rate 1e-3 \
---input-size '512,512' \
+--input-size '320,320' \
 --random-scale \
 --random-mirror \
 --num-steps 237910 \
