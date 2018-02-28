@@ -155,7 +155,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     img2 = tf.cond(f2_exists_flag, lambda: read_image(f2), lambda: fail(img, f2))
 
     label = tf.image.decode_png(label_contents, channels=1)
-    img = tf.concat([img2, img, img0], axis=-1)[3:6]
+    img = tf.concat([img2, img, img0], axis=-1)[2:7]
 
     if input_size is not None:
         h, w = input_size
