@@ -131,7 +131,7 @@ class DeepLabResNetModel(Network):
         (self.feed('conv13_bn',
                    'conv10_pool')
          .add(name='conv13_sum')
-         .resize(40, 40, name='conv13_unpool'))
+         .resize(64, 64, name='conv13_unpool'))
 
         (self.feed('conv13_unpool',
                    'conv10_sum')
@@ -164,7 +164,7 @@ class DeepLabResNetModel(Network):
         (self.feed('conv16_bn',
                    'conv13_to_14_bn')
          .add(name='conv16_sum')
-         .resize(80, 80, name='conv16_unpool'))
+         .resize(128, 128, name='conv16_unpool'))
 
         (self.feed('conv16_unpool',
                    'conv7_sum')
@@ -197,7 +197,7 @@ class DeepLabResNetModel(Network):
         (self.feed('conv19_bn',
                    'conv17_to_18_bn')
          .add(name='conv19_sum')
-         .resize(160, 160, name='conv19_unpool'))
+         .resize(256, 256, name='conv19_unpool'))
 
         (self.feed('conv19_unpool',
                    'conv4_sum')
@@ -224,7 +224,7 @@ class DeepLabResNetModel(Network):
         (self.feed('conv21_bn',
                    'conv19_to_20_bn')
          .add(name='conv21_sum')
-         .resize(320, 320, name='conv21_unpool'))
+         .resize(512, 512, name='conv21_unpool'))
 
         (self.feed('conv21_unpool',
                    'conv2_bn')
