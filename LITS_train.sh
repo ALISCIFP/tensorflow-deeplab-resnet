@@ -1,5 +1,5 @@
 python train.py  \
---data-dir /home/zack/Data/paperrescaledLITS/ \
+--data-dir /home/zack/Data/LITS/ \
 --data-list /home/zack/Data/LITS/dataset/train.txt \
 --val-data-list /home/zack/Data/LITS/dataset/val.txt \
 --snapshot-dir './snapshots/HanResNet5Slices' \
