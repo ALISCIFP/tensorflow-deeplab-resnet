@@ -58,14 +58,14 @@ def random_crop_and_pad_image_and_labels(image, label, crop_h, crop_w, ignore_la
     
     last_image_dim = tf.shape(image)[-1]
     last_label_dim = tf.shape(label)[-1]
-    combined_crop = tf.random_crop(combined_pad, [crop_h,crop_w,4])
+    combined_crop = tf.random_crop(combined_pad, [crop_h, crop_w, 10])
     img_crop = combined_crop[:, :, :last_image_dim]
     label_crop = combined_crop[:, :, last_image_dim:]
     label_crop = label_crop + ignore_label
     label_crop = tf.cast(label_crop, dtype=tf.uint8)
     
     # Set static shape so that tensorflow knows shape at compile time. 
-    img_crop.set_shape((crop_h, crop_w, 3))
+    img_crop.set_shape((crop_h, crop_w, 9))
     label_crop.set_shape((crop_h,crop_w, 1))
     return img_crop, label_crop  
 
@@ -149,6 +149,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     img2 = tf.cond(f2_exists_flag, lambda: read_image(f2), lambda: fail(img, f2))
 
     label = tf.image.decode_png(label_contents, channels=1)
+    img = tf.concat([img2, img, img0], axis=-1)
 
     if input_size is not None:
         h, w = input_size
@@ -163,8 +164,6 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
 
         # Randomly crops the images and labels.
         img, label = random_crop_and_pad_image_and_labels(img, label, h, w, ignore_label)
-
-        img = tf.concat([img2, img, img0], axis=-1)
 
     return img, label
 
