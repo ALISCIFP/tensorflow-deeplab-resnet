@@ -202,6 +202,13 @@ class Network(object):
         return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor([size_w, size_h]), name=name)
 
     @layer
+    def resize_dynamic(self, inputs, size_w_multiplier, size_h_mulitplier, name):
+        input_shape = map(lambda v: v.value, inputs.get_shape())
+        return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor(
+            [size_w_multiplier * input_shape[1], size_h_mulitplier * input_shape[2]]), name=name)
+
+
+    @layer
     def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding='VALID'):
         self.validate_padding(padding)
         return tf.nn.max_pool(input,
