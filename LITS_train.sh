@@ -1,9 +1,10 @@
 python train.py  \
---data-dir /mnt/data/LITS/newLITS \
---data-list /mnt/data/LITS/newLITS/dataset/train.txt \
---val-data-list /mnt/data/LITS/newLITS/dataset/val.txt \
+--data-dir /home/zack/Data/paperLITS \
+--data-list /home/zack/Data/paperLITS/dataset/train.txt \
+--val-data-list /home/zack/Data/paperLITS/dataset/val.txt \
 --snapshot-dir './snapshots/HanResNet5Slices' \
 --gpu-mask '0,1' \
+--batch-size 5 \
 --learning-rate 1e-3 \
 --input-size '320,320' \
 --random-scale \
