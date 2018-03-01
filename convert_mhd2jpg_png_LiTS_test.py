@@ -19,7 +19,7 @@ OUT_DIRECTORY = "/home/victor/newLITS"
 
 def rescale(input_image, output_spacing, bilinear=False):
     resampler = sitk.ResampleImageFilter()
-    origin = input_image.GetOrigin()
+    origin = int put_image.GetOrigin()
     resampler.SetOutputOrigin(origin)
 
     direction = input_image.GetDirection()
