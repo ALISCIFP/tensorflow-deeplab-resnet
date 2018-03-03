@@ -54,8 +54,6 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
     ftrain = []
     fval = []
 
-    print data_file, img_gt_file
-
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
 
@@ -76,6 +74,8 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
     img_gt_merged = np.copy(img_gt)
     img_gt_merged[img_gt_merged != 0] = 1
     bounding_box = scipy.ndimage.measurements.find_objects(img_gt_merged)[0]
+
+    print data_file, img_gt_file, bounding_box
 
     for i in xrange(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 2),
                     np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
