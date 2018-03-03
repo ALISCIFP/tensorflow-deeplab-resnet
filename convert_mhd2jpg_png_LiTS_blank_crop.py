@@ -85,9 +85,10 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
                 np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1):np.clip(
                     (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1),
                 (i - 1):(i + 2)]
-        scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
-        cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
-        out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n"
+        scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
+        cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
+        out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(
+            i - 1) + ".png\n"
 
         if '99' in data_file:
             fval.append(out_string)

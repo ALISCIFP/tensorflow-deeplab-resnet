@@ -75,9 +75,10 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
 
     for i in xrange(1, img.shape[2] - 2):  # because of padding!
         img3c = img[:, :, (i - 1):(i + 2)]
-        scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
-        cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
-        out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n"
+        scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
+        cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
+        out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(
+            i - 1) + ".png\n"
 
         if '99' in data_file:
             fval.append(out_string)
