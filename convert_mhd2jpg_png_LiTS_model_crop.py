@@ -16,8 +16,9 @@ import scipy.misc
 import scipy.ndimage.measurements
 
 DATA_DIRECTORY = '/mnt/data/LITS/originalDataAll'
-OUT_DIRECTORY = '/home/victor/LITS_GTCrop_OriginalResolution'
-PX_TO_EXTEND_BOUNDARY = 5
+OUT_DIRECTORY = '/home/victor/LITS_ModelCrop_OriginalResolution'
+PX_TO_EXTEND_BOUNDARY = 10
+
 
 def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, output_size=None):
     resampler = sitk.ResampleImageFilter()
