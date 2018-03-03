@@ -145,7 +145,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
         return image
 
     def fail(img, fname):
-        img = tf.Print(img, [fname])
+        # img = tf.Print(img, [fname])
         return img
 
     f0_exists_flag, = tf.py_func(os.path.exists, [f0], [tf.bool])
