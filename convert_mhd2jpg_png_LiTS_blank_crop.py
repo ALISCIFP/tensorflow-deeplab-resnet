@@ -103,7 +103,7 @@ def main():
                         help="Path to the directory containing the LITS dataset.")
     parser.add_argument("--out-dir", type=str, default=OUT_DIRECTORY,
                         help="Path to output the LITS dataset in jpg and png format.")
-    parser.add_argument("--px-to-extend-boundary", type=str, default=PX_TO_EXTEND_BOUNDARY,
+    parser.add_argument("--px-to-extend-boundary", type=int, default=PX_TO_EXTEND_BOUNDARY,
                         help="Number of pixels to extend bounding box")
     parser.add_argument("--rescale-to-han", action='store_true',
                         help="Rescale to Han")
@@ -124,7 +124,7 @@ def main():
     if not os.path.exists(os.path.join(args.out_dir, "dataset")):
         os.mkdir(os.path.join(args.out_dir, "dataset"))
 
-    p = multiprocessing.Pool()
+    p = multiprocessing.Pool(4)
     retval = p.map(ndarry2jpg_png,
                    zip(vols, segs, itertools.repeat(args.out_dir, len(vols)),
                        itertools.repeat(args.rescale_to_han, len(vols)),
