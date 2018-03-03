@@ -84,7 +84,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
             (bounding_box[0].stop + px_to_extend_boundary), 0, img_shape[0] - 1),
                 np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_shape[1] - 1):np.clip(
                     (bounding_box[1].stop + px_to_extend_boundary), 0, img_shape[1] - 1),
-                (i - 1):(i + 2)]
+                np.clip((i - 1), 0, img.shape[2] - 1):np.clip((i + 2), 0, img.shape[2] - 1)]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i) + ".png"), img_gt[:, :, i])
         out_string = "/JPEGImages/" + fn + "_" + str(i) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(i) + ".png\n"
@@ -133,6 +133,14 @@ def main():
 
     list_train = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
     list_val = list(itertools.chain.from_iterable([sublist[1] for sublist in retval]))
+
+    # retval = map(ndarry2jpg_png,
+    #                zip(vols, segs, itertools.repeat(args.out_dir, len(vols)),
+    #                    itertools.repeat(args.rescale_to_han, len(vols)),
+    #                    itertools.repeat(args.px_to_extend_boundary, len(vols))))
+    #
+    # list_train = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
+    # list_val = list(itertools.chain.from_iterable([sublist[1] for sublist in retval]))
 
     with open(os.path.join(args.out_dir, "dataset/train.txt"), 'w') as ftrain:
         ftrain.writelines(list_train)
