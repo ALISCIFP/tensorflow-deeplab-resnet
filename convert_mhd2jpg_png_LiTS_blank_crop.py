@@ -57,16 +57,16 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
 
+    if rescale_to_han:
+        img, input_spacing, out_size = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
+        img_gt, _, _ = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False, input_spacing=input_spacing,
+                               output_size=out_size)
+
     img = sitk.GetArrayFromImage(img).transpose()
     img_gt = sitk.GetArrayFromImage(img_gt).transpose().astype(np.int)
 
     _, fn = os.path.split(data_file)
     _, fn_gt = os.path.split(img_gt_file)
-
-    if rescale_to_han:
-        img, input_spacing, out_size = rescale(img, output_spacing=[0.6, 0.6, 0.7], bilinear=True)
-        img_gt, _, _ = rescale(img_gt, output_spacing=[0.6, 0.6, 0.7], bilinear=False, input_spacing=input_spacing,
-                               output_size=out_size)
 
     img = np.clip(img, -400, 1000)
     img = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
