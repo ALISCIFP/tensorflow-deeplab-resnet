@@ -159,7 +159,7 @@ def main():
                     shuffle=False)
                 image = tf.cast(reader.image, tf.float32)
 
-            image_batch = tf.expand_dims(image, dim=0)  # Add one batch dimension.
+            image_batch = tf.image.resize_bilinear(tf.expand_dims(image, dim=0), [320, 320])  # Add one batch dimension.
 
             # Create network.
             net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
