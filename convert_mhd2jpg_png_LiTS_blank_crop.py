@@ -73,7 +73,13 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
 
     img_gt_merged = np.copy(img_gt)
     img_gt_merged[img_gt_merged != 0] = 1
-    bounding_box = scipy.ndimage.measurements.find_objects(img_gt_merged)[0]
+    bbox_list = scipy.ndimage.measurements.find_objects(img_gt_merged)
+
+    if len(bbox_list) != 1:
+        print 'Error:', data_file, img_gt_file, len(bbox_list)
+        return ftrain, fval
+
+    bounding_box = bbox_list[0]
 
     print data_file, img_gt_file, bounding_box
 
@@ -95,7 +101,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
         else:
             ftrain.append(out_string)
 
-    return (ftrain, fval)
+    return ftrain, fval
 
 
 def main():
