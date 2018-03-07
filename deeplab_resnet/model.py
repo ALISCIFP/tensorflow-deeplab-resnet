@@ -2276,50 +2276,8 @@ class ThreeDNetwork(Network):
                        '3d_conv8b_dense4'
                        )
              .concat(axis=-1)
+             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bilinear_upsample1_bn')
              .deconv3D(2, 2, 1, 504, 2, 2, 1, 14, 14, 3, relu=False, name='3d_bilinear_upsample1')
-             )
-
-            (self.feed('pool_transition2',
-                       'conv1b_dense3',
-                       'conv2b_dense3',
-                       'conv3b_dense3',
-                       'conv4b_dense3',
-                       'conv5b_dense3',
-                       'conv6b_dense3',
-                       'conv7b_dense3',
-                       'conv8b_dense3',
-                       'conv9b_dense3',
-                       'conv10b_dense3',
-                       'conv11b_dense3',
-                       'conv12b_dense3',
-                       'conv13b_dense3',
-                       'conv14b_dense3',
-                       'conv15b_dense3',
-                       'conv16b_dense3',
-                       'conv17b_dense3',
-                       'conv18b_dense3',
-                       'conv19b_dense3',
-                       'conv20b_dense3',
-                       'conv21b_dense3',
-                       'conv22b_dense3',
-                       'conv23b_dense3',
-                       'conv24b_dense3',
-                       'conv25b_dense3',
-                       'conv26b_dense3',
-                       'conv27b_dense3',
-                       'conv28b_dense3',
-                       'conv29b_dense3',
-                       'conv30b_dense3',
-                       'conv31b_dense3',
-                       'conv32b_dense3',
-                       'conv33b_dense3',
-                       'conv34b_dense3',
-                       'conv35b_dense3',
-                       'conv36b_dense3'
-                       )
-             .concat(axis=-1)
-             .expand_dims(axis=0)
-             .reshape([1, 3, 14, 14, -1], name='2d_dense3')
              )
 
             (self.feed('3d_pool_transition2',
@@ -2335,31 +2293,11 @@ class ThreeDNetwork(Network):
                        '3d_conv10b_dense3',
                        '3d_conv11b_dense3',
                        '3d_conv12b_dense3',
-                       '3d_bilinear_upsample1',
-                       '2d_dense3'
+                       '3d_bilinear_upsample1'
                        )
              .concat(axis=-1)
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample1')
+             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bilinear_upsample2_bn')
              .deconv3D(2, 2, 1, 504, 2, 2, 1, 28, 28, 3, relu=False, name='3d_bilinear_upsample2')
-             )
-
-            (self.feed('pool_transition1',
-                       'conv1b_dense2',
-                       'conv2b_dense2',
-                       'conv3b_dense2',
-                       'conv4b_dense2',
-                       'conv5b_dense2',
-                       'conv6b_dense2',
-                       'conv7b_dense2',
-                       'conv8b_dense2',
-                       'conv9b_dense2',
-                       'conv10b_dense2',
-                       'conv11b_dense2',
-                       'conv12b_dense2'
-                       )
-             .concat(axis=-1)
-             .expand_dims(axis=0)
-             .reshape([1, 3, 28, 28, -1], name='2d_dense2')
              )
 
             (self.feed('3d_pool_transition1',
@@ -2367,75 +2305,30 @@ class ThreeDNetwork(Network):
                        '3d_conv2b_dense2',
                        '3d_conv3b_dense2',
                        '3d_conv4b_dense2',
-                       '3d_bilinear_upsample2',
-                       '2d_dense2'
+                       '3d_bilinear_upsample2'
                        )
              .concat(axis=-1)
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample2')
+             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bilinear_upsample3_bn')
              .deconv3D(2, 2, 1, 224, 2, 2, 1, 56, 56, 3, name='3d_bilinear_upsample3')
-             )
-
-            (self.feed('pool1',
-                       'conv1b_dense1',
-                       'conv2b_dense1',
-                       'conv3b_dense1',
-                       'conv4b_dense1',
-                       'conv5b_dense1',
-                       'conv6b_dense1'
-                       )
-             .concat(axis=-1)
-             .expand_dims(axis=0)
-             .reshape([1, 3, 56, 56, -1], name='2d_dense1')
              )
 
             (self.feed('3d_pool1',
                        '3d_conv1b_dense1',
                        '3d_conv2b_dense1',
                        '3d_conv3b_dense1',
-                       '3d_bilinear_upsample3',
-                       '2d_dense1'
+                       '3d_bilinear_upsample3'
                        )
              .concat(axis=-1)
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample3')
+             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bilinear_upsample4_bn')
              .deconv3D(2, 2, 2, 192, 2, 2, 2, 112, 112, 6, name='3d_bilinear_upsample4')
              )
 
-            (self.feed('conv1')
-             .expand_dims(axis=0)
-             .reshape([1, 6, 112, 112, -1], name='2d_conv1')
-             )
-
-            (self.feed('2d_conv1',
-                       '3d_conv1',
+            (self.feed('3d_conv1',
                        '3d_bilinear_upsample4'
                        )
              .concat(axis=-1)
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample4')
+             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bilinear_upsample5_bn')
              .deconv3D(2, 2, 2, 96, 2, 2, 2, 224, 224, 12, name='3d_bilinear_upsample5')
-             )
-
-            (self.feed('bilinear_upsample5')
-             .expand_dims(axis=0)
-             .reshape([1, 12, 224, 224, -1], name='2d_bilinear_upsample5')
-             )
-
-            (self.feed('2d_bilinear_upsample5',
-                       '3d_bilinear_upsample5'
-                       )
-             .concat(axis=-1)
-             .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample5')
-             .conv3D(3, 3, 3, 64, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample5')
-             )
-
-            (self.feed('conv2')
-             .expand_dims(axis=0)
-             .reshape([-1, 12, 224, 224, num_classes], name='2d_conv2')
-             )
-
-            (self.feed('3d_conv_upsample5',
-                       '2d_conv2'
-                       )
-             .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv2')
              .conv3D(1, 1, 1, num_classes, 1, 1, 1, biased=False, relu=False, name='3d_conv2')
              )
