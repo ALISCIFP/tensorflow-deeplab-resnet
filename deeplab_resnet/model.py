@@ -2422,7 +2422,7 @@ class ThreeDNetwork(Network):
             (self.feed('2d_bilinear_upsample5',
                        '3d_bilinear_upsample5'
                        )
-             .add(axis=-1)
+             .add()
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample5')
              .conv3D(3, 3, 3, 64, 1, 1, 1, biased=False, relu=False, name='3d_conv_upsample5')
              )
