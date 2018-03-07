@@ -420,17 +420,17 @@ class Network(object):
             return fc
 
     @layer
-    def softmax(self, input, name):
-        input_shape = map(lambda v: v.value, input.get_shape())
-        if len(input_shape) > 2:
-            # For certain models (like NiN), the singleton spatial dimensions
-            # need to be explicitly squeezed, since they're not broadcast-able
-            # in TensorFlow's NHWC ordering (unlike Caffe's NCHW).
-            if input_shape[1] == 1 and input_shape[2] == 1:
-                input = tf.squeeze(input, squeeze_dims=[1, 2])
-            else:
-                raise ValueError('Rank 2 tensor input expected for softmax!')
-        return tf.nn.softmax(input, name)
+    def softmax(self, input, axis, name):
+        # input_shape = map(lambda v: v.value, input.get_shape())
+        # if len(input_shape) > 2:
+        #     # For certain models (like NiN), the singleton spatial dimensions
+        #     # need to be explicitly squeezed, since they're not broadcast-able
+        #     # in TensorFlow's NHWC ordering (unlike Caffe's NCHW).
+        #     if input_shape[1] == 1 and input_shape[2] == 1:
+        #         input = tf.squeeze(input, squeeze_dims=[1, 2])
+        #     else:
+        #         raise ValueError('Rank 2 tensor input expected for softmax!')
+        return tf.nn.softmax(input, axis, name)
         
     @layer
     def batch_normalization(self, input, name, is_training, activation_fn=None, scale=True):

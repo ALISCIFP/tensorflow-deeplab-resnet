@@ -1880,6 +1880,7 @@ class ThreeDNetwork(Network):
              .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='conv_upsample5')
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='bn_conv2')
              .conv(1, 1, 3, 1, 1, biased=False, relu=False, name='conv2')
+             .softmax(axis=-1, name='conv2_softmax')
              )
 
         with tf.device('/gpu:1'):
