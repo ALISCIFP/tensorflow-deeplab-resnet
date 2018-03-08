@@ -175,7 +175,7 @@ def main():
 
             for sublist in [list_of_all_lines[i:i + args.batch_size] for i in
                             xrange(0, len(list_of_all_lines), args.batch_size)]:
-                preds = sess.run([raw_output])[0][0:1]
+                preds = sess.run([raw_output])[0][5:6]
                 for i, thing in enumerate(sublist):
                     regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
                     # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
