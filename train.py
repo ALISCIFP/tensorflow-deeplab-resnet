@@ -16,6 +16,7 @@ import numpy as np
 import tensorflow as tf
 
 from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess
+
 IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
 
 #IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
@@ -309,7 +310,7 @@ def main():
 
             l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
             reduced_loss = tf.reduce_mean(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
+                0.5 * tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction_old, labels=gt_old)) \
                            + tf.reduce_mean(
                 tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)) \
                            + tf.add_n(l2_losses)
