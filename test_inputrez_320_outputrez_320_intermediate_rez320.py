@@ -12,7 +12,7 @@ import os
 import re
 from multiprocessing import Process, Queue, Event
 
-import SimpleITK as sitk
+import cv2
 import nibabel as nib
 import numpy as np
 import scipy.ndimage
@@ -30,6 +30,7 @@ NUM_CLASSES = 3
 BATCH_SIZE = 1
 RESTORE_FROM = None
 
+
 def get_arguments():
     """Parse all the arguments provided from the CLI.
     
@@ -38,6 +39,8 @@ def get_arguments():
     """
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--threed-data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
                         help="Comma-separated string for GPU mask.")
@@ -71,23 +74,7 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
-def rescale(input_image, original_image, bilinear=False):
-    resampler = sitk.ResampleImageFilter()
-
-    resampler.SetOutputOrigin(original_image.GetOrigin())
-    resampler.SetOutputDirection(original_image.GetDirection())
-    resampler.SetOutputSpacing(original_image.GetSpacing())
-    resampler.SetSize(original_image.GetSize())
-
-    if bilinear:
-        resampler.SetInterpolator(sitk.sitkLinear)
-    else:
-        resampler.SetInterpolator(sitk.sitkNearestNeighbor)
-
-    return resampler.Execute(input_image)
-
-
-def saving_process(queue, event, data_dir, post_processing, restore_from):
+def saving_process(queue, event, threed_data_dir, post_processing, restore_from):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
 
@@ -105,35 +92,23 @@ def saving_process(queue, event, data_dir, post_processing, restore_from):
                 preds_liver = np.copy(dict_of_curr_processing[key])
                 preds_liver[preds_liver == 2] = 1
                 preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8),
-                                                                      np.ones((3, 3, 3), np.uint8), iterations=3)
+                                                                      np.ones((3, 3, 3), np.uint8), iterations=5)
 
                 preds_lesion = np.copy(dict_of_curr_processing[key])
                 preds_lesion[preds_lesion == 1] = 0
                 preds_lesion[preds_lesion == 2] = 1
                 preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8),
-                                                                        np.ones((3, 3, 3), np.uint8), iterations=3)
+                                                                        np.ones((3, 3, 3), np.uint8), iterations=5)
                 dict_of_curr_processing[key] = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
 
-            try:
-                os.mkdir(os.path.join(restore_from, 'niiout'))
-            except:
-                pass
-
-            fname_out = os.path.join(restore_from, 'niiout/' + key.replace('volume', 'segmentation') + '.nii')
+            fname_out = os.path.join(restore_from, 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
             print("Writing: " + fname_out)
-            path_to_img = glob.glob(data_dir + '/*/' + key + '.nii')
+            path_to_img = glob.glob(threed_data_dir + '/*/' + key + '.nii')
             print(path_to_img)
             assert len(path_to_img) == 1
 
-            base_img_sitk = sitk.ReadImage(path_to_img[0])
-            base_prediction_sitk = sitk.GetImageFromArray(dict_of_curr_processing[key])
-            base_prediction_sitk.SetOrigin(base_img_sitk.GetOrigin())
-            base_prediction_sitk.SetDirection(base_img_sitk.GetDirection())
-            base_prediction_sitk.SetSpacing([0.6, 0.6, 0.7])
-            prediction_rescaled = sitk.GetArrayFromImage(rescale(base_prediction_sitk, base_img_sitk))
-
             img = nib.load(path_to_img[0])
-            nii_out = nib.Nifti1Image(prediction_rescaled.transpose((1, 2, 0)), img.affine, header=img.header)
+            nii_out = nib.Nifti1Image(dict_of_curr_processing[key], img.affine, header=img.header)
             nii_out.set_data_dtype(np.uint8)
             nib.save(nii_out, fname_out)
             del dict_of_curr_processing[key]
@@ -148,10 +123,10 @@ def main():
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_mask
 
-    try:
-        os.makedirs('eval/niiout')
-    except:
-        pass
+    if not os.path.exists(os.path.join(args.restore_from, 'eval/niiout')):
+        os.makedirs(os.path.join(args.restore_from, 'eval/niiout'))
+    if not os.path.exists(os.path.join(args.restore_from, 'eval/pngout')):
+        os.makedirs(os.path.join(args.restore_from, 'eval/pngout'))
 
     event_end = Event()
     queue_proc = Queue()
@@ -183,7 +158,8 @@ def main():
                     coord,
                     shuffle=False)
                 image = tf.cast(reader.image, tf.float32)
-            image_batch = tf.expand_dims(image, dim=0)  # Add one batch dimension.
+
+            image_batch = tf.image.resize_bilinear(tf.expand_dims(image, dim=0), [320, 320])  # Add one batch dimension.
 
             # Create network.
             net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -192,21 +168,19 @@ def main():
             restore_var = tf.global_variables()
 
             # Predictions.
-            raw_output = net.layers['fc1_voc12']
-            raw_output = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3, ])
-            raw_output = tf.argmax(raw_output, dimension=3)
+            raw_output = net.layers['conv24']
+            raw_output = tf.argmax(raw_output, axis=3)
 
             sess = tf.Session()
             sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
             # Load weights.
             loader = tf.train.Saver(var_list=restore_var)
-            if args.restore_from is not None:
-                load(loader, sess, args.restore_from)
+            load(loader, sess, args.restore_from)
 
             # Start queue threads.
             proc = Process(target=saving_process, args=(queue_proc, event_end,
-                                                        args.data_dir, args.post_processing, args.restore_from))
+                                                        args.threed_data_dir, args.post_processing, args.restore_from))
             proc.start()
             threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
@@ -216,6 +190,9 @@ def main():
                 for i, thing in enumerate(sublist):
                     regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
                     # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
+                    cv2.imwrite(os.path.join(args.restore_from, 'eval/pngout', regex_match.group(1).replace('volume',
+                                                                                                            'segmentation') + ".nii_" + regex_match.group(
+                        2) + ".png"), preds[i])
                     queue_proc.put(
                         (regex_match.group(1), int(regex_match.group(2)), preds[i], len(dict[regex_match.group(1)])))
 

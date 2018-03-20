@@ -16,8 +16,8 @@ import scipy.misc
 import scipy.ndimage.measurements
 
 DATA_DIRECTORY = '/mnt/data/LITS/originalDataAll'
-OUT_DIRECTORY = '/home/victor/LITS_NoCrop_OriginalResolution'
-
+OUT_DIRECTORY = '/home/victor/LITS_GTCrop_OriginalResolution'
+PX_TO_EXTEND_BOUNDARY = 5
 
 def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, output_size=None):
     resampler = sitk.ResampleImageFilter()
@@ -50,7 +50,7 @@ def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, out
     return resampler.Execute(input_image), input_spacing, size
 
 
-def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
+def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_extend_boundary)):
     ftrain = []
     fval = []
 
@@ -71,10 +71,26 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
     img = np.clip(img, -400, 1000)
     img = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
-    print data_file, img_gt_file
+    img_gt_merged = np.copy(img_gt)
+    img_gt_merged[img_gt_merged != 0] = 1
+    bbox_list = scipy.ndimage.measurements.find_objects(img_gt_merged)
 
-    for i in xrange(1, img.shape[2] - 2):  # because of padding!
-        img3c = img[:, :, (i - 1):(i + 2)]
+    if len(bbox_list) != 1:
+        print 'Error:', data_file, img_gt_file, len(bbox_list)
+        return ftrain, fval
+
+    bounding_box = bbox_list[0]
+
+    print data_file, img_gt_file, bounding_box
+
+    for i in xrange(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 2),
+                    np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
+                            img.shape[2] - 2)):  # because of padding!
+        img3c = img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1):np.clip(
+            (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1),
+                np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1):np.clip(
+                    (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1),
+                (i - 1):(i + 2)]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
         out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(
@@ -85,7 +101,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
         else:
             ftrain.append(out_string)
 
-    return (ftrain, fval)
+    return ftrain, fval
 
 
 def main():
@@ -94,6 +110,8 @@ def main():
                         help="Path to the directory containing the LITS dataset.")
     parser.add_argument("--out-dir", type=str, default=OUT_DIRECTORY,
                         help="Path to output the LITS dataset in jpg and png format.")
+    parser.add_argument("--px-to-extend-boundary", type=int, default=PX_TO_EXTEND_BOUNDARY,
+                        help="Number of pixels to extend bounding box")
     parser.add_argument("--rescale-to-han", action='store_true',
                         help="Rescale to Han")
     args = parser.parse_args()
@@ -116,7 +134,8 @@ def main():
     p = multiprocessing.Pool(4)
     retval = p.map(ndarry2jpg_png,
                    zip(vols, segs, itertools.repeat(args.out_dir, len(vols)),
-                       itertools.repeat(args.rescale_to_han, len(vols))))
+                       itertools.repeat(args.rescale_to_han, len(vols)),
+                       itertools.repeat(args.px_to_extend_boundary, len(vols))))
     p.close()
 
     # retval = map(ndarry2jpg_png,
