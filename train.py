@@ -15,7 +15,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from deeplab_resnet import ThreeDNetwork, ImageReader, decode_labels, inv_preprocess
+from deeplab_resnet import ThreeDNetwork, ImageReaderScaling, decode_labels, inv_preprocess
 
 IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
 
@@ -188,7 +188,7 @@ def main():
         step_ph = tf.placeholder(dtype=tf.float32, shape=())
 
         with tf.name_scope("create_inputs"):
-            train_reader = ImageReader(
+            train_reader = ImageReaderScaling(
                 args.data_dir,
                 args.data_list,
                 input_size,
@@ -200,7 +200,7 @@ def main():
                 num_threads=6)
 
         with tf.name_scope("val_inputs"):
-            val_reader = ImageReader(
+            val_reader = ImageReaderScaling(
                 args.data_dir,
                 args.val_data_list,
                 input_size,
