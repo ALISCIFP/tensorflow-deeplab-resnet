@@ -2,6 +2,7 @@ python evaluate_LiTS.py  \
 --data-dir /home/zack/Data/paperLITS \
 --data-list /home/zack/Data/paperLITS/dataset/val.txt  \
 --restore-from '/home/zack/GitHub/tensorflow-resnet-segmentation/snapshots/HanResNet5Slices_320_R960k/model.ckpt-1720000' \
+--threed-data-dir /home/zack/Data/LITS \
 --batch_size 1 \
 --gpu-mask '0'  
 
