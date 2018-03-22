@@ -9,10 +9,12 @@ from __future__ import print_function
 
 import argparse
 import glob
+import math
 import os
 import re
 from multiprocessing import Process, Queue, Event
 
+import SimpleITK as sitk
 import cv2
 import nibabel as nib
 import numpy as np
@@ -32,6 +34,37 @@ IGNORE_LABEL = 255
 NUM_CLASSES = 3
 BATCH_SIZE = 1
 RESTORE_FROM = None
+
+
+def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, output_size=None):
+    resampler = sitk.ResampleImageFilter()
+    origin = input_image.GetOrigin()
+    resampler.SetOutputOrigin(origin)
+
+    direction = input_image.GetDirection()
+    resampler.SetOutputDirection(direction)
+
+    if input_spacing is not None:
+        input_image.SetSpacing(input_spacing)
+
+    spacing = input_image.GetSpacing()
+    orig_size = input_image.GetSize()
+    resampler.SetOutputSpacing(output_spacing)
+
+    if bilinear:
+        resampler.SetInterpolator(sitk.sitkLinear)
+    else:
+        resampler.SetInterpolator(sitk.sitkNearestNeighbor)
+
+    if output_size is None:
+        size = [int(math.ceil(spacing[0] * (orig_size[0] - 1) / output_spacing[0]) + 1),
+                int(math.ceil(spacing[1] * (orig_size[1] - 1) / output_spacing[1]) + 1),
+                int(math.ceil(spacing[2] * (orig_size[2] - 1) / output_spacing[2]) + 1)]
+    else:
+        size = output_size
+
+    resampler.SetSize(size)
+    return resampler.Execute(input_image), input_spacing, size
 
 
 def get_arguments():
@@ -91,18 +124,21 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from)
         dict_of_curr_processing_len[key] += 1
 
         if dict_of_curr_processing_len[key] == num_slices:
+            output = dict_of_curr_processing[key]
+            np.transpose(output)
+
             if post_processing:
-                preds_liver = np.copy(dict_of_curr_processing[key])
+                preds_liver = np.copy(output)
                 preds_liver[preds_liver == 2] = 1
                 preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8),
                                                                       np.ones((3, 3, 3), np.uint8), iterations=5)
 
-                preds_lesion = np.copy(dict_of_curr_processing[key])
+                preds_lesion = np.copy(output)
                 preds_lesion[preds_lesion == 1] = 0
                 preds_lesion[preds_lesion == 2] = 1
                 preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8),
                                                                         np.ones((3, 3, 3), np.uint8), iterations=5)
-                dict_of_curr_processing[key] = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
+                output = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
 
             fname_out = os.path.join(restore_from, 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
             print("Writing: " + fname_out)
@@ -111,10 +147,28 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from)
             assert len(path_to_img) == 1
 
             img = nib.load(path_to_img[0])
-            nii_out = nib.Nifti1Image(dict_of_curr_processing[key], img.affine, header=img.header)
+            img_stik = sitk.ReadImage(path_to_img[0])
+            print(output.shape, img_stik.GetSize())
+
+            output_sitk = sitk.GetImageFromArray(output)
+            output_sitk.SetOrigin(img_stik.GetOrigin())
+            output_sitk.SetDirection(img_stik.GetDirection())
+            output_sitk.SetSpacing([0.6, 0.6, 0.7])
+            print(output_sitk.GetSize())
+
+            output_sitk, _, _ = rescale(output_sitk, output_spacing=img_stik.GetSpacing(), bilinear=False,
+                                        input_spacing=[0.6, 0.6, 0.7])
+
+            output = sitk.GetArrayFromImage(output_sitk).transpose()
+            print(output.shape)
+
+            output = np.pad(output, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
+            print(output.shape)
+
+            nii_out = nib.Nifti1Image(output, img.affine, header=img.header)
             nii_out.set_data_dtype(np.uint8)
             nib.save(nii_out, fname_out)
-            del dict_of_curr_processing[key]
+            del output
             dict_of_curr_processing_len[key] += 1
 
 
