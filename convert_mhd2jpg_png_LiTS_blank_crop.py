@@ -11,6 +11,7 @@ import os
 
 import SimpleITK as sitk
 import cv2
+import nibabel as nib
 import numpy as np
 import scipy.misc
 import scipy.ndimage.measurements
@@ -53,6 +54,9 @@ def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, out
 def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_extend_boundary)):
     ftrain = []
     fval = []
+    ftrain_3D = []
+    fval_3D = []
+    fcrop_dims = []
 
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
@@ -83,6 +87,46 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
 
     print data_file, img_gt_file, bounding_box
 
+    img_nii_orig = nib.load(data_file)
+    img_nii_out = nib.Nifti1Image(
+        img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1):np.clip(
+            (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1),
+        np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1):np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1),
+        np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img.shape[2] - 1):np.clip(
+            (bounding_box[2].stop + px_to_extend_boundary), 0, img.shape[2] - 1)], img_nii_orig.affine,
+        header=img_nii_orig.header)
+    img_nii_out.set_data_dtype(np.uint8)
+    nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
+
+    img_gt_nii_orig = nib.load(img_gt_file)
+    img_gt_nii_out = nib.Nifti1Image(
+        img_gt[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0] - 1):np.clip(
+            (bounding_box[0].stop + px_to_extend_boundary), 0, img_gt.shape[0] - 1),
+        np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_gt.shape[1] - 1):np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img_gt.shape[1] - 1),
+        np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img_gt.shape[2] - 1):np.clip(
+            (bounding_box[2].stop + px_to_extend_boundary), 0, img_gt.shape[2] - 1)], img_gt_nii_orig.affine,
+        header=img_gt_nii_orig.header)
+    img_gt_nii_out.set_data_dtype(np.uint8)
+    nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
+
+    out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
+
+    if '99' in data_file:
+        fval_3D.append(out_string_nii)
+    else:
+        ftrain_3D.append(out_string_nii)
+
+    fcrop_dims.append(
+        fn + " " + str(np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1)) + " " + str(
+            np.clip(
+                (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1)) + " " +
+        str(np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1)) + " " + str(np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1)) + " " +
+        str(np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img.shape[2] - 1)) + " " + str(np.clip(
+            (bounding_box[2].stop + px_to_extend_boundary), 0, img.shape[2] - 1)) + "\n")
+
     for i in xrange(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 2),
                     np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
                             img.shape[2] - 2)):  # because of padding!
@@ -101,7 +145,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
         else:
             ftrain.append(out_string)
 
-    return ftrain, fval
+    return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D
 
 
 def main():
@@ -147,11 +191,20 @@ def main():
 
     list_train = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
     list_val = list(itertools.chain.from_iterable([sublist[1] for sublist in retval]))
+    list_crop_dims = list(itertools.chain.from_iterable([sublist[2] for sublist in retval]))
+    list_train_3D = list(itertools.chain.from_iterable([sublist[3] for sublist in retval]))
+    list_val_3D = list(itertools.chain.from_iterable([sublist[4] for sublist in retval]))
 
     with open(os.path.join(args.out_dir, "dataset/train.txt"), 'w') as ftrain:
         ftrain.writelines(list_train)
     with open(os.path.join(args.out_dir, "dataset/val.txt"), 'w') as fval:
         fval.writelines(list_val)
+    with open(os.path.join(args.out_dir, "dataset/crop_dims.txt"), 'w') as fcropdims:
+        fcropdims.writelines(list_crop_dims)
+    with open(os.path.join(args.out_dir, "dataset/train3D.txt"), 'w') as ftrain_3D:
+        ftrain_3D.writelines(list_train_3D)
+    with open(os.path.join(args.out_dir, "dataset/val3D.txt"), 'w') as fval_3D:
+        fval_3D.writelines(list_val_3D)
 
     print "done."
 
