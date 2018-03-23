@@ -117,9 +117,13 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
         ftrain.append(out_string)
 
     fcrop_dims.append(
-        fn + " " + str(bounding_box[0].start) + " " + str(bounding_box[0].stop) + " " + str(bounding_box[1].start)
-        + " " + str(bounding_box[1].stop) + " " + str(bounding_box[2].start) + " "
-        + str(bounding_box[2].stop) + "\n")
+        fn + " " + str(np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1)) + " " + str(
+            np.clip(
+                (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1)) + " " +
+        str(np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1)) + " " + str(np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1)) + " " +
+        str(np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img.shape[2] - 1)) + " " + str(np.clip(
+            (bounding_box[2].stop + px_to_extend_boundary), 0, img.shape[2] - 1)) + "\n")
 
     return ftrain, fval, fcrop_dims
 

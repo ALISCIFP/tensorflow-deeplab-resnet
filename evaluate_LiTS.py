@@ -110,9 +110,20 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
-def saving_process(queue, event, threed_data_dir, post_processing, restore_from):
+def saving_process(queue, event, threed_data_dir, post_processing, restore_from, data_dir):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
+
+    with open(os.path.join(data_dir, "dataset", "crop_dims.txt"), 'r') as f:
+        dict_of_crop_dims = {}
+        for line in f:
+            line = line.rstrip().split(" ")
+
+            for i in range(len(line[1:])):
+                line[i + 1] = int(line[i + 1])
+
+            dict_of_crop_dims[line[0].split(".")[0].replace("volume", "segmentation")] = np.array(line[1:],
+                                                                                                  dtype=np.int)
 
     while not (event.is_set() and queue.empty()):
         key, idx, preds, num_slices = queue.get()
@@ -120,12 +131,11 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from)
             dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[0], preds.shape[1]), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
-        dict_of_curr_processing[key][idx] = preds
+        dict_of_curr_processing[key][idx - dict_of_crop_dims[key][4]] = preds
         dict_of_curr_processing_len[key] += 1
 
         if dict_of_curr_processing_len[key] == num_slices:
             output = dict_of_curr_processing[key]
-            np.transpose(output)
 
             if post_processing:
                 preds_liver = np.copy(output)
@@ -147,22 +157,26 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from)
             assert len(path_to_img) == 1
 
             img = nib.load(path_to_img[0])
-            img_stik = sitk.ReadImage(path_to_img[0])
-            print(output.shape, img_stik.GetSize())
+            img_sitk = sitk.ReadImage(path_to_img[0])
+            print(output.shape, img_sitk.GetSize(), img.shape)
+
+            output = np.pad(output,
+                            ((dict_of_crop_dims[key][0], img.shape[0] - output.shape[0] - (dict_of_crop_dims[key][0])),
+                             (dict_of_crop_dims[key][2], img.shape[1] - output.shape[1] - (dict_of_crop_dims[key][2])),
+                             (dict_of_crop_dims[key][4], img.shape[2] - output.shape[2] - (dict_of_crop_dims[key][4]))),
+                            'constant', constant_values=(0, 0))
+            print(output.shape)
 
             output_sitk = sitk.GetImageFromArray(output)
-            output_sitk.SetOrigin(img_stik.GetOrigin())
-            output_sitk.SetDirection(img_stik.GetDirection())
+            output_sitk.SetOrigin(img_sitk.GetOrigin())
+            output_sitk.SetDirection(img_sitk.GetDirection())
             output_sitk.SetSpacing([0.6, 0.6, 0.7])
             print(output_sitk.GetSize())
 
-            output_sitk, _, _ = rescale(output_sitk, output_spacing=img_stik.GetSpacing(), bilinear=False,
+            output_sitk, _, _ = rescale(output_sitk, output_spacing=img_sitk.GetSpacing(), bilinear=False,
                                         input_spacing=[0.6, 0.6, 0.7])
 
             output = sitk.GetArrayFromImage(output_sitk).transpose()
-            print(output.shape)
-
-            output = np.pad(output, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
             print(output.shape)
 
             nii_out = nib.Nifti1Image(output, img.affine, header=img.header)
@@ -237,7 +251,8 @@ def main():
 
             # Start queue threads.
             proc = Process(target=saving_process, args=(queue_proc, event_end,
-                                                        args.threed_data_dir, args.post_processing, args.restore_from))
+                                                        args.threed_data_dir, args.post_processing, args.restore_from,
+                                                        args.data_dir))
             proc.start()
             threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
