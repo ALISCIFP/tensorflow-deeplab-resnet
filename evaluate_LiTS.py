@@ -8,7 +8,6 @@ This script evaluates the model on 1449 validation images.
 from __future__ import print_function
 
 import argparse
-import glob
 import math
 import os
 import re
@@ -76,8 +75,6 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
     parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--threed-data-dir", type=str, default=DATA_DIRECTORY,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
                         help="Comma-separated string for GPU mask.")
     parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
@@ -110,7 +107,7 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
-def saving_process(queue, event, threed_data_dir, post_processing, restore_from, data_dir):
+def saving_process(queue, event, post_processing, restore_from, data_dir):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
 
@@ -152,12 +149,11 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from,
 
             fname_out = os.path.join(restore_from, 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
             print("Writing: " + fname_out)
-            path_to_img = glob.glob(threed_data_dir + '/*/' + key + '.nii')
+            path_to_img = os.path.join(data_dir, "niiout", key + '.nii')
             print(path_to_img)
-            assert len(path_to_img) == 1
 
-            img = nib.load(path_to_img[0])
-            img_sitk = sitk.ReadImage(path_to_img[0])
+            img = nib.load(path_to_img)
+            img_sitk = sitk.ReadImage(path_to_img)
             print(output.shape, img_sitk.GetSize(), img.shape)
 
             output = np.pad(output,
@@ -250,8 +246,7 @@ def main():
             load(loader, sess, args.restore_from)
 
             # Start queue threads.
-            proc = Process(target=saving_process, args=(queue_proc, event_end,
-                                                        args.threed_data_dir, args.post_processing, args.restore_from,
+            proc = Process(target=saving_process, args=(queue_proc, event_end, args.post_processing, args.restore_from,
                                                         args.data_dir))
             proc.start()
             threads = tf.train.start_queue_runners(coord=coord, sess=sess)

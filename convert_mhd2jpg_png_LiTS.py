@@ -11,9 +11,9 @@ import os
 
 import SimpleITK as sitk
 import cv2
+import nibabel as nib
 import numpy as np
 import scipy.misc
-import scipy.ndimage.measurements
 
 DATA_DIRECTORY = '/mnt/data/LITS/originalDataAll'
 OUT_DIRECTORY = '/home/victor/LITS_NoCrop_OriginalResolution'
@@ -53,6 +53,9 @@ def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, out
 def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
     ftrain = []
     fval = []
+    ftrain_3D = []
+    fval_3D = []
+    fcrop_dims = []
 
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
@@ -73,6 +76,32 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
 
     print data_file, img_gt_file
 
+    img_nii_orig = nib.load(data_file)
+    img_nii_out = nib.Nifti1Image(
+        img[:, :, 1, img.shape[2] - 2], img_nii_orig.affine,
+        header=img_nii_orig.header)
+    img_nii_out.set_data_dtype(np.uint8)
+    nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
+
+    img_gt_nii_orig = nib.load(img_gt_file)
+    img_gt_nii_out = nib.Nifti1Image(
+        img_gt[:, :, 1, img.shape[2] - 2], img_gt_nii_orig.affine,
+        header=img_gt_nii_orig.header)
+    img_gt_nii_out.set_data_dtype(np.uint8)
+    nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
+
+    out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
+
+    if '99' in data_file:
+        fval_3D.append(out_string_nii)
+    else:
+        ftrain_3D.append(out_string_nii)
+
+    fcrop_dims.append(
+        fn + " " + str(0) + " " + str(img.shape[0]) + " " +
+        str(0) + " " + str(img.shape[1]) + " " +
+        str(0) + " " + str(img.shape[2] - 2) + "\n")
+
     for i in xrange(1, img.shape[2] - 2):  # because of padding!
         img3c = img[:, :, (i - 1):(i + 2)]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
@@ -85,7 +114,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
         else:
             ftrain.append(out_string)
 
-    return (ftrain, fval)
+    return ftrain, fval, ftrain_3D, fval_3D
 
 
 def main():
