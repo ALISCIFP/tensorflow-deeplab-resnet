@@ -78,14 +78,14 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
 
     img_nii_orig = nib.load(data_file)
     img_nii_out = nib.Nifti1Image(
-        img[:, :, 1, img.shape[2] - 2], img_nii_orig.affine,
+        img[:, :, 1:img.shape[2] - 2], img_nii_orig.affine,
         header=img_nii_orig.header)
     img_nii_out.set_data_dtype(np.uint8)
     nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
 
     img_gt_nii_orig = nib.load(img_gt_file)
     img_gt_nii_out = nib.Nifti1Image(
-        img_gt[:, :, 1, img.shape[2] - 2], img_gt_nii_orig.affine,
+        img_gt[:, :, 1:img.shape[2] - 2], img_gt_nii_orig.affine,
         header=img_gt_nii_orig.header)
     img_gt_nii_out.set_data_dtype(np.uint8)
     nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
