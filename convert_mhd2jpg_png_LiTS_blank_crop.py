@@ -126,9 +126,9 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
                 (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1)) + " " +
         str(np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1)) + " " + str(np.clip(
             (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1)) + " " +
-        str(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 2)) + " " + str(
+        str(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1) - 1) + " " + str(
             np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
-                    img.shape[2] - 2)) + "\n")
+                    img.shape[2] - 1) - 1) + "\n")
 
     for i in xrange(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1),
                     np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
