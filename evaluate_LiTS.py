@@ -156,12 +156,13 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from,
 
             img = nib.load(path_to_img)
             img_sitk = sitk.ReadImage(path_to_img)
-            print(output.shape, img_sitk.GetSize(), img.shape)
+            np.transpose(output)
+            print(output.shape, img_sitk.GetSize(), img.shape, dict_of_crop_dims[key])
 
             output = np.pad(output,
-                            ((dict_of_crop_dims[key][0], img.shape[0] - output.shape[0] - (dict_of_crop_dims[key][0])),
-                             (dict_of_crop_dims[key][2], img.shape[1] - output.shape[1] - (dict_of_crop_dims[key][2])),
-                             (dict_of_crop_dims[key][4], img.shape[2] - output.shape[2] - (dict_of_crop_dims[key][4]))),
+                            ((dict_of_crop_dims[key][0], img.shape[0] - output.shape[0] - dict_of_crop_dims[key][0]),
+                             (dict_of_crop_dims[key][2], img.shape[1] - output.shape[1] - dict_of_crop_dims[key][2]),
+                             (dict_of_crop_dims[key][4], img.shape[2] - output.shape[2] - dict_of_crop_dims[key][4])),
                             'constant', constant_values=(0, 0))
             print(output.shape)
 
