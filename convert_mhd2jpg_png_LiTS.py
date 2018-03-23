@@ -141,6 +141,8 @@ def main():
         os.mkdir(os.path.join(args.out_dir, "PNGImages"))
     if not os.path.exists(os.path.join(args.out_dir, "dataset")):
         os.mkdir(os.path.join(args.out_dir, "dataset"))
+    if not os.path.exists(os.path.join(args.out_dir, "niiout")):
+        os.mkdir(os.path.join(args.out_dir, "niiout"))
 
     p = multiprocessing.Pool(4)
     retval = p.map(ndarry2jpg_png,
