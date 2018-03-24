@@ -56,9 +56,9 @@ def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, out
         resampler.SetInterpolator(sitk.sitkNearestNeighbor)
 
     if output_size is None:
-        size = [int(math.ceil(spacing[0] * (orig_size[0] - 1) / output_spacing[0]) + 1),
-                int(math.ceil(spacing[1] * (orig_size[1] - 1) / output_spacing[1]) + 1),
-                int(math.ceil(spacing[2] * (orig_size[2] - 1) / output_spacing[2]) + 1)]
+        size = [int(math.ceil(spacing[0] * (orig_size[0] - 1) / output_spacing[0])),
+                int(math.ceil(spacing[1] * (orig_size[1] - 1) / output_spacing[1])),
+                int(math.ceil(spacing[2] * (orig_size[2] - 1) / output_spacing[2]))]
     else:
         size = output_size
 
@@ -127,10 +127,10 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from,
     while not (event.is_set() and queue.empty()):
         key, idx, preds, num_slices = queue.get()
         if key not in dict_of_curr_processing:
-            dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[0], preds.shape[1]), dtype=np.uint8)
+            dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[1], preds.shape[0]), dtype=np.uint8)
             dict_of_curr_processing_len[key] = 1  # this is correct!
 
-        dict_of_curr_processing[key][idx - dict_of_crop_dims[key][4]] = preds
+        dict_of_curr_processing[key][idx - dict_of_crop_dims[key][4]] = preds.T
         dict_of_curr_processing_len[key] += 1
 
         if dict_of_curr_processing_len[key] == num_slices:
@@ -152,20 +152,20 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from,
             fname_out = os.path.join(restore_from, 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
             print("Writing: " + fname_out)
             path_to_img = os.path.join(threed_data_dir, "niiout", key + '.nii')
-            print(path_to_img)
 
             img = nib.load(path_to_img)
             img_sitk = sitk.ReadImage(path_to_img)
-            np.transpose(output)
+            output = output.T
             print(output.shape, img_sitk.GetSize(), img.shape, dict_of_crop_dims[key])
 
             output = np.pad(output,
-                            ((dict_of_crop_dims[key][0], img.shape[0] - output.shape[0] - dict_of_crop_dims[key][0]),
-                             (dict_of_crop_dims[key][2], img.shape[1] - output.shape[1] - dict_of_crop_dims[key][2]),
-                             (dict_of_crop_dims[key][4], img.shape[2] - output.shape[2] - dict_of_crop_dims[key][4])),
+                            ((dict_of_crop_dims[key][0], img.shape[0] - dict_of_crop_dims[key][1]),
+                             (dict_of_crop_dims[key][2], img.shape[1] - dict_of_crop_dims[key][3]),
+                             (dict_of_crop_dims[key][4], np.maximum(img.shape[2] - dict_of_crop_dims[key][5], 0) + 1)),
                             'constant', constant_values=(0, 0))
-            print(output.shape)
+            print(output.shape, img.shape[2] - dict_of_crop_dims[key][5])
 
+            output = output.T
             output_sitk = sitk.GetImageFromArray(output)
             output_sitk.SetOrigin(img_sitk.GetOrigin())
             output_sitk.SetDirection(img_sitk.GetDirection())
@@ -229,7 +229,10 @@ def main():
                     shuffle=False)
                 image = tf.cast(reader.image, tf.float32)
 
-            image_batch = tf.image.resize_bilinear(tf.expand_dims(image, dim=0), [320, 320])  # Add one batch dimension.
+            image_raw = tf.expand_dims(image, dim=0)
+            image_raw_shape = tf.shape(image_raw)
+
+            image_batch = tf.image.resize_bilinear(image_raw, [320, 320])  # Add one batch dimension.
 
             # Create network.
             net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -239,6 +242,7 @@ def main():
 
             # Predictions.
             raw_output = net.layers['conv24']
+            raw_output = tf.image.resize_bilinear(raw_output, image_raw_shape[1:3])
             raw_output = tf.argmax(raw_output, axis=3)
 
             sess = tf.Session()
@@ -257,7 +261,7 @@ def main():
 
             for sublist in [list_of_all_lines[i:i + args.batch_size] for i in
                             xrange(0, len(list_of_all_lines), args.batch_size)]:
-                preds = sess.run([raw_output])[0]
+                preds = sess.run(raw_output)
                 for i, thing in enumerate(sublist):
                     regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
                     # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
