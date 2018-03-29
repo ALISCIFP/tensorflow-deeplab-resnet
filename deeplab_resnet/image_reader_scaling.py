@@ -91,7 +91,7 @@ def image_mirroring(img, label):
     return img, label
 
 
-def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w):
+def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w, t, w):
     """
     Randomly crop and pads the input images.
 
@@ -145,9 +145,9 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w):
     def no_pad_image_z(img):
         return img
 
-    z_need_pad_flag = tf.greater(12, image_shape[2])
-    img = tf.cond(z_need_pad_flag, lambda: pad_image_z(img, 12, image_shape[2]), lambda: no_pad_image_z(img))
-    label = tf.cond(z_need_pad_flag, lambda: pad_image_z(label, 12, image_shape[2]), lambda: no_pad_image_z(label))
+    z_need_pad_flag = tf.greater(14, image_shape[2])
+    img = tf.cond(z_need_pad_flag, lambda: pad_image_z(img, 14, image_shape[2]), lambda: no_pad_image_z(img))
+    label = tf.cond(z_need_pad_flag, lambda: pad_image_z(label, 14, image_shape[2]), lambda: no_pad_image_z(label))
 
     image_shape = tf.shape(img)
 
@@ -169,7 +169,7 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w):
                tf.squeeze(crop_z_value - 6):tf.squeeze(crop_z_value + 8)]
     label_crop = label[tf.squeeze(crop_x_value):tf.squeeze(crop_x_value + crop_h),
                  tf.squeeze(crop_y_value):tf.squeeze(crop_y_value + crop_w),
-                 tf.squeeze(crop_z_value - 1 - 5):tf.squeeze(crop_z_value - 1 + 7)]
+                 tf.squeeze(crop_z_value - 5):tf.squeeze(crop_z_value + 7)]
 
     # 3 stack the image by channels
     img_list = []
@@ -177,6 +177,8 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w):
         img_list.append(img_crop[:, :, i - 1: i + 2])
 
     img_crop = tf.concat(img_list, axis=-1)
+
+    img_crop = tf.Print(img_crop, [t, w, tf.shape(img), tf.shape(label), tf.shape(img_crop), tf.shape(label_crop)])
 
     # Set static shape so that tensorflow knows shape at compile time.
     img_crop.set_shape((crop_h, crop_w, 36))
@@ -231,7 +233,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     img, label = read_nii_and_image_scaling(input_queue[0], input_queue[1])
 
     # Randomly crops the images and labels.
-    img, label = random_crop_and_pad_image_and_labels(img, label, h, w)
+    img, label = random_crop_and_pad_image_and_labels(img, label, h, w, input_queue[0], input_queue[1])
 
     # Randomly mirror the images and labels.
     img, label = image_mirroring(img, label)
