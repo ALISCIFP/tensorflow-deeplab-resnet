@@ -98,11 +98,11 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
         ftrain_3D.append(out_string_nii)
 
     fcrop_dims.append(
-        fn + " " + str(0) + " " + str(img.shape[0]) + " " +
-        str(0) + " " + str(img.shape[1]) + " " +
-        str(0) + " " + str(img.shape[2] - 2) + "\n")
+        fn + " " + str(0) + " " + str(img_gt.shape[0]) + " " +
+        str(0) + " " + str(img_gt.shape[1]) + " " +
+        str(0) + " " + str(img_gt.shape[2]) + "\n")
 
-    for i in xrange(1, img.shape[2] - 2):  # because of padding!
+    for i in xrange(1, img.shape[2] - 1):  # because of padding!
         img3c = img[:, :, (i - 1):(i + 2)]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])

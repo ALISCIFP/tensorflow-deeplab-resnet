@@ -89,11 +89,11 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
 
     img_nii_orig = nib.load(data_file)
     img_nii_out = nib.Nifti1Image(
-        img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1):np.clip(
-            (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1),
-        np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1):np.clip(
-            (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1),
-        np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1):np.clip(
+        img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0]):np.clip(
+            (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0]),
+        np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1]):np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1]),
+        np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2]):np.clip(
             (bounding_box[2].stop + px_to_extend_boundary), 1,
             img.shape[2] - 1)], img_nii_orig.affine,
         header=img_nii_orig.header)
@@ -102,10 +102,10 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
 
     img_gt_nii_orig = nib.load(img_gt_file)
     img_gt_nii_out = nib.Nifti1Image(
-        img_gt[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0] - 1):np.clip(
-            (bounding_box[0].stop + px_to_extend_boundary), 0, img_gt.shape[0] - 1),
-        np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_gt.shape[1] - 1):np.clip(
-            (bounding_box[1].stop + px_to_extend_boundary), 0, img_gt.shape[1] - 1),
+        img_gt[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0]):np.clip(
+            (bounding_box[0].stop + px_to_extend_boundary), 0, img_gt.shape[0]),
+        np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_gt.shape[1]):np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img_gt.shape[1]),
         np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img_gt.shape[2]):np.clip(
             (bounding_box[2].stop + px_to_extend_boundary), 0,
             img_gt.shape[2])], img_gt_nii_orig.affine,
@@ -121,22 +121,22 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
         ftrain_3D.append(out_string_nii)
 
     fcrop_dims.append(
-        fn + " " + str(np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1)) + " " + str(
+        fn + " " + str(np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0])) + " " + str(
             np.clip(
-                (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1)) + " " +
-        str(np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1)) + " " + str(np.clip(
-            (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1)) + " " +
-        str(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1) - 1) + " " + str(
-            np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
-                    img.shape[2] - 1) - 1) + "\n")
+                (bounding_box[0].stop + px_to_extend_boundary), 0, img_gt.shape[0])) + " " +
+        str(np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_gt.shape[1])) + " " + str(np.clip(
+            (bounding_box[1].stop + px_to_extend_boundary), 0, img_gt.shape[1])) + " " +
+        str(np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img_gt.shape[2])) + " " + str(
+            np.clip((bounding_box[2].stop + px_to_extend_boundary), 0,
+                    img_gt.shape[2])) + "\n")
 
     for i in xrange(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1),
                     np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
                             img.shape[2] - 1)):  # because of padding!
-        img3c = img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0] - 1):np.clip(
-            (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0] - 1),
-                np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1] - 1):np.clip(
-                    (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1] - 1),
+        img3c = img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0]):np.clip(
+            (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0]),
+                np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1]):np.clip(
+                    (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1]),
                 (i - 1):(i + 2)]
         scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
         cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
