@@ -169,11 +169,11 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from,
             output_sitk = sitk.GetImageFromArray(output)
             output_sitk.SetOrigin(img_sitk.GetOrigin())
             output_sitk.SetDirection(img_sitk.GetDirection())
-            output_sitk.SetSpacing([0.6, 0.6, 0.7])
+            output_sitk.SetSpacing([1, 1, 2.5])
             print(output_sitk.GetSize())
 
             output_sitk, _, _ = rescale(output_sitk, output_spacing=img_sitk.GetSpacing(), bilinear=False,
-                                        input_spacing=[0.6, 0.6, 0.7])
+                                        input_spacing=[1, 1, 2.5])
 
             output = sitk.GetArrayFromImage(output_sitk).transpose()
             print(output.shape)
