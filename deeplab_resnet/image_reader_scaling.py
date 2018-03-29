@@ -111,26 +111,28 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w):
         img_x_size = tf.cast(img_x_size, dtype=tf.float32)
         return tf.pad(img, [[tf.cast(tf.ceil((crop_x_size - img_x_size) / 2), dtype=tf.int32),
                              tf.cast(tf.ceil((crop_x_size - img_x_size) / 2), dtype=tf.int32)], [0, 0],
-                            [0, 0]], mode="REFLECT")
+                            [0, 0]], mode="CONSTANT")
 
     def no_pad_image_x(img):
         return img
 
     x_need_pad_flag = tf.greater(crop_h, image_shape[0])
     img = tf.cond(x_need_pad_flag, lambda: pad_image_x(img, crop_h, image_shape[0]), lambda: no_pad_image_x(img))
+    label = tf.cond(x_need_pad_flag, lambda: pad_image_x(label, crop_h, image_shape[0]), lambda: no_pad_image_x(label))
 
     def pad_image_y(img, crop_y_size, img_y_size):
         crop_y_size = tf.cast(crop_y_size, dtype=tf.float32)
         img_y_size = tf.cast(img_y_size, dtype=tf.float32)
         return tf.pad(img, [[0, 0], [tf.cast(tf.ceil((crop_y_size - img_y_size) / 2), dtype=tf.int32),
                                      tf.cast(tf.ceil((crop_y_size - img_y_size) / 2), dtype=tf.int32)],
-                            [0, 0]], mode="REFLECT")
+                            [0, 0]], mode="CONSTANT")
 
     def no_pad_image_y(img):
         return img
 
     y_need_pad_flag = tf.greater(crop_w, image_shape[1])
     img = tf.cond(y_need_pad_flag, lambda: pad_image_y(img, crop_w, image_shape[1]), lambda: no_pad_image_y(img))
+    label = tf.cond(y_need_pad_flag, lambda: pad_image_y(label, crop_w, image_shape[1]), lambda: no_pad_image_y(label))
 
     def pad_image_z(img, crop_z_size, img_z_size):
         crop_z_size = tf.cast(crop_z_size, dtype=tf.float32)
@@ -138,13 +140,14 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w):
         return tf.pad(img, [[0, 0], [0, 0],
                             [tf.cast(tf.ceil((crop_z_size - img_z_size) / 2), dtype=tf.int32),
                              tf.cast(tf.ceil((crop_z_size - img_z_size) / 2), dtype=tf.int32)]],
-                      mode="REFLECT")
+                      mode="CONSTANT")
 
     def no_pad_image_z(img):
         return img
 
     z_need_pad_flag = tf.greater(12, image_shape[2])
     img = tf.cond(z_need_pad_flag, lambda: pad_image_z(img, 12, image_shape[2]), lambda: no_pad_image_z(img))
+    label = tf.cond(z_need_pad_flag, lambda: pad_image_z(label, 12, image_shape[2]), lambda: no_pad_image_z(label))
 
     image_shape = tf.shape(img)
 
