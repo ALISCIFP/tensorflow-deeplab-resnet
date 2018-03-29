@@ -19,32 +19,32 @@ class DeepLabResNetModel(Network):
         # 320x320x64
         (self.feed('data')
          .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='conv1')
-         .prelu(name='conv1_prelu')
+         .relu(name='conv1_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv1_bn'))
 
         # 320x320x64
         (self.feed('conv1_bn')
          .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='conv2')
-         .prelu(name='conv2_prelu')
+         .relu(name='conv2_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv2_bn'))
 
         # 320x320x128
         (self.feed('conv2_bn')
          .conv(2, 2, 128, 1, 1, biased=False, relu=False, name='conv2_to_3')
-         .prelu(name='conv2_to_3_prelu')
+         .relu(name='conv2_to_3_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv2_to_3_bn')
          .max_pool(2, 2, 2, 2, name='conv2_pool'))
 
         # 160x160x128
         (self.feed('conv2_pool')
          .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='conv3')
-         .prelu(name='conv3_prelu')
+         .relu(name='conv3_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv3_bn'))
 
         # 160x160x128
         (self.feed('conv3_bn')
          .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='conv4')
-         .prelu(name='conv4_prelu')
+         .relu(name='conv4_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv4_bn'))
 
         (self.feed('conv2_pool',
@@ -54,26 +54,26 @@ class DeepLabResNetModel(Network):
         # 160x160x256
         (self.feed('conv4_sum')
          .conv(2, 2, 256, 1, 1, biased=False, relu=False, name='conv4_to_5')
-         .prelu(name='conv4_to_5_prelu')
+         .relu(name='conv4_to_5_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv4_to_5_bn')
          .max_pool(2, 2, 2, 2, name='conv4_pool'))
 
         # 80x80x256
         (self.feed('conv4_pool')
          .conv(3, 3, 256, 1, 1, biased=False, relu=False, name='conv5')
-         .prelu(name='conv5_prelu')
+         .relu(name='conv5_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv5_bn'))
 
         # 80x80x256
         (self.feed('conv5_bn')
          .conv(3, 3, 256, 1, 1, biased=False, relu=False, name='conv6')
-         .prelu(name='conv6_prelu')
+         .relu(name='conv6_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv6_bn'))
 
         # 80x80x256
         (self.feed('conv6_bn')
          .conv(3, 3, 256, 1, 1, biased=False, relu=False, name='conv7')
-         .prelu(name='conv7_prelu')
+         .relu(name='conv7_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv7_bn'))
 
         (self.feed('conv4_pool',
@@ -83,26 +83,26 @@ class DeepLabResNetModel(Network):
         # 80x80x512
         (self.feed('conv7_sum')
          .conv(2, 2, 512, 1, 1, biased=False, relu=False, name='conv7_to_8')
-         .prelu(name='conv7_to_8_prelu')
+         .relu(name='conv7_to_8_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv7_to_8_bn')
          .max_pool(2, 2, 2, 2, name='conv7_pool'))
 
         # 40x40x512
         (self.feed('conv7_pool')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv8')
-         .prelu(name='conv8_prelu')
+         .relu(name='conv8_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv8_bn'))
 
         # 40x40x512
         (self.feed('conv8_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv9')
-         .prelu(name='conv9_prelu')
+         .relu(name='conv9_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv9_bn'))
 
         # 40x40x512
         (self.feed('conv9_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv10')
-         .prelu(name='conv10_prelu')
+         .relu(name='conv10_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv10_bn'))
 
         (self.feed('conv10_bn',
@@ -113,19 +113,19 @@ class DeepLabResNetModel(Network):
         # 20x20x512
         (self.feed('conv10_pool')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv11')
-         .prelu(name='conv11_prelu')
+         .relu(name='conv11_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv11_bn'))
 
         # 20x20x512
         (self.feed('conv11_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv12')
-         .prelu(name='conv12_prelu')
+         .relu(name='conv12_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv12_bn'))
 
         # 20x20x512
         (self.feed('conv12_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv13')
-         .prelu(name='conv13_prelu')
+         .relu(name='conv13_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv13_bn'))
 
         (self.feed('conv13_bn',
@@ -140,25 +140,25 @@ class DeepLabResNetModel(Network):
         # 40x40x512
         (self.feed('conv13_concat')
          .conv(2, 2, 512, 1, 1, biased=False, relu=False, name='conv13_to_14')
-         .prelu(name='conv13_to_14_prelu')
+         .relu(name='conv13_to_14_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv13_to_14_bn'))
 
         # 40x40x512
         (self.feed('conv13_to_14_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv14')
-         .prelu(name='conv14_prelu')
+         .relu(name='conv14_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv14_bn'))
 
         # 40x40x512
         (self.feed('conv14_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv15')
-         .prelu(name='conv15_prelu')
+         .relu(name='conv15_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv15_bn'))
 
         # 40x40x512
         (self.feed('conv15_bn')
          .conv(3, 3, 512, 1, 1, biased=False, relu=False, name='conv16')
-         .prelu(name='conv16_prelu')
+         .relu(name='conv16_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv16_bn'))
 
         (self.feed('conv16_bn',
@@ -173,25 +173,25 @@ class DeepLabResNetModel(Network):
         # 80x80x256
         (self.feed('conv16_concat')
          .conv(2, 2, 256, 1, 1, biased=False, relu=False, name='conv17_to_18')
-         .prelu(name='conv17_to_18_prelu')
+         .relu(name='conv17_to_18_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv17_to_18_bn'))
 
         # 80x80x256
         (self.feed('conv17_to_18_bn')
          .conv(3, 3, 256, 1, 1, biased=False, relu=False, name='conv17')
-         .prelu(name='conv17_prelu')
+         .relu(name='conv17_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv17_bn'))
 
         # 80x80x256
         (self.feed('conv17_bn')
          .conv(3, 3, 256, 1, 1, biased=False, relu=False, name='conv18')
-         .prelu(name='conv18_prelu')
+         .relu(name='conv18_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv18_bn'))
 
         # 80x80x256
         (self.feed('conv18_bn')
          .conv(3, 3, 256, 1, 1, biased=False, relu=False, name='conv19')
-         .prelu(name='conv19_prelu')
+         .relu(name='conv19_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv19_bn'))
 
         (self.feed('conv19_bn',
@@ -206,19 +206,19 @@ class DeepLabResNetModel(Network):
         # 160x160x128
         (self.feed('conv19_concat')
          .conv(2, 2, 128, 1, 1, biased=False, relu=False, name='conv19_to_20')
-         .prelu(name='conv19_to_20_prelu')
+         .relu(name='conv19_to_20_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv19_to_20_bn'))
 
         # 160x160x128
         (self.feed('conv19_to_20_bn')
          .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='conv20')
-         .prelu(name='conv20_prelu')
+         .relu(name='conv20_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv20_bn'))
 
         # 160x160x128
         (self.feed('conv20_bn')
          .conv(3, 3, 128, 1, 1, biased=False, relu=False, name='conv21')
-         .prelu(name='conv21_prelu')
+         .relu(name='conv21_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv21_bn'))
 
         (self.feed('conv21_bn',
@@ -233,19 +233,19 @@ class DeepLabResNetModel(Network):
         # 320x320x64
         (self.feed('conv21_concat')
          .conv(2, 2, 64, 1, 1, biased=False, relu=False, name='conv21_to_22')
-         .prelu(name='conv21_to_22_prelu')
+         .relu(name='conv21_to_22_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv21_to_22_bn'))
 
         # 320x320x64
         (self.feed('conv21_to_22_bn')
          .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='conv22')
-         .prelu(name='conv22_prelu')
+         .relu(name='conv22_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv22_bn'))
 
         # 320x320x64
         (self.feed('conv22_bn')
          .conv(3, 3, 64, 1, 1, biased=False, relu=False, name='conv23')
-         .prelu(name='conv23_prelu')
+         .relu(name='conv23_relu')
          .batch_normalization(is_training=is_training, activation_fn=None, name='conv23_bn'))
 
         (self.feed('conv23_bn',
