@@ -93,7 +93,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
             (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0]),
         np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1]):np.clip(
             (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1]),
-        np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2]):np.clip(
+        np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1):np.clip(
             (bounding_box[2].stop + px_to_extend_boundary), 1,
             img.shape[2] - 1)], img_nii_orig.affine,
         header=img_nii_orig.header)
@@ -112,6 +112,8 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
         header=img_gt_nii_orig.header)
     img_gt_nii_out.set_data_dtype(np.uint8)
     nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
+
+    print(img.shape, img_gt.shape, img_nii_out.shape, img_gt_nii_out.shape)
 
     out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
 

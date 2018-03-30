@@ -90,6 +90,8 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
     img_gt_nii_out.set_data_dtype(np.uint8)
     nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
 
+    print(img_nii_out.shape, img_gt_nii_out.shape)
+
     out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
 
     if '99' in data_file:
