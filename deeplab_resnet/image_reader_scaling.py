@@ -44,7 +44,7 @@ def threed_rescale_nn(orig_image_fname, output_spacing, input_spacing):
     resampler.SetSize(output_size)
 
     output = sitk.GetArrayFromImage(resampler.Execute(img_orig)).astype(np.uint8).transpose()
-    output = np.pad(output, ((0, 0), (0, 0), (5, 6)), 'constant')
+    # output = np.pad(output, ((0, 0), (0, 0), (5, 6)), 'constant')
 
     return output
 
@@ -68,8 +68,8 @@ def threed_rescale_bilinear(orig_image_fname, output_spacing):
     resampler.SetSize(output_size)
 
     output = sitk.GetArrayFromImage(resampler.Execute(img_orig)).astype(np.float32).transpose()
-    output = np.clip(output, -400, 1000)
-    output = np.pad(output, ((0, 0), (0, 0), (6, 7)), 'constant')
+    output = np.clip(output, -200, 200)
+    # output = np.pad(output, ((0, 0), (0, 0), (6, 7)), 'constant')
 
     return output, np.array(spacing, dtype=np.float64)
 
@@ -159,7 +159,7 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w, t, w):
                                    dtype=tf.float32)), dtype=tf.int32), 0,
         tf.maximum(crop_w, image_shape[1]) - crop_w)
     crop_z_value = tf.clip_by_value(
-        tf.cast(tf.round(tf.random_uniform([1], 0, tf.cast(tf.maximum(14, image_shape[2]) - 14, dtype=tf.float32),
+        tf.cast(tf.round(tf.random_uniform([1], 6, tf.cast(tf.maximum(14, image_shape[2] - 7) - 14, dtype=tf.float32),
                                            dtype=tf.float32)), dtype=tf.int32), 0,
         tf.maximum(14, image_shape[2]) - 14)
     crop_z_value = crop_z_value + 6
