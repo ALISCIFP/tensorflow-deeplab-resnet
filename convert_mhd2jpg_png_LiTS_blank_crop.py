@@ -165,8 +165,8 @@ def main():
                         help="Rescale to Han")
     args = parser.parse_args()
 
-    vols = sorted(glob.glob(os.path.join(args.data_dir, '*/volume*.nii')))
-    segs = sorted(glob.glob(os.path.join(args.data_dir, '*/segmentation*.nii')))
+    vols = sorted(glob.glob(os.path.join(args.data_dir, 'volume*.nii')))
+    segs = sorted(glob.glob(os.path.join(args.data_dir, 'segmentation*.nii')))
 
     assert len(vols) == len(segs)
 
