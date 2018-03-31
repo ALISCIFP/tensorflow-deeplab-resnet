@@ -11,7 +11,6 @@ import argparse
 import math
 import os
 import re
-from multiprocessing import Process, Queue, Event
 
 import SimpleITK as sitk
 import cv2
@@ -111,85 +110,6 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
-def saving_process(queue, event, no_crop_data_dir, post_processing, restore_from, crop_data_dir, original_data_dir):
-    dict_of_curr_processing = {}
-    dict_of_curr_processing_len = {}
-
-    with open(os.path.join(crop_data_dir, "dataset", "crop_dims.txt"), 'r') as f:
-        dict_of_crop_dims = {}
-        for line in f:
-            line = line.rstrip().split(" ")
-
-            for i in range(len(line[1:])):
-                line[i + 1] = int(line[i + 1])
-
-            dict_of_crop_dims[line[0].split(".")[0].replace("volume", "segmentation")] = np.array(line[1:],
-                                                                                                  dtype=np.int)
-
-    while not (event.is_set() and queue.empty()):
-        key, idx, preds, num_slices = queue.get()
-        if key not in dict_of_curr_processing:
-            dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[1], preds.shape[0]), dtype=np.uint8)
-            dict_of_curr_processing_len[key] = 1  # this is correct!
-
-        dict_of_curr_processing[key][idx - dict_of_crop_dims[key][4]] = preds.T
-        dict_of_curr_processing_len[key] += 1
-
-        if dict_of_curr_processing_len[key] == num_slices:
-            output = dict_of_curr_processing[key]
-
-            if post_processing:
-                preds_liver = np.copy(output)
-                preds_liver[preds_liver == 2] = 1
-                preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8),
-                                                                      np.ones((3, 3, 3), np.uint8), iterations=5)
-
-                preds_lesion = np.copy(output)
-                preds_lesion[preds_lesion == 1] = 0
-                preds_lesion[preds_lesion == 2] = 1
-                preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8),
-                                                                        np.ones((3, 3, 3), np.uint8), iterations=5)
-                output = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
-
-            fname_out = os.path.join(restore_from, 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
-            print("Writing: " + fname_out)
-
-            path_to_img = os.path.join(no_crop_data_dir, "niiout", key + '.nii')
-            img = nib.load(path_to_img)
-
-            path_to_img_original = os.path.join(original_data_dir, key + '.nii')
-            img_original_sitk = sitk.ReadImage(path_to_img_original)
-
-            output = output.T
-            print(output.shape, img.shape, dict_of_crop_dims[key])
-
-            output = np.pad(output,
-                            ((dict_of_crop_dims[key][0], np.maximum(img.shape[0] - dict_of_crop_dims[key][1], 0)),
-                             (dict_of_crop_dims[key][2], np.maximum(img.shape[1] - dict_of_crop_dims[key][3], 0)),
-                             (dict_of_crop_dims[key][4], np.maximum(img.shape[2] - dict_of_crop_dims[key][5], 0))),
-                            'constant', constant_values=(0, 0))
-            print(output.shape, img.shape[2] - dict_of_crop_dims[key][5])
-
-            output = output.T
-            output_sitk = sitk.GetImageFromArray(output)
-            output_sitk.SetOrigin(img_original_sitk.GetOrigin())
-            output_sitk.SetDirection(img_original_sitk.GetDirection())
-            output_sitk.SetSpacing([1, 1, 2.5])
-            print(output_sitk.GetSize())
-
-            output_sitk, _, _ = rescale(output_sitk, output_spacing=img_original_sitk.GetSpacing(), bilinear=False,
-                                        input_spacing=[1, 1, 2.5], output_size=img_original_sitk.GetSize())
-
-            output = sitk.GetArrayFromImage(output_sitk).transpose()
-            print(output.shape)
-
-            nii_out = nib.Nifti1Image(output, img.affine, header=img.header)
-            nii_out.set_data_dtype(np.uint8)
-            nib.save(nii_out, fname_out)
-            del output
-            dict_of_curr_processing_len[key] += 1
-
-
 def main():
     """Create the model and start the evaluation process."""
 
@@ -203,8 +123,10 @@ def main():
     if not os.path.exists(os.path.join(args.restore_from, 'eval/pngout')):
         os.makedirs(os.path.join(args.restore_from, 'eval/pngout'))
 
-    event_end = Event()
-    queue_proc = Queue()
+    dict_of_curr_processing = {}
+    dict_of_curr_processing_len = {}
+    dict_of_curr_processing_len_final = {}
+
     with open(args.crop_data_list, 'r') as f:
         list_of_all_lines = f.readlines()
         f.seek(0)
@@ -216,66 +138,137 @@ def main():
 
             dict[re.match(".*\\/(.*)\\.nii.*", line).group(1)].append(line.rsplit()[0])
 
-        with tf.Graph().as_default():
-            # Create queue coordinator.
-            coord = tf.train.Coordinator()
+    with open(os.path.join(args.crop_data_dir, "dataset", "crop_dims.txt"), 'r') as f:
+        dict_of_crop_dims = {}
+        for line in f:
+            line = line.rstrip().split(" ")
 
-            # Load reader.
-            with tf.name_scope("create_inputs"):
-                reader = ImageReader(
-                    args.crop_data_dir,
-                    args.crop_data_list,
-                    None,  # No defined input size.
-                    False,  # No random scale.
-                    False,  # No random mirror.
-                    args.ignore_label,
-                    IMG_MEAN,
-                    coord,
-                    shuffle=False)
-                image = tf.cast(reader.image, tf.float32)
+            for i in range(len(line[1:])):
+                line[i + 1] = int(line[i + 1])
 
-            image_batch = tf.expand_dims(image, dim=0)
+            dict_of_crop_dims[line[0].split(".")[0].replace("volume", "segmentation")] = np.array(line[1:],
+                                                                                                  dtype=np.int)
 
-            # Create network.
-            net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
+    with tf.Graph().as_default():
+        # Create queue coordinator.
+        coord = tf.train.Coordinator()
 
-            # Which variables to load.
-            restore_var = tf.global_variables()
+        # Load reader.
+        with tf.name_scope("create_inputs"):
+            reader = ImageReader(
+                args.crop_data_dir,
+                args.crop_data_list,
+                None,  # No defined input size.
+                False,  # No random scale.
+                False,  # No random mirror.
+                args.ignore_label,
+                IMG_MEAN,
+                coord,
+                shuffle=False)
+            image = tf.cast(reader.image, tf.float32)
 
-            # Predictions.
-            raw_output = net.layers['conv24']
-            raw_output = tf.argmax(raw_output, axis=3)
+        image_batch = tf.expand_dims(image, dim=0)
 
-            sess = tf.Session()
-            sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
+        # Create network.
+        net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
 
-            # Load weights.
-            loader = tf.train.Saver(var_list=restore_var)
-            load(loader, sess, args.restore_from)
+        # Which variables to load.
+        restore_var = tf.global_variables()
 
-            # Start queue threads.
-            proc = Process(target=saving_process, args=(queue_proc, event_end,
-                                                        args.no_crop_data_dir, args.post_processing, args.restore_from,
-                                                        args.crop_data_dir, args.original_data_dir))
-            proc.start()
-            threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+        # Predictions.
+        raw_output = net.layers['conv24']
+        raw_output = tf.argmax(raw_output, axis=3)
 
-            for sublist in [list_of_all_lines[i:i + args.batch_size] for i in
-                            xrange(0, len(list_of_all_lines), args.batch_size)]:
-                preds = sess.run(raw_output)
-                for i, thing in enumerate(sublist):
-                    regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
-                    # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
-                    cv2.imwrite(os.path.join(args.restore_from, 'eval/pngout', regex_match.group(1).replace('volume',
-                                                                                                            'segmentation') + ".nii_" + regex_match.group(
-                        2) + ".png"), preds[i])
-                    queue_proc.put(
-                        (regex_match.group(1), int(regex_match.group(2)), preds[i], len(dict[regex_match.group(1)])))
+        sess = tf.Session()
+        sess.run(tf.group(tf.global_variables_initializer(), tf.local_variables_initializer()))
 
-            coord.request_stop()
-            coord.join(threads)
-            event_end.set()
-            proc.join()
+        # Load weights.
+        loader = tf.train.Saver(var_list=restore_var)
+        load(loader, sess, args.restore_from)
+
+        # Start queue threads.
+        threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+
+        for sublist in [list_of_all_lines[i:i + args.batch_size] for i in
+                        xrange(0, len(list_of_all_lines), args.batch_size)]:
+            preds = sess.run(raw_output)
+            for i, thing in enumerate(sublist):
+                regex_match = re.match(".*\\/(.*)\\.nii_([0-9]+).*", thing)
+                # print(regex_match.group(1) + ' ' + str(regex_match.group(2)))
+                cv2.imwrite(os.path.join(args.restore_from, 'eval/pngout', regex_match.group(1).replace('volume',
+                                                                                                        'segmentation') + ".nii_" + regex_match.group(
+                    2) + ".png"), preds[i])
+
+                key, idx, preds, num_slices = (
+                    regex_match.group(1), int(regex_match.group(2)), preds[i], len(dict[regex_match.group(1)]))
+                print(key, idx, num_slices)
+                if key not in dict_of_curr_processing:
+                    dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[1], preds.shape[0]),
+                                                            dtype=np.uint8)
+                    dict_of_curr_processing_len[key] = 0  # this is correct!
+                    dict_of_curr_processing_len_final[key] = num_slices
+
+                dict_of_curr_processing[key][idx - dict_of_crop_dims[key][4]] = preds.T
+                dict_of_curr_processing_len[key] += 1
+
+        coord.request_stop()
+        coord.join(threads)
+
+        for key in dict_of_curr_processing_len.keys():
+            if dict_of_curr_processing_len_final[key] == dict_of_curr_processing_len[key]:
+                output = dict_of_curr_processing[key]
+
+                if args.post_processing:
+                    preds_liver = np.copy(output)
+                    preds_liver[preds_liver == 2] = 1
+                    preds_liver = scipy.ndimage.morphology.binary_erosion(preds_liver.astype(np.uint8),
+                                                                          np.ones((3, 3, 3), np.uint8), iterations=5)
+
+                    preds_lesion = np.copy(output)
+                    preds_lesion[preds_lesion == 1] = 0
+                    preds_lesion[preds_lesion == 2] = 1
+                    preds_lesion = scipy.ndimage.morphology.binary_dilation(preds_lesion.astype(np.uint8),
+                                                                            np.ones((3, 3, 3), np.uint8), iterations=5)
+                    output = preds_lesion.astype(np.uint8) + preds_liver.astype(np.uint8)
+
+                fname_out = os.path.join(args.restore_from,
+                                         'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
+                print("Writing: " + fname_out)
+
+                path_to_img = os.path.join(args.no_crop_data_dir, "niiout", key + '.nii')
+                img = nib.load(path_to_img)
+
+                path_to_img_original = os.path.join(args.original_data_dir, key + '.nii')
+                img_original_sitk = sitk.ReadImage(path_to_img_original)
+
+                output = output.T
+                print(output.shape, img.shape, dict_of_crop_dims[key])
+
+                output = np.pad(output,
+                                ((dict_of_crop_dims[key][0], np.maximum(img.shape[0] - dict_of_crop_dims[key][1], 0)),
+                                 (dict_of_crop_dims[key][2], np.maximum(img.shape[1] - dict_of_crop_dims[key][3], 0)),
+                                 (dict_of_crop_dims[key][4], np.maximum(img.shape[2] - dict_of_crop_dims[key][5], 0))),
+                                'constant', constant_values=(0, 0))
+                print(output.shape, img.shape[2] - dict_of_crop_dims[key][5])
+
+                output = output.T
+                output_sitk = sitk.GetImageFromArray(output)
+                output_sitk.SetOrigin(img_original_sitk.GetOrigin())
+                output_sitk.SetDirection(img_original_sitk.GetDirection())
+                output_sitk.SetSpacing([1, 1, 2.5])
+                print(output_sitk.GetSize())
+
+                output_sitk, _, _ = rescale(output_sitk, output_spacing=img_original_sitk.GetSpacing(), bilinear=False,
+                                            input_spacing=[1, 1, 2.5], output_size=img_original_sitk.GetSize())
+
+                output = sitk.GetArrayFromImage(output_sitk).transpose()
+                print(output.shape)
+
+                nii_out = nib.Nifti1Image(output, img.affine, header=img.header)
+                nii_out.set_data_dtype(np.uint8)
+                nib.save(nii_out, fname_out)
+            else:
+                print("fail!", key, dict_of_curr_processing_len_final[key], dict_of_curr_processing_len[key])
 
 
 if __name__ == '__main__':
