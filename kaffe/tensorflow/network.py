@@ -203,10 +203,16 @@ class Network(object):
 
     @layer
     def resize_dynamic(self, inputs, size_w_multiplier, size_h_mulitplier, name):
-        input_shape = map(lambda v: v.value, inputs.get_shape())
+        input_shape = tf.shape(inputs)
         return tf.image.resize_bilinear(images=inputs, size=tf.convert_to_tensor(
             [size_w_multiplier * input_shape[1], size_h_mulitplier * input_shape[2]]), name=name)
 
+    @layer
+    def resize_dynamic_to_matching_shape_and_concat(self, inputs, axis, name):
+        input_to_match_shape = tf.shape(inputs[1])
+        resized_input = tf.image.resize_bilinear(images=inputs[0], size=tf.convert_to_tensor(
+            [input_to_match_shape[1], input_to_match_shape[2]]), name=name)
+        return tf.concat([resized_input, inputs[1]], axis=axis)
 
     @layer
     def max_pool(self, input, k_h, k_w, s_h, s_w, name, padding='VALID'):

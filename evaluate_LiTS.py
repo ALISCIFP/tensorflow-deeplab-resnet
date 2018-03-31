@@ -229,10 +229,7 @@ def main():
                     shuffle=False)
                 image = tf.cast(reader.image, tf.float32)
 
-            image_raw = tf.expand_dims(image, dim=0)
-            image_raw_shape = tf.shape(image_raw)
-
-            image_batch = tf.image.resize_bilinear(image_raw, [320, 320])  # Add one batch dimension.
+            image_batch = tf.expand_dims(image, dim=0)
 
             # Create network.
             net = DeepLabResNetModel({'data': image_batch}, is_training=False, num_classes=args.num_classes)
@@ -242,7 +239,6 @@ def main():
 
             # Predictions.
             raw_output = net.layers['conv24']
-            raw_output = tf.image.resize_bilinear(raw_output, image_raw_shape[1:3])
             raw_output = tf.argmax(raw_output, axis=3)
 
             sess = tf.Session()

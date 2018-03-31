@@ -130,12 +130,11 @@ class DeepLabResNetModel(Network):
 
         (self.feed('conv13_bn',
                    'conv10_pool')
-         .add(name='conv13_sum')
-         .resize_dynamic(2, 2, name='conv13_unpool'))
+         .add(name='conv13_sum'))
 
-        (self.feed('conv13_unpool',
+        (self.feed('conv13_sum',
                    'conv10_sum')
-         .concat(name='conv13_concat', axis=-1))
+         .resize_dynamic_to_matching_shape_and_concat(axis=-1, name='conv13_concat'))
 
         # 40x40x512
         (self.feed('conv13_concat')
@@ -163,12 +162,11 @@ class DeepLabResNetModel(Network):
 
         (self.feed('conv16_bn',
                    'conv13_to_14_bn')
-         .add(name='conv16_sum')
-         .resize_dynamic(2, 2, name='conv16_unpool'))
+         .add(name='conv16_sum'))
 
-        (self.feed('conv16_unpool',
+        (self.feed('conv16_sum',
                    'conv7_sum')
-         .concat(name='conv16_concat', axis=-1))
+         .resize_dynamic_to_matching_shape_and_concat(name='conv16_concat', axis=-1))
 
         # 80x80x256
         (self.feed('conv16_concat')
@@ -196,12 +194,11 @@ class DeepLabResNetModel(Network):
 
         (self.feed('conv19_bn',
                    'conv17_to_18_bn')
-         .add(name='conv19_sum')
-         .resize_dynamic(2, 2, name='conv19_unpool'))
+         .add(name='conv19_sum'))
 
-        (self.feed('conv19_unpool',
+        (self.feed('conv19_sum',
                    'conv4_sum')
-         .concat(name='conv19_concat', axis=-1))
+         .resize_dynamic_to_matching_shape_and_concat(name='conv19_concat', axis=-1))
 
         # 160x160x128
         (self.feed('conv19_concat')
@@ -223,12 +220,11 @@ class DeepLabResNetModel(Network):
 
         (self.feed('conv21_bn',
                    'conv19_to_20_bn')
-         .add(name='conv21_sum')
-         .resize_dynamic(2, 2, name='conv21_unpool'))
+         .add(name='conv21_sum'))
 
-        (self.feed('conv21_unpool',
+        (self.feed('conv21_sum',
                    'conv2_bn')
-         .concat(name='conv21_concat', axis=-1))
+         .resize_dynamic_to_matching_shape_and_concat(name='conv21_concat', axis=-1))
 
         # 320x320x64
         (self.feed('conv21_concat')
