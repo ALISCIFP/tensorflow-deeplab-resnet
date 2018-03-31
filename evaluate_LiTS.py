@@ -73,13 +73,15 @@ def get_arguments():
       A list of parsed arguments.
     """
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
-    parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
+    parser.add_argument("--crop-data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--threed-data-dir", type=str, default=DATA_DIRECTORY,
+    parser.add_argument("--original-data-dir", type=str, default=DATA_DIRECTORY,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--no-crop-data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
                         help="Comma-separated string for GPU mask.")
-    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
+    parser.add_argument("--crop-data-list", type=str, default=DATA_LIST_PATH,
                         help="Path to the file listing the images in the dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -109,11 +111,11 @@ def load(saver, sess, ckpt_path):
     print("Restored model parameters from {}".format(ckpt_path))
 
 
-def saving_process(queue, event, threed_data_dir, post_processing, restore_from, data_dir):
+def saving_process(queue, event, no_crop_data_dir, post_processing, restore_from, crop_data_dir, original_data_dir):
     dict_of_curr_processing = {}
     dict_of_curr_processing_len = {}
 
-    with open(os.path.join(data_dir, "dataset", "crop_dims.txt"), 'r') as f:
+    with open(os.path.join(crop_data_dir, "dataset", "crop_dims.txt"), 'r') as f:
         dict_of_crop_dims = {}
         for line in f:
             line = line.rstrip().split(" ")
@@ -151,29 +153,32 @@ def saving_process(queue, event, threed_data_dir, post_processing, restore_from,
 
             fname_out = os.path.join(restore_from, 'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
             print("Writing: " + fname_out)
-            path_to_img = os.path.join(threed_data_dir, "niiout", key + '.nii')
 
+            path_to_img = os.path.join(no_crop_data_dir, "niiout", key + '.nii')
             img = nib.load(path_to_img)
-            img_sitk = sitk.ReadImage(path_to_img)
+
+            path_to_img_original = os.path.join(original_data_dir, key + '.nii')
+            img_original_sitk = sitk.ReadImage(path_to_img_original)
+
             output = output.T
-            print(output.shape, img_sitk.GetSize(), img.shape, dict_of_crop_dims[key])
+            print(output.shape, img.shape, dict_of_crop_dims[key])
 
             output = np.pad(output,
-                            ((dict_of_crop_dims[key][0], img.shape[0] - dict_of_crop_dims[key][1]),
-                             (dict_of_crop_dims[key][2], img.shape[1] - dict_of_crop_dims[key][3]),
-                             (dict_of_crop_dims[key][4], np.maximum(img.shape[2] - dict_of_crop_dims[key][5], 0) + 1)),
+                            ((dict_of_crop_dims[key][0], np.maximum(img.shape[0] - dict_of_crop_dims[key][1], 0)),
+                             (dict_of_crop_dims[key][2], np.maximum(img.shape[1] - dict_of_crop_dims[key][3], 0)),
+                             (dict_of_crop_dims[key][4], np.maximum(img.shape[2] - dict_of_crop_dims[key][5], 0))),
                             'constant', constant_values=(0, 0))
             print(output.shape, img.shape[2] - dict_of_crop_dims[key][5])
 
             output = output.T
             output_sitk = sitk.GetImageFromArray(output)
-            output_sitk.SetOrigin(img_sitk.GetOrigin())
-            output_sitk.SetDirection(img_sitk.GetDirection())
+            output_sitk.SetOrigin(img_original_sitk.GetOrigin())
+            output_sitk.SetDirection(img_original_sitk.GetDirection())
             output_sitk.SetSpacing([1, 1, 2.5])
             print(output_sitk.GetSize())
 
-            output_sitk, _, _ = rescale(output_sitk, output_spacing=img_sitk.GetSpacing(), bilinear=False,
-                                        input_spacing=[1, 1, 2.5])
+            output_sitk, _, _ = rescale(output_sitk, output_spacing=img_original_sitk.GetSpacing(), bilinear=False,
+                                        input_spacing=[1, 1, 2.5], output_size=img_original_sitk.GetSize())
 
             output = sitk.GetArrayFromImage(output_sitk).transpose()
             print(output.shape)
@@ -200,7 +205,7 @@ def main():
 
     event_end = Event()
     queue_proc = Queue()
-    with open(args.data_list, 'r') as f:
+    with open(args.crop_data_list, 'r') as f:
         list_of_all_lines = f.readlines()
         f.seek(0)
 
@@ -218,8 +223,8 @@ def main():
             # Load reader.
             with tf.name_scope("create_inputs"):
                 reader = ImageReader(
-                    args.data_dir,
-                    args.data_list,
+                    args.crop_data_dir,
+                    args.crop_data_list,
                     None,  # No defined input size.
                     False,  # No random scale.
                     False,  # No random mirror.
@@ -250,8 +255,8 @@ def main():
 
             # Start queue threads.
             proc = Process(target=saving_process, args=(queue_proc, event_end,
-                                                        args.threed_data_dir, args.post_processing, args.restore_from,
-                                                        args.data_dir))
+                                                        args.no_crop_data_dir, args.post_processing, args.restore_from,
+                                                        args.crop_data_dir, args.original_data_dir))
             proc.start()
             threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
