@@ -182,7 +182,11 @@ def main():
     if not os.path.exists(os.path.join(args.out_dir, "niiout")):
         os.mkdir(os.path.join(args.out_dir, "niiout"))
 
-    p = multiprocessing.Pool(4)
+    if args.rescale_to_han:
+        p = multiprocessing.Pool(4)
+    else:
+        p = multiprocessing.Pool(8)
+
     retval = p.map(ndarry2jpg_png,
                    zip(vols, segs, itertools.repeat(args.out_dir, len(vols)),
                        itertools.repeat(args.rescale_to_han, len(vols)),
