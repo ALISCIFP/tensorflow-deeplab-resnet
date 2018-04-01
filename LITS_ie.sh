@@ -1,9 +1,9 @@
-python evaluate_LiTS.py  \
---data-dir /home/zack/Data/paperLITS \
---data-list /home/zack/Data/paperLITS/dataset/val.txt  \
---restore-from '/home/zack/GitHub/tensorflow-resnet-segmentation/snapshots/HanResNet5Slices_320_R960k/model.ckpt-1720000' \
---threed-data-dir /home/zack/Data/LITS \
---batch_size 1 \
+python evaluate_LiTS.py \
+--crop-data-dir /home/zack/Data/LITSGroundTruthCropPaperResolution \
+--no-crop-data-dir /home/zack/Data/LITSNoCropPaperResolution \
+--original-data-dir /home/zack/Data/LITS \
+--crop-data-list /home/zack/Data/LITSGroundTruthCropPaperResolution/dataset/val.txt \
+--restore-from /home/zack/GitHub/tensorflow-resnet-segmentation/snapshots/HanResNet5Slices_ReLu_320_R1920k \
 --gpu-mask '1'  
 
 
