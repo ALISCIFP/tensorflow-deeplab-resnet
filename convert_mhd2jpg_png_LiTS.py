@@ -116,7 +116,47 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
         else:
             ftrain.append(out_string)
 
-    return ftrain, fval, ftrain_3D, fval_3D
+    return ftrain, fval, ftrain_3D, fval_3D, fcrop_dims
+
+
+def ndarry2jpg_png_test((data_file, out_dir, rescale_to_han)):
+    ftest = []
+    ftest_3D = []
+
+    img = sitk.ReadImage(data_file)
+
+    if rescale_to_han:
+        img, _, _ = rescale(img, output_spacing=[1, 1, 2.5], bilinear=True)
+
+    img = sitk.GetArrayFromImage(img).transpose()
+
+    _, fn = os.path.split(data_file)
+
+    img = np.clip(img, -200, 200)
+    img = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
+
+    print data_file
+
+    img_nii_orig = nib.load(data_file)
+    img_nii_out = nib.Nifti1Image(
+        img[:, :, 1:img.shape[2] - 1], img_nii_orig.affine,
+        header=img_nii_orig.header)
+    img_nii_out.set_data_dtype(np.uint8)
+    nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
+
+    print(img_nii_out.shape)
+
+    out_string_nii = "/niiout/" + fn + "\n"
+
+    ftest_3D.append(out_string_nii)
+
+    for i in xrange(1, img.shape[2] - 1):  # because of padding!
+        img3c = img[:, :, (i - 1):(i + 2)]
+        scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
+        out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\n"
+        ftest.append(out_string)
+
+    return ftest, ftest_3D
 
 
 def main():
@@ -131,6 +171,8 @@ def main():
 
     vols = sorted(glob.glob(os.path.join(args.data_dir, 'volume*.nii')))
     segs = sorted(glob.glob(os.path.join(args.data_dir, 'segmentation*.nii')))
+
+    vols_test = sorted(glob.glob(os.path.join(args.data_dir, 'test-volume*.nii')))
 
     assert len(vols) == len(segs)
 
@@ -150,6 +192,9 @@ def main():
     retval = p.map(ndarry2jpg_png,
                    zip(vols, segs, itertools.repeat(args.out_dir, len(vols)),
                        itertools.repeat(args.rescale_to_han, len(vols))))
+    retval_test = p.map(ndarry2jpg_png_test,
+                        zip(vols_test, itertools.repeat(args.out_dir, len(vols_test)),
+                            itertools.repeat(args.rescale_to_han, len(vols_test))))
     p.close()
 
     # retval = map(ndarry2jpg_png,
@@ -161,6 +206,10 @@ def main():
     list_val = list(itertools.chain.from_iterable([sublist[1] for sublist in retval]))
     list_train_3D = list(itertools.chain.from_iterable([sublist[2] for sublist in retval]))
     list_val_3D = list(itertools.chain.from_iterable([sublist[3] for sublist in retval]))
+    list_crop_dims = list(itertools.chain.from_iterable([sublist[4] for sublist in retval]))
+
+    list_test = list(itertools.chain.from_iterable([sublist[0] for sublist in retval_test]))
+    list_test_3D = list(itertools.chain.from_iterable([sublist[1] for sublist in retval_test]))
 
     with open(os.path.join(args.out_dir, "dataset/train.txt"), 'w') as ftrain:
         ftrain.writelines(list_train)
@@ -168,8 +217,14 @@ def main():
         fval.writelines(list_val)
     with open(os.path.join(args.out_dir, "dataset/train3D.txt"), 'w') as ftrain_3D:
         ftrain_3D.writelines(list_train_3D)
+    with open(os.path.join(args.out_dir, "dataset/crop_dims.txt"), 'w') as fcropdims:
+        fcropdims.writelines(list_crop_dims)
     with open(os.path.join(args.out_dir, "dataset/val3D.txt"), 'w') as fval_3D:
         fval_3D.writelines(list_val_3D)
+    with open(os.path.join(args.out_dir, "dataset/test.txt"), 'w') as ftest:
+        ftest.writelines(list_test)
+    with open(os.path.join(args.out_dir, "dataset/test3D.txt"), 'w') as ftest_3D:
+        ftest_3D.writelines(list_test_3D)
 
     print "done."
 

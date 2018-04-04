@@ -138,17 +138,6 @@ def main():
 
             dict[re.match(".*\\/(.*)\\.nii.*", line).group(1)].append(line.rsplit()[0])
 
-    with open(os.path.join(args.crop_data_dir, "dataset", "crop_dims.txt"), 'r') as f:
-        dict_of_crop_dims = {}
-        for line in f:
-            line = line.rstrip().split(" ")
-
-            for i in range(len(line[1:])):
-                line[i + 1] = int(line[i + 1])
-
-            dict_of_crop_dims[line[0].split(".")[0].replace("volume", "segmentation")] = np.array(line[1:],
-                                                                                                  dtype=np.int)
-
     with tf.Graph().as_default():
         # Create queue coordinator.
         coord = tf.train.Coordinator()
@@ -208,7 +197,7 @@ def main():
                     dict_of_curr_processing_len[key] = 0  # this is correct!
                     dict_of_curr_processing_len_final[key] = num_slices
 
-                dict_of_curr_processing[key][idx - dict_of_crop_dims[key][4]] = preds.T
+                dict_of_curr_processing[key][idx] = preds.T
                 dict_of_curr_processing_len[key] += 1
 
         coord.request_stop()
@@ -240,16 +229,6 @@ def main():
 
                 path_to_img_original = os.path.join(args.original_data_dir, key + '.nii')
                 img_original_sitk = sitk.ReadImage(path_to_img_original)
-
-                output = output.T
-                print(output.shape, img.shape, dict_of_crop_dims[key])
-
-                output = np.pad(output,
-                                ((dict_of_crop_dims[key][0], np.maximum(img.shape[0] - dict_of_crop_dims[key][1], 0)),
-                                 (dict_of_crop_dims[key][2], np.maximum(img.shape[1] - dict_of_crop_dims[key][3], 0)),
-                                 (dict_of_crop_dims[key][4], np.maximum(img.shape[2] - dict_of_crop_dims[key][5], 0))),
-                                'constant', constant_values=(0, 0))
-                print(output.shape, img.shape[2] - dict_of_crop_dims[key][5])
 
                 output = output.T
                 output_sitk = sitk.GetImageFromArray(output)
