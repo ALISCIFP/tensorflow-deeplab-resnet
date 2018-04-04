@@ -159,11 +159,17 @@ def main():
 
     list_train = list(itertools.chain.from_iterable([sublist[0] for sublist in retval]))
     list_val = list(itertools.chain.from_iterable([sublist[1] for sublist in retval]))
+    list_train_3D = list(itertools.chain.from_iterable([sublist[2] for sublist in retval]))
+    list_val_3D = list(itertools.chain.from_iterable([sublist[3] for sublist in retval]))
 
     with open(os.path.join(args.out_dir, "dataset/train.txt"), 'w') as ftrain:
         ftrain.writelines(list_train)
     with open(os.path.join(args.out_dir, "dataset/val.txt"), 'w') as fval:
         fval.writelines(list_val)
+    with open(os.path.join(args.out_dir, "dataset/train3D.txt"), 'w') as ftrain_3D:
+        ftrain_3D.writelines(list_train_3D)
+    with open(os.path.join(args.out_dir, "dataset/val3D.txt"), 'w') as fval_3D:
+        fval_3D.writelines(list_val_3D)
 
     print "done."
 
