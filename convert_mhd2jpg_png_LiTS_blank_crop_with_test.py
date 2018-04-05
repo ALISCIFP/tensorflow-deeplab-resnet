@@ -58,6 +58,8 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
     ftrain_3D = []
     fval_3D = []
     fcrop_dims = []
+    fmean = []
+    fmean_3D = []
 
     img = sitk.ReadImage(data_file)
     img_gt = sitk.ReadImage(img_gt_file)
@@ -122,6 +124,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
         fval_3D.append(out_string_nii)
     else:
         ftrain_3D.append(out_string_nii)
+        fmean_3D.append(np.mean(img_nii_out.get_data()))
 
     fcrop_dims.append(
         fn + " " + str(np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0])) + " " + str(
@@ -150,8 +153,10 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
             fval.append(out_string)
         else:
             ftrain.append(out_string)
+            fmean.append(
+                np.mean(scipy.misc.imread(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"))))
 
-    return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D
+    return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D, fmean, fmean_3D
 
 
 def ndarry2jpg_png_test((data_file, img_gt_file, out_dir, rescale_to_han, px_to_extend_boundary)):
@@ -304,6 +309,11 @@ def main():
     list_crop_dims_train = list(itertools.chain.from_iterable([sublist[2] for sublist in retval]))
     list_train_3D = list(itertools.chain.from_iterable([sublist[3] for sublist in retval]))
     list_val_3D = list(itertools.chain.from_iterable([sublist[4] for sublist in retval]))
+    list_mean = list(itertools.chain.from_iterable([sublist[5] for sublist in retval]))
+    list_mean_3D = list(itertools.chain.from_iterable([sublist[6] for sublist in retval]))
+
+    list_mean = np.mean(list_mean)
+    list_mean_3D = np.mean(list_mean_3D)
 
     list_test = list(itertools.chain.from_iterable([sublist[0] for sublist in retval_test]))
     list_test_3D = list(itertools.chain.from_iterable([sublist[1] for sublist in retval_test]))
@@ -319,6 +329,10 @@ def main():
         ftrain_3D.writelines(list_train_3D)
     with open(os.path.join(args.out_dir, "dataset/val3D.txt"), 'w') as fval_3D:
         fval_3D.writelines(list_val_3D)
+    with open(os.path.join(args.out_dir, "dataset/mean.txt"), 'w') as fmean:
+        fmean.writelines(list_mean)
+    with open(os.path.join(args.out_dir, "dataset/mean3D.txt"), 'w') as fmean_3D:
+        fmean_3D.writelines(list_mean_3D)
     with open(os.path.join(args.out_dir, "dataset/test.txt"), 'w') as ftest:
         ftest.writelines(list_test)
     with open(os.path.join(args.out_dir, "dataset/test3D.txt"), 'w') as ftest_3D:

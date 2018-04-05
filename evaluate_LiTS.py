@@ -72,15 +72,13 @@ def get_arguments():
       A list of parsed arguments.
     """
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
-    parser.add_argument("--crop-data-dir", type=str, default=DATA_DIRECTORY,
+    parser.add_argument("--data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--original-data-dir", type=str, default=DATA_DIRECTORY,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--no-crop-data-dir", type=str, default=DATA_DIRECTORY,
+    parser.add_argument("--threed-data-dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--gpu-mask", type=str, default=GPU_MASK,
                         help="Comma-separated string for GPU mask.")
-    parser.add_argument("--crop-data-list", type=str, default=DATA_LIST_PATH,
+    parser.add_argument("--data-list", type=str, default=DATA_LIST_PATH,
                         help="Path to the file listing the images in the dataset.")
     parser.add_argument("--ignore-label", type=int, default=IGNORE_LABEL,
                         help="The index of the label to ignore during the training.")
@@ -127,7 +125,7 @@ def main():
     dict_of_curr_processing_len = {}
     dict_of_curr_processing_len_final = {}
 
-    with open(args.crop_data_list, 'r') as f:
+    with open(args.data_list, 'r') as f:
         list_of_all_lines = f.readlines()
         f.seek(0)
 
@@ -145,8 +143,8 @@ def main():
         # Load reader.
         with tf.name_scope("create_inputs"):
             reader = ImageReader(
-                args.crop_data_dir,
-                args.crop_data_list,
+                args.data_dir,
+                args.data_list,
                 None,  # No defined input size.
                 False,  # No random scale.
                 False,  # No random mirror.
@@ -224,10 +222,10 @@ def main():
                                          'eval/niiout/' + key.replace('volume', 'segmentation') + '.nii')
                 print("Writing: " + fname_out)
 
-                path_to_img = os.path.join(args.no_crop_data_dir, "niiout", key + '.nii')
+                path_to_img = os.path.join(args.threed_data_dir, key + '.nii')
                 img = nib.load(path_to_img)
 
-                path_to_img_original = os.path.join(args.original_data_dir, key + '.nii')
+                path_to_img_original = os.path.join(args.threed_data_dir, key + '.nii')
                 img_original_sitk = sitk.ReadImage(path_to_img_original)
 
                 output = output.T
