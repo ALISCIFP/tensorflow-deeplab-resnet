@@ -50,7 +50,7 @@ def rescale(input_image, output_spacing, bilinear=False, input_spacing=None, out
     return resampler.Execute(input_image), input_spacing, size
 
 
-def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
+def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_extend_boundary)):
     ftrain = []
     fval = []
     ftrain_3D = []
@@ -76,52 +76,129 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han)):
     img = np.clip(img, -200, 200)
     img = np.pad(img, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=(0, 0))
 
-    print data_file, img_gt_file
+    img_gt_merged = np.copy(img_gt)
+    img_gt_merged[img_gt_merged != 0] = 1
+    bbox_list = scipy.ndimage.measurements.find_objects(img_gt_merged)
 
-    img_nii_orig = nib.load(data_file)
-    img_nii_out = nib.Nifti1Image(
-        img[:, :, 1:img.shape[2] - 1], img_nii_orig.affine,
-        header=img_nii_orig.header)
-    img_nii_out.set_data_dtype(np.uint8)
-    nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
+    if len(bbox_list) != 1:
+        print 'Error:', data_file, img_gt_file, len(bbox_list)
 
-    img_gt_nii_orig = nib.load(img_gt_file)
-    img_gt_nii_out = nib.Nifti1Image(
-        img_gt, img_gt_nii_orig.affine,
-        header=img_gt_nii_orig.header)
-    img_gt_nii_out.set_data_dtype(np.uint8)
-    nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
+        img_nii_orig = nib.load(data_file)
+        img_nii_out = nib.Nifti1Image(
+            img[:, :, 1:img.shape[2] - 1], img_nii_orig.affine,
+            header=img_nii_orig.header)
+        img_nii_out.set_data_dtype(np.uint8)
+        nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
 
-    print(img_nii_out.shape, img_gt_nii_out.shape)
+        img_gt_nii_orig = nib.load(img_gt_file)
+        img_gt_nii_out = nib.Nifti1Image(
+            img_gt, img_gt_nii_orig.affine,
+            header=img_gt_nii_orig.header)
+        img_gt_nii_out.set_data_dtype(np.uint8)
+        nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
 
-    out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
+        print(img_nii_out.shape, img_gt_nii_out.shape)
 
-    if '99' in data_file:
-        fval_3D.append(out_string_nii)
-    else:
-        ftrain_3D.append(out_string_nii)
-        fmean_3D.append(np.mean(img_nii_out.get_data()))
-
-    fcrop_dims.append(
-        fn + " " + str(0) + " " + str(img_gt.shape[0]) + " " +
-        str(0) + " " + str(img_gt.shape[1]) + " " +
-        str(0) + " " + str(img_gt.shape[2]) + "\n")
-
-    for i in xrange(1, img.shape[2] - 1):  # because of padding!
-        img3c = img[:, :, (i - 1):(i + 2)]
-        scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
-        cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
-        out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(
-            i - 1) + ".png\n"
+        out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
 
         if '99' in data_file:
-            fval.append(out_string)
+            fval_3D.append(out_string_nii)
         else:
-            ftrain.append(out_string)
-            fmean.append(
-                np.mean(scipy.misc.imread(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"))))
+            ftrain_3D.append(out_string_nii)
+            fmean_3D.append(np.mean(img_nii_out.get_data()))
 
-    return ftrain, fval, ftrain_3D, fval_3D, fcrop_dims, fmean, fmean_3D
+        fcrop_dims.append(
+            fn + " " + str(0) + " " + str(img_gt.shape[0]) + " " +
+            str(0) + " " + str(img_gt.shape[1]) + " " +
+            str(0) + " " + str(img_gt.shape[2]) + "\n")
+
+        for i in xrange(1, img.shape[2] - 1):  # because of padding!
+            img3c = img[:, :, (i - 1):(i + 2)]
+            scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
+            cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
+            out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(
+                i - 1) + ".png\n"
+
+            if '99' in data_file:
+                fval.append(out_string)
+            else:
+                ftrain.append(out_string)
+                fmean.append(
+                    np.mean(scipy.misc.imread(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"))))
+
+        return ftrain, fval, ftrain_3D, fval_3D, fcrop_dims, fmean, fmean_3D
+    else:
+        bounding_box = bbox_list[0]
+
+        print data_file, img_gt_file, bounding_box
+
+        img_nii_orig = nib.load(data_file)
+        img_nii_out = nib.Nifti1Image(
+            img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0]):np.clip(
+                (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0]),
+            np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1]):np.clip(
+                (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1]),
+            np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1):np.clip(
+                (bounding_box[2].stop + px_to_extend_boundary), 1,
+                img.shape[2] - 1)], img_nii_orig.affine,
+            header=img_nii_orig.header)
+        img_nii_out.set_data_dtype(np.uint8)
+        nib.save(img_nii_out, os.path.join(out_dir, "niiout", fn))
+
+        img_gt_nii_orig = nib.load(img_gt_file)
+        img_gt_nii_out = nib.Nifti1Image(
+            img_gt[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0]):np.clip(
+                (bounding_box[0].stop + px_to_extend_boundary), 0, img_gt.shape[0]),
+            np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_gt.shape[1]):np.clip(
+                (bounding_box[1].stop + px_to_extend_boundary), 0, img_gt.shape[1]),
+            np.clip((bounding_box[2].start - px_to_extend_boundary - 1), 0, img_gt.shape[2]):np.clip(
+                (bounding_box[2].stop + px_to_extend_boundary - 1), 0,
+                img_gt.shape[2])], img_gt_nii_orig.affine,
+            header=img_gt_nii_orig.header)
+        img_gt_nii_out.set_data_dtype(np.uint8)
+        nib.save(img_gt_nii_out, os.path.join(out_dir, "niiout", fn_gt))
+
+        print(img.shape, img_gt.shape, img_nii_out.shape, img_gt_nii_out.shape)
+
+        out_string_nii = "/niiout/" + fn + "\t" + "/niiout/" + fn_gt + "\n"
+
+        if '99' in data_file:
+            fval_3D.append(out_string_nii)
+        else:
+            ftrain_3D.append(out_string_nii)
+            fmean_3D.append(np.mean(img_nii_out.get_data()))
+
+        fcrop_dims.append(
+            fn + " " + str(np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img_gt.shape[0])) + " " + str(
+                np.clip(
+                    (bounding_box[0].stop + px_to_extend_boundary), 0, img_gt.shape[0])) + " " +
+            str(np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img_gt.shape[1])) + " " + str(np.clip(
+                (bounding_box[1].stop + px_to_extend_boundary), 0, img_gt.shape[1])) + " " +
+            str(np.clip((bounding_box[2].start - px_to_extend_boundary), 0, img_gt.shape[2])) + " " + str(
+                np.clip((bounding_box[2].stop + px_to_extend_boundary), 0,
+                        img_gt.shape[2])) + "\n")
+
+        for i in xrange(np.clip((bounding_box[2].start - px_to_extend_boundary), 1, img.shape[2] - 1),
+                        np.clip((bounding_box[2].stop + px_to_extend_boundary), 1,
+                                img.shape[2] - 1)):  # because of padding!
+            img3c = img[np.clip((bounding_box[0].start - px_to_extend_boundary), 0, img.shape[0]):np.clip(
+                (bounding_box[0].stop + px_to_extend_boundary), 0, img.shape[0]),
+                    np.clip((bounding_box[1].start - px_to_extend_boundary), 0, img.shape[1]):np.clip(
+                        (bounding_box[1].stop + px_to_extend_boundary), 0, img.shape[1]),
+                    (i - 1):(i + 2)]
+            scipy.misc.imsave(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"), img3c)
+            cv2.imwrite(os.path.join(out_dir, "PNGImages", fn_gt + "_" + str(i - 1) + ".png"), img_gt[:, :, i - 1])
+            out_string = "/JPEGImages/" + fn + "_" + str(i - 1) + ".jpg\t" + "/PNGImages/" + fn_gt + "_" + str(
+                i - 1) + ".png\n"
+
+            if '99' in data_file:
+                fval.append(out_string)
+            else:
+                ftrain.append(out_string)
+                fmean.append(
+                    np.mean(scipy.misc.imread(os.path.join(out_dir, "JPEGImages", fn + "_" + str(i - 1) + ".jpg"))))
+
+        return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D, fmean, fmean_3D
 
 
 def ndarry2jpg_png_test((data_file, out_dir, rescale_to_han)):
