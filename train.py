@@ -180,15 +180,6 @@ def main():
         tf.summary.scalar("Learning Rate", learning_rate, collections=['all'])
         opt = tf.train.MomentumOptimizer(learning_rate, args.momentum)
 
-        counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
-                                       name='counter_no_reset')
-        counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32, name='counter')
-
-        counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
-                                           name='counter_no_reset_val')
-        counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
-                                  name='counter_val')
-
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
             image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
@@ -394,7 +385,7 @@ def main():
 
                 duration = time.time() - start_time
                 print(
-                    'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f}, ({:.3f} sec/step)'.format(
+                    'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f} ({:.3f} sec/step)'.format(
                         step, loss_value, acc, duration))
             else:
                 feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
@@ -407,7 +398,7 @@ def main():
 
                 duration = time.time() - start_time
                 print(
-                    'step {:d} \t loss = {:.3f}, acc = {:.3f}, ({:.3f} sec/step)'.format(
+                    'step {:d} \t loss = {:.3f}, acc = {:.3f} ({:.3f} sec/step)'.format(
                         step, loss_value, acc, duration))
 
         coord.request_stop()
