@@ -84,7 +84,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
 
     if len(bbox_list) != 1:
         print 'Error:', data_file, img_gt_file, len(bbox_list)
-        return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D
+        return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D, fmean, fmean_3D
 
     bounding_box = bbox_list[0]
 
