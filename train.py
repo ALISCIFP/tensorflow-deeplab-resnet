@@ -39,44 +39,6 @@ SNAPSHOT_DIR = None
 WEIGHT_DECAY = 0.0005
 
 
-def intersectionAndUnion(imPred, imLab, numClass):
-    imPred = np.asarray(imPred)
-    imLab = np.asarray(imLab)
-
-    # Remove classes from unlabeled pixels in gt image.
-    # We should not penalize detections in unlabeled portions of the image.
-    # imPred = imPred * (imLab > 0)
-
-    # Compute area intersection:
-    intersection = np.copy(imPred)
-    intersection[imPred != imLab] = -1
-
-    (area_intersection, _) = np.histogram(intersection, range=(0, numClass), bins=numClass)
-
-    # Compute area union:
-    (area_pred, _) = np.histogram(imPred, range=(0, numClass), bins=numClass)
-    (area_lab, _) = np.histogram(imLab, range=(0, numClass), bins=numClass)
-    area_union = area_pred + area_lab - area_intersection
-
-    return [area_intersection, area_union]
-
-
-def update_IoU(preds, labels, counter, counter_no_reset, numClass, batch_size, step, save_every):
-    if step % save_every == 0:
-        counter[:] = 0
-
-    for i in xrange(batch_size):
-        area_intersection, area_union = intersectionAndUnion(preds[i], labels[i], numClass)
-
-        counter[0] = area_intersection
-        counter[1] = area_union
-
-        counter_no_reset[0] += area_intersection
-        counter_no_reset[1] += area_union
-
-    return counter, counter_no_reset
-
-
 def get_arguments():
     """Parse all the arguments provided from the CLI.
 
@@ -218,15 +180,6 @@ def main():
         tf.summary.scalar("Learning Rate", learning_rate, collections=['all'])
         opt = tf.train.MomentumOptimizer(learning_rate, args.momentum)
 
-        counter_no_reset = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
-                                       name='counter_no_reset')
-        counter = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32, name='counter')
-
-        counter_no_reset_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
-                                           name='counter_no_reset_val')
-        counter_val = tf.Variable(tf.zeros([2, args.num_classes]), trainable=False, dtype=tf.float32,
-                                  name='counter_val')
-
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
             image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
@@ -352,54 +305,14 @@ def main():
         tf.summary.scalar("Loss", loss_output, collections=['all'])
         tf.summary.scalar("Accuracy", accuracy_output, collections=['all'])
 
-        counter, counter_no_reset = tf.cond(mode, lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
-                                                                                  label_batch,
-                                                                                  counter,
-                                                                                  counter_no_reset, args.num_classes,
-                                                                                  args.batch_size, step_ph,
-                                                                                  args.save_pred_every],
-                                                                     [tf.float32, tf.float32]),
-                                            lambda: [counter, counter_no_reset])
-        counter_val, counter_no_reset_val = tf.cond(mode,
-                                                    lambda: [counter_val, counter_no_reset_val],
-                                                    lambda: tf.py_func(update_IoU, [tf.squeeze(pred, axis=-1),
-                                                                                    label_batch,
-                                                                                    counter_val, counter_no_reset_val,
-                                                                                    args.num_classes, args.batch_size,
-                                                                                    step_ph, args.save_pred_every],
-                                                                       [tf.float32, tf.float32]))
-
-        eps = tf.constant(1e-10, dtype=tf.float32)
-        IoU_summary = counter[0] / tf.add(eps, counter[1])
-        IoU_summary_no_reset = counter_no_reset[0] / tf.add(eps, counter_no_reset[1])
-        Val_IoU_summary = counter_val[0] / tf.add(eps, counter_val[1])
-        Val_IoU_summary_no_reset = counter_no_reset_val[0] / tf.add(eps, counter_no_reset_val[1])
-
-        mIoU = tf.reduce_mean(IoU_summary)
-        mIoU_no_reset = tf.reduce_mean(IoU_summary_no_reset)
-        Val_mIoU = tf.reduce_mean(Val_IoU_summary)
-        Val_mIoU_no_reset = tf.reduce_mean(Val_IoU_summary_no_reset)
-
-        IoU_summary_output_intermed = tf.cond(mode, lambda: IoU_summary, lambda: Val_IoU_summary)
-        IoU_summary_no_reset_output_intermed = tf.cond(mode, lambda: IoU_summary_no_reset,
-                                                       lambda: Val_IoU_summary_no_reset)
         accuracy_per_class_output_intermed = tf.cond(mode, lambda: accuracy_per_class_train,
                                                      lambda: accuracy_per_class_val)
 
         class_number = tf.placeholder(tf.int32, shape=())
 
-        IoU_summary_output = tf.gather(IoU_summary_output_intermed, class_number)
-        IoU_summary_no_reset_output = tf.gather(IoU_summary_no_reset_output_intermed, class_number)
         accuracy_per_class_output = tf.gather(accuracy_per_class_output_intermed, class_number)
 
-        tf.summary.scalar("IoU per class", IoU_summary_output, collections=['per_class'])
-        tf.summary.scalar("IoU (no reset) per class", IoU_summary_no_reset_output, collections=['per_class'])
         tf.summary.scalar("Accuracy per class", accuracy_per_class_output, collections=['per_class'])
-
-        mIoU_output = tf.cond(mode, lambda: mIoU, lambda: Val_mIoU)
-        mIoU_no_reset_output = tf.cond(mode, lambda: mIoU_no_reset, lambda: Val_mIoU_no_reset)
-        tf.summary.scalar("mIoU", mIoU_output, collections=['all'])
-        tf.summary.scalar("mIoU no reset", mIoU_no_reset_output, collections=['all'])
 
         images_summary = tf.py_func(inv_preprocess, [image_batch[:, :, :, 5:8],
                                                      args.save_num_images, IMG_MEAN],
@@ -463,9 +376,8 @@ def main():
 
             if step % args.val_interval == 0:
                 feed_dict = {step_ph: step, mode: False, class_number: step % args.num_classes}
-                acc, loss_value, mI, mINR, _, _, _, summary_v_this_class, summary_v = sess.run(
-                    [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                     IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary],
+                acc, loss_value, _, summary_v_this_class, summary_v = sess.run(
+                    [accuracy_output, loss_output, accuracy_per_class_output, per_class_summary, all_summary],
                     feed_dict=feed_dict)
 
                 summary_writer_val.add_summary(summary_v, step)
@@ -473,13 +385,12 @@ def main():
 
                 duration = time.time() - start_time
                 print(
-                    'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f}, Val_mIoU = {:.6f}, Val_mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
-                        step, loss_value, acc, mI, mINR, duration))
+                    'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f} ({:.3f} sec/step)'.format(
+                        step, loss_value, acc, duration))
             else:
                 feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
-                acc, loss_value, mI, mINR, _, _, _, summary_t_this_class, summary_t, _ = sess.run(
-                    [accuracy_output, loss_output, mIoU_output, mIoU_no_reset_output, accuracy_per_class_output,
-                     IoU_summary_output, IoU_summary_no_reset_output, per_class_summary, all_summary, train_op],
+                acc, loss_value, _, summary_t_this_class, summary_t, _ = sess.run(
+                    [accuracy_output, loss_output, accuracy_per_class_output, per_class_summary, all_summary, train_op],
                     feed_dict=feed_dict)
 
                 summary_writer_train.add_summary(summary_t, step)
@@ -487,8 +398,8 @@ def main():
 
                 duration = time.time() - start_time
                 print(
-                    'step {:d} \t loss = {:.3f}, acc = {:.3f}, mIoU = {:.6f}, mIoU_no_reset = {:.6f}, ({:.3f} sec/step)'.format(
-                        step, loss_value, acc, mI, mINR, duration))
+                    'step {:d} \t loss = {:.3f}, acc = {:.3f} ({:.3f} sec/step)'.format(
+                        step, loss_value, acc, duration))
 
         coord.request_stop()
         coord.join(threads)
