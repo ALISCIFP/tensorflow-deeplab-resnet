@@ -17,9 +17,6 @@ import tensorflow as tf
 
 from deeplab_resnet import ThreeDNetwork, ImageReaderScaling, decode_labels, inv_preprocess
 
-IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS
-
-#IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
 LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
 
 BATCH_SIZE = 1
