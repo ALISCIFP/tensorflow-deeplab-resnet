@@ -314,7 +314,7 @@ def main():
 
         tf.summary.scalar("Accuracy per class", accuracy_per_class_output, collections=['per_class'])
 
-        images_summary = tf.py_func(inv_preprocess, [image_batch[:, :, :, 5:8] * (200 - (-200)),
+        images_summary = tf.py_func(inv_preprocess, [image_batch[:, :, :, 6 * 3:7 * 3] * (200 - (-200)),
                                                      args.save_num_images, IMG_MEAN],
                                     tf.uint8)
         labels_summary = tf.py_func(decode_labels, [label_batch[:, :, :, 6:7], args.save_num_images, args.num_classes],
