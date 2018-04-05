@@ -284,11 +284,11 @@ class ImageReaderScaling(object):
         Returns:
           Two tensors of size (batch_size, h, w, {3, 1}) for images and masks.'''
 
-        example_list = [(self.image, self.label) for _ in range(self.num_threads)]
-        image_batch, label_batch = tf.train.batch_join(example_list, num_elements,
-                                                       capacity=num_elements * self.num_threads)
+        # example_list = [(self.image, self.label) for _ in range(self.num_threads)]
+        # image_batch, label_batch = tf.train.batch_join(example_list, num_elements,
+        #                                                capacity=num_elements * self.num_threads)
 
-        # image_batch, label_batch = tf.train.batch([self.image, self.label],
-        #                                           num_elements)
+        image_batch, label_batch = tf.train.batch([self.image, self.label],
+                                                  num_elements)
 
         return image_batch, label_batch
