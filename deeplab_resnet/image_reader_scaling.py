@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def read_nii_and_image_scaling(img_fname, label_fname):
+def read_nii_and_image_scaling(img_fname, label_fname, img_mean):
     """
     Randomly scales the images between 0.5 to 1.5 times the original size.
 
@@ -21,8 +21,8 @@ def read_nii_and_image_scaling(img_fname, label_fname):
     img, input_spacing = tf.py_func(threed_rescale_bilinear, [img_fname, output_spacing], [tf.float32, tf.float64])
     label = tf.py_func(threed_rescale_nn, [label_fname, output_spacing, input_spacing], tf.uint8)
 
-    img = tf.subtract(img, tf.reduce_mean(img))
-    img = tf.divide(img, tf.reduce_max(img) - tf.reduce_min(img))
+    img = tf.subtract(img, img_mean)
+    img = tf.divide(img, 200 - (-200))
     return img, label
 
 
@@ -178,7 +178,7 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w, t, w):
 
     img_crop = tf.concat(img_list, axis=-1)
 
-    img_crop = tf.Print(img_crop, [t, w, tf.shape(img), tf.shape(label), tf.shape(img_crop), tf.shape(label_crop)])
+    # img_crop = tf.Print(img_crop, [t, w, tf.shape(img), tf.shape(label), tf.shape(img_crop), tf.shape(label_crop)])
 
     # Set static shape so that tensorflow knows shape at compile time.
     img_crop.set_shape((crop_h, crop_w, 36))
@@ -230,7 +230,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, random_mirror, 
     h, w = input_size
 
     # Randomly scale the images and labels.
-    img, label = read_nii_and_image_scaling(input_queue[0], input_queue[1])
+    img, label = read_nii_and_image_scaling(input_queue[0], input_queue[1], img_mean)
 
     # Randomly crops the images and labels.
     img, label = random_crop_and_pad_image_and_labels(img, label, h, w, input_queue[0], input_queue[1])
