@@ -200,7 +200,7 @@ def ndarry2jpg_png((data_file, img_gt_file, out_dir, rescale_to_han, px_to_exten
 
         return ftrain, fval, fcrop_dims, ftrain_3D, fval_3D, fmean, fmean_3D
 
-
+ 
 def ndarry2jpg_png_test((data_file, out_dir, rescale_to_han)):
     ftest = []
     ftest_3D = []
