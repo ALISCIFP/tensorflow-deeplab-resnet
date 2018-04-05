@@ -187,7 +187,7 @@ def main():
 
                 key, idx, preds, num_slices = (
                     regex_match.group(1), int(regex_match.group(2)), preds[i], len(dict[regex_match.group(1)]))
-                print(key, idx, num_slices)
+                # print(key, idx, num_slices)
                 if key not in dict_of_curr_processing:
                     dict_of_curr_processing[key] = np.zeros((num_slices, preds.shape[1], preds.shape[0]),
                                                             dtype=np.uint8)
@@ -227,7 +227,6 @@ def main():
                 path_to_img_original = os.path.join(args.threed_data_dir, key + '.nii')
                 img_original_sitk = sitk.ReadImage(path_to_img_original)
 
-                output = output.T
                 output_sitk = sitk.GetImageFromArray(output)
                 output_sitk.SetOrigin(img_original_sitk.GetOrigin())
                 output_sitk.SetDirection(img_original_sitk.GetDirection())
