@@ -21,10 +21,6 @@ import tensorflow as tf
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader
 
-#IMG_MEAN = np.array((33.43633936, 33.38798846, 33.43324414), dtype=np.float32)  # LITS resmaple 0.6mm
-IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS paper resolution
-
-
 GPU_MASK = '0'
 DATA_DIRECTORY = None
 DATA_LIST_PATH = None
@@ -135,6 +131,9 @@ def main():
                 dict[re.match(".*\\/(.*)\\.nii.*", line).group(1)] = []
 
             dict[re.match(".*\\/(.*)\\.nii.*", line).group(1)].append(line.rsplit()[0])
+
+    with open(os.path.join(args.data_dir, "dataset", "mean.txt"), 'r') as f:
+        IMG_MEAN = np.array(f.readline().rstrip(), dtype=np.float32)
 
     with tf.Graph().as_default():
         # Create queue coordinator.
