@@ -178,7 +178,7 @@ def random_crop_and_pad_image_and_labels(img, label, crop_h, crop_w, t, w):
 
     img_crop = tf.concat(img_list, axis=-1)
 
-    img_crop = tf.Print(img_crop, [t, w, tf.shape(img), tf.shape(label), tf.shape(img_crop), tf.shape(label_crop)])
+    # img_crop = tf.Print(img_crop, [t, w, tf.shape(img), tf.shape(label), tf.shape(img_crop), tf.shape(label_crop)])
 
     # Set static shape so that tensorflow knows shape at compile time.
     img_crop.set_shape((crop_h, crop_w, 36))

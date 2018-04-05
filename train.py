@@ -178,6 +178,9 @@ def main():
     h, w = map(int, args.input_size.split(','))
     input_size = (h, w)
 
+    with open(os.path.join(args.data_dir, "dataset", "mean3D.txt"), 'r') as f:
+        IMG_MEAN = np.array(f.readline().rstrip(), dtype=np.float32)
+
     with tf.Graph().as_default():
         # tf.set_random_seed(args.random_seed)
 
