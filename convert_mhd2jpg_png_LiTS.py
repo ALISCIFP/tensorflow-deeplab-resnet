@@ -221,8 +221,8 @@ def main():
     list_mean = list(itertools.chain.from_iterable([sublist[5] for sublist in retval]))
     list_mean_3D = list(itertools.chain.from_iterable([sublist[6] for sublist in retval]))
 
-    list_mean = np.mean(list_mean)
-    list_mean_3D = np.mean(list_mean_3D)
+    list_mean = [str(np.mean(np.array(list_mean, dtype=np.float32))) + "\n"]
+    list_mean_3D = [str(np.mean(np.array(list_mean_3D, dtype=np.float32))) + "\n"]
 
     list_test = list(itertools.chain.from_iterable([sublist[0] for sublist in retval_test]))
     list_test_3D = list(itertools.chain.from_iterable([sublist[1] for sublist in retval_test]))
