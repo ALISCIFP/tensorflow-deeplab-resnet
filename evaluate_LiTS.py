@@ -132,8 +132,9 @@ def main():
 
             dict[re.match(".*\\/(.*)\\.nii.*", line).group(1)].append(line.rsplit()[0])
 
-    with open(os.path.join(args.data_dir, "dataset", "mean.txt"), 'r') as f:
-        IMG_MEAN = np.array(f.readline().rstrip(), dtype=np.float32)
+    with open(os.path.join(args.data_dir, "dataset", "mean_train.txt"), 'r') as f:
+        IMG_MEAN = np.array(f.readline().rstrip().split(" "), dtype=np.float32)
+    #IMG_MEAN = np.array((70.49377469, 70.51345116,  70.66025172), dtype=np.float32) #LITS paper resolution
 
     with tf.Graph().as_default():
         # Create queue coordinator.

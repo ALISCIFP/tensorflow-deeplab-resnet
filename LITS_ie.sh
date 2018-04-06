@@ -1,8 +1,7 @@
 python evaluate_LiTS.py \
---crop-data-dir /home/zack/Data/LITSGroundTruthCropPaperResolution \
---no-crop-data-dir /home/zack/Data/LITSNoCropPaperResolution \
---original-data-dir /home/zack/Data/LITS \
---crop-data-list /home/zack/Data/LITSGroundTruthCropPaperResolution/dataset/val.txt \
+--data-dir /home/zack/Data/LITSNoCropPaperResolution \
+--threed-data-dir /home/zack/Data/LITS/Train \
+--data-list /home/zack/Data/LITSNoCropPaperResolution/dataset/val.txt \
 --restore-from /home/zack/GitHub/tensorflow-resnet-segmentation/snapshots/HanResNet5Slices_ReLu_320_R1920k \
 --gpu-mask '1'  
 
