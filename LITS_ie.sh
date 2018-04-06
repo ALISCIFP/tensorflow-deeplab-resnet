@@ -1,7 +1,7 @@
 python evaluate_LiTS.py \
 --data-dir /home/zack/Data/LITSNoCropPaperResolution \
 --threed-data-dir /home/zack/Data/LITS/Train \
---data-list /home/zack/Data/LITSNoCropPaperResolution/dataset/val.txt \
+--data-list /home/zack/Data/LITSNoCropPaperResolution/dataset/train.txt \
 --restore-from /home/zack/GitHub/tensorflow-resnet-segmentation/snapshots/HanResNet5Slices_ReLu_320_R1920k \
 --gpu-mask '1'  
 
