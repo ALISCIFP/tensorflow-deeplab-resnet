@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from deeplab_resnet import ThreeDNetwork, ImageReaderScaling, decode_labels, inv_preprocess
 
-LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
+LUNA16_softmax_weights = np.array((1, 1, 1), dtype=np.float32)  # [15020370189   332764489    18465194]
 
 BATCH_SIZE = 1
 DATA_DIRECTORY = None

@@ -1,12 +1,10 @@
 python train.py  \
---data-dir /home/zack/Data/LITS/ \
---data-list  /home/zack/Data/LITS/dataset/train.txt  \
---val-data-list /home/zack/Data/LITS/dataset/val.txt  \
---batch-size 4 \
---not-restore-last \
---num-classes 3 \
---input-size '512,512'  \
---restore-from './snapshots/LITS4t2' \
---snapshot-dir './snapshots/LITS4t2_refine' \
---gpu-mask '1'  \
---num-steps 435068 \
+--data-dir /home/zack/Data/LITSGroundTruthCropOriginalResolution \
+--data-list /home/zack/Data/LITSGroundTruthCropOriginalResolution/dataset/train3D.txt \
+--val-data-list /home/zack/Data/LITSGroundTruthCropOriginalResolution/dataset/val3D.txt \
+--snapshot-dir './snapshots/HDenseUNet2' \
+--learning-rate 1.0e-2 \
+--random-scale \
+--random-mirror \
+--restore-from './snapshots/HDenseUNet2' \
+--num-steps 237910 
