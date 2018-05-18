@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from deeplab_resnet import ThreeDNetwork, ImageReaderScaling, decode_labels, inv_preprocess
 
-LUNA16_softmax_weights = np.array((0.2, 1.2, 2.2), dtype=np.float32)  # [15020370189   332764489    18465194]
+LUNA16_softmax_weights = np.array((1, 1, 1), dtype=np.float32)  # [15020370189   332764489    18465194]
 
 BATCH_SIZE = 1
 DATA_DIRECTORY = None
@@ -161,17 +161,17 @@ def main():
                 coord,
                 num_threads=1)
 
-        with tf.name_scope("val_inputs"):
-            val_reader = ImageReaderScaling(
-                args.data_dir,
-                args.val_data_list,
-                input_size,
-                args.random_scale,
-                args.random_mirror,
-                args.ignore_label,
-                IMG_MEAN,
-                coord,
-                num_threads=1)
+        # with tf.name_scope("val_inputs"):
+        #     val_reader = ImageReaderScaling(
+        #         args.data_dir,
+        #         args.val_data_list,
+        #         input_size,
+        #         args.random_scale,
+        #         args.random_mirror,
+        #         args.ignore_label,
+        #         IMG_MEAN,
+        #         coord,
+        #         num_threads=1)
 
         # Define loss and optimisation parameters.
         base_lr = tf.constant(args.learning_rate)
@@ -182,10 +182,10 @@ def main():
 
         with tf.variable_scope(tf.get_variable_scope()) as scope:
             image_batch_train, label_batch_train = train_reader.dequeue(args.batch_size)
-            image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
+            # image_batch_val, label_batch_val = val_reader.dequeue(args.batch_size)
 
-            image_batch = tf.cond(mode, lambda: image_batch_train, lambda: image_batch_val)
-            label_batch = tf.cond(mode, lambda: label_batch_train, lambda: label_batch_val)
+            image_batch = image_batch_train
+            label_batch = label_batch_train
             image_batch = tf.concat(tf.split(image_batch, 12, axis=-1), axis=0)
 
             # Create network.
@@ -375,18 +375,19 @@ def main():
                 save(saver, sess, args.snapshot_dir, step)
 
             if step % args.val_interval == 0:
-                feed_dict = {step_ph: step, mode: False, class_number: step % args.num_classes}
-                acc, loss_value, _, summary_v_this_class, summary_v = sess.run(
-                    [accuracy_output, loss_output, accuracy_per_class_output, per_class_summary, all_summary],
-                    feed_dict=feed_dict)
-
-                summary_writer_val.add_summary(summary_v, step)
-                summary_writer_per_class_val[step % args.num_classes].add_summary(summary_v_this_class, step)
-
-                duration = time.time() - start_time
-                print(
-                    'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f} ({:.3f} sec/step)'.format(
-                        step, loss_value, acc, duration))
+                pass
+                # feed_dict = {step_ph: step, mode: False, class_number: step % args.num_classes}
+                # acc, loss_value, _, summary_v_this_class, summary_v = sess.run(
+                #     [accuracy_output, loss_output, accuracy_per_class_output, per_class_summary, all_summary],
+                #     feed_dict=feed_dict)
+                #
+                # summary_writer_val.add_summary(summary_v, step)
+                # summary_writer_per_class_val[step % args.num_classes].add_summary(summary_v_this_class, step)
+                #
+                # duration = time.time() - start_time
+                # print(
+                #     'step {:d} \t Val_loss = {:.3f}, Val_acc = {:.3f} ({:.3f} sec/step)'.format(
+                #         step, loss_value, acc, duration))
             else:
                 feed_dict = {step_ph: step, mode: True, class_number: step % args.num_classes}
                 acc, loss_value, _, summary_t_this_class, summary_t, _ = sess.run(
