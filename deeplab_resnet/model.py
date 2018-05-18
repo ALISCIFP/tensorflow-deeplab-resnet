@@ -2276,7 +2276,7 @@ class ThreeDNetwork(Network):
                        '3d_conv8b_dense4'
                        )
              .concat(axis=-1)
-             .deconv3D(2, 2, 1, 504, 2, 2, 1, 14, 14, 3, relu=False, name='3d_bilinear_upsample1')
+             .deconv3D_dynamic(2, 2, 1, 504, 2, 2, 1, relu=False, name='3d_bilinear_upsample1')
              )
 
             (self.feed('pool_transition2',
@@ -2340,7 +2340,7 @@ class ThreeDNetwork(Network):
                        )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample1')
-             .deconv3D(2, 2, 1, 504, 2, 2, 1, 28, 28, 3, relu=False, name='3d_bilinear_upsample2')
+             .deconv3D_dynamic(2, 2, 1, 504, 2, 2, 1, relu=False, name='3d_bilinear_upsample2')
              )
 
             (self.feed('pool_transition1',
@@ -2372,7 +2372,7 @@ class ThreeDNetwork(Network):
                        )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample2')
-             .deconv3D(2, 2, 1, 224, 2, 2, 1, 56, 56, 3, name='3d_bilinear_upsample3')
+             .deconv3D_dynamic(2, 2, 1, 224, 2, 2, 1, name='3d_bilinear_upsample3')
              )
 
             (self.feed('pool1',
@@ -2397,7 +2397,7 @@ class ThreeDNetwork(Network):
                        )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample3')
-             .deconv3D(2, 2, 2, 192, 2, 2, 2, 112, 112, 6, name='3d_bilinear_upsample4')
+             .deconv3D_dynamic(2, 2, 2, 192, 2, 2, 2, name='3d_bilinear_upsample4')
              )
 
             (self.feed('conv1')
@@ -2411,7 +2411,7 @@ class ThreeDNetwork(Network):
                        )
              .concat(axis=-1)
              .batch_normalization(is_training=is_training, activation_fn=tf.nn.relu, name='3d_bn_conv_upsample4')
-             .deconv3D(2, 2, 2, 96, 2, 2, 2, 224, 224, 12, name='3d_bilinear_upsample5')
+             .deconv3D_dynamic(2, 2, 2, 96, 2, 2, 2, name='3d_bilinear_upsample5')
              )
 
             (self.feed('bilinear_upsample5')

@@ -287,6 +287,55 @@ class Network(object):
             return output
 
     @layer
+    def deconv3D_dynamic(self,
+                         input,
+                         k_h,
+                         k_w,
+                         k_z,
+                         c_o,
+                         s_h,
+                         s_w,
+                         s_z,
+                         name,
+                         relu=True,
+                         padding=DEFAULT_PADDING,
+                         group=1,
+                         biased=True):
+        # Verify that the padding is acceptable
+        self.validate_padding(padding)
+        # Get the number of channels in the input
+        c_i = input.get_shape()[-1]
+        # Verify that the grouping parameter is valid
+        assert c_i % group == 0
+        assert c_o % group == 0
+        # Convolution for a given input and kernel
+        convolve = lambda i, k: tf.nn.conv3d_transpose(i, k,
+                                                       [tf.shape(i)[0], tf.shape(i)[1] * s_z, tf.shape(i)[2] * s_w,
+                                                        tf.shape(i)[3] * s_h, c_o],
+                                                       [1, s_z, s_h, s_w, 1],
+                                                       padding=padding)
+        with tf.variable_scope(name) as scope:
+            kernel = self.make_var('weights', shape=[k_z, k_h, k_w, c_o, c_i / group])
+            if group == 1:
+                # This is the common-case. Convolve the input without any further complications.
+                output = convolve(input, kernel)
+            else:
+                # Split the input into groups and then convolve each of them independently
+                input_groups = tf.split(3, group, input)
+                kernel_groups = tf.split(3, group, kernel)
+                output_groups = [convolve(i, k) for i, k in zip(input_groups, kernel_groups)]
+                # Concatenate the groups
+                output = tf.concat(3, output_groups)
+            # Add the biases
+            if biased:
+                biases = self.make_var('biases', [c_o])
+                output = tf.nn.bias_add(output, biases)
+            if relu:
+                # ReLU non-linearity
+                output = tf.nn.relu(output, name=scope.name)
+            return output
+
+    @layer
     def atrous_conv(self,
                     input,
                     k_h,
