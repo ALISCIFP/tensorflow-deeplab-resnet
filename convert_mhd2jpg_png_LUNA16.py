@@ -2,6 +2,10 @@
 
 # This script belongs to https://github.com/
 
+# this script convert LUNA 16 mhd file to RGB-jpg file.
+
+__author__  = "Zengming Shen,Email:szm0219@gmail.com"
+
 import os,glob
 import argparse
 
